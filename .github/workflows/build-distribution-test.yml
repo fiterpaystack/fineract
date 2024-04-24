@@ -5,8 +5,11 @@ on:
     branches:
       - develop
 jobs:
-  continuous-integration:
+  demo_deployment:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -22,6 +25,7 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           role-session-name: distribution_deploy
           aws-region: ${{ secrets.AWS_REGION }}
+          web-identity-token-file: ${{ steps.id-token.outputs.token }}
 
       - id: commit
         uses: pr-mpt/actions-commit-hash@v1
