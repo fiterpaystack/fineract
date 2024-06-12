@@ -147,7 +147,6 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanAccountDomainService
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCharge;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCollateralManagement;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanDisbursementDetails;
-import org.apache.fineract.portfolio.loanaccount.domain.LoanDisbursementDetailsRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanEvent;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanLifecycleStateMachine;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleInstallment;
@@ -180,7 +179,7 @@ import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanSchedul
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleModelPeriod;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.service.LoanScheduleHistoryWritePlatformService;
 import org.apache.fineract.portfolio.loanaccount.rescheduleloan.domain.LoanRescheduleRequest;
-import org.apache.fineract.portfolio.loanaccount.serialization.LoanApplicationCommandFromApiJsonHelper;
+import org.apache.fineract.portfolio.loanaccount.serialization.LoanApplicationValidator;
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanEventApiJsonValidator;
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanUpdateCommandFromApiJsonDeserializer;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProduct;
@@ -225,7 +224,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
     private final FromJsonHelper fromApiJsonHelper;
     private final CalendarRepository calendarRepository;
     private final LoanScheduleHistoryWritePlatformService loanScheduleHistoryWritePlatformService;
-    private final LoanApplicationCommandFromApiJsonHelper loanApplicationCommandFromApiJsonHelper;
+    private final LoanApplicationValidator loanApplicationCommandFromApiJsonHelper;
     private final AccountAssociationsRepository accountAssociationRepository;
     private final AccountTransferDetailRepository accountTransferDetailRepository;
     private final BusinessEventNotifierService businessEventNotifierService;
@@ -240,7 +239,6 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
     private final LoanRepository loanRepository;
     private final RepaymentWithPostDatedChecksAssembler repaymentWithPostDatedChecksAssembler;
     private final PostDatedChecksRepository postDatedChecksRepository;
-    private final LoanDisbursementDetailsRepository loanDisbursementDetailsRepository;
     private final LoanRepaymentScheduleInstallmentRepository loanRepaymentScheduleInstallmentRepository;
     private final LoanLifecycleStateMachine defaultLoanLifecycleStateMachine;
     private final LoanAccountLockService loanAccountLockService;
@@ -327,8 +325,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         final Set<LoanCollateralManagement> loanCollateralManagements = loan.getLoanCollateralManagements();
 
         // Get relevant loan collateral modules
-        if ((loanCollateralManagements != null && !loanCollateralManagements.isEmpty())
-                && AccountType.fromInt(loan.getLoanType()).isIndividualAccount()) {
+        if ((loanCollateralManagements != null && !loanCollateralManagements.isEmpty()) && loan.getLoanType().isIndividualAccount()) {
 
             BigDecimal totalCollateral = BigDecimal.valueOf(0);
 
@@ -347,7 +344,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
 
         // validate ActualDisbursement Date Against Expected Disbursement Date
         LoanProduct loanProduct = loan.loanProduct();
-        if (loanProduct.syncExpectedWithDisbursementDate()) {
+        if (loanProduct.isSyncExpectedWithDisbursementDate()) {
             syncExpectedDateWithActualDisbursementDate(loan, actualDisbursementDate);
         }
 
@@ -488,7 +485,10 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
                             .getDisbursedAmountPercentageForDownPayment();
                     Money downPaymentMoney = Money.of(loan.getCurrency(),
                             MathUtil.percentageOf(amountToDisburse.getAmount(), disbursedAmountPercentageForDownPayment, 19));
-
+                    if (loan.getLoanProduct().getInstallmentAmountInMultiplesOf() != null) {
+                        downPaymentMoney = Money.roundToMultiplesOf(downPaymentMoney,
+                                loan.getLoanProduct().getInstallmentAmountInMultiplesOf());
+                    }
                     final AccountTransferDTO accountTransferDTO = new AccountTransferDTO(actualDisbursementDate,
                             downPaymentMoney.getAmount(), PortfolioAccountType.SAVINGS, PortfolioAccountType.LOAN,
                             linkedSavingsAccountData.getId(), loan.getId(),
@@ -722,7 +722,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
             // validate ActualDisbursement Date Against Expected Disbursement
             // Date
             LoanProduct loanProduct = loan.loanProduct();
-            if (loanProduct.syncExpectedWithDisbursementDate()) {
+            if (loanProduct.isSyncExpectedWithDisbursementDate()) {
                 syncExpectedDateWithActualDisbursementDate(loan, actualDisbursementDate);
             }
             checkClientOrGroupActive(loan);
@@ -993,7 +993,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
                 holidayDetailDto, isHolidayValidationDone);
         loan = loanTransaction.getLoan();
         // Update loan transaction on repayment.
-        if (AccountType.fromInt(loan.getLoanType()).isIndividualAccount()) {
+        if (loan.getLoanType().isIndividualAccount()) {
             Set<LoanCollateralManagement> loanCollateralManagements = loan.getLoanCollateralManagements();
             for (LoanCollateralManagement loanCollateralManagement : loanCollateralManagements) {
                 loanCollateralManagement.setLoanTransactionData(loanTransaction);
@@ -1594,7 +1594,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         businessEventNotifierService.notifyPostBusinessEvent(new LoanCloseBusinessEvent(loan));
 
         // Update loan transaction on repayment.
-        if (AccountType.fromInt(loan.getLoanType()).isIndividualAccount()) {
+        if (loan.getLoanType().isIndividualAccount()) {
             Set<LoanCollateralManagement> loanCollateralManagements = loan.getLoanCollateralManagements();
             for (LoanCollateralManagement loanCollateralManagement : loanCollateralManagements) {
                 ClientCollateralManagement clientCollateralManagement = loanCollateralManagement.getClientCollateralManagement();
@@ -1675,7 +1675,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         this.loanAccountDomainService.disableStandingInstructionsLinkedToClosedLoan(loan);
 
         // Update loan transaction on repayment.
-        if (AccountType.fromInt(loan.getLoanType()).isIndividualAccount()) {
+        if (loan.getLoanType().isIndividualAccount()) {
             Set<LoanCollateralManagement> loanCollateralManagements = loan.getLoanCollateralManagements();
             for (LoanCollateralManagement loanCollateralManagement : loanCollateralManagements) {
                 ClientCollateralManagement clientCollateralManagement = loanCollateralManagement.getClientCollateralManagement();
@@ -2483,7 +2483,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
             final ScheduleGeneratorDTO scheduleGeneratorDTO, final LocalDate nextPossibleRepaymentDate,
             final LocalDate rescheduledRepaymentDate) {
         final LocalDate actualDisbursementDate = command.localDateValueOfParameterNamed("actualDisbursementDate");
-        BigDecimal emiAmount = command.bigDecimalValueOfParameterNamed(LoanApiConstants.emiAmountParameterName);
+        BigDecimal emiAmount = command.bigDecimalValueOfParameterNamed(LoanApiConstants.fixedEmiAmountParameterName);
         loan.regenerateScheduleOnDisbursement(scheduleGeneratorDTO, recalculateSchedule, actualDisbursementDate, emiAmount,
                 nextPossibleRepaymentDate, rescheduledRepaymentDate);
     }

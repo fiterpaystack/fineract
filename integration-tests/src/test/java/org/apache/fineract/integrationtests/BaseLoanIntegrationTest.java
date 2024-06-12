@@ -481,6 +481,10 @@ public abstract class BaseLoanIntegrationTest {
         loanTransactionHelper.undoDisbursal(loanId);
     }
 
+    protected void undoLastDisbursement(Long loanId) {
+        loanTransactionHelper.undoLastDisbursalLoan(loanId, new PostLoansLoanIdRequest());
+    }
+
     protected void verifyJournalEntries(Long loanId, Journal... entries) {
         GetJournalEntriesTransactionIdResponse journalEntriesForLoan = journalEntryHelper.getJournalEntriesForLoan(loanId);
         Assertions.assertEquals(entries.length, journalEntriesForLoan.getPageItems().size());
@@ -525,7 +529,7 @@ public abstract class BaseLoanIntegrationTest {
                 "Expected installments are not matching with the installments configured on the loan");
 
         int installmentNumber = 0;
-        for (int i = 1; i < installments.length; i++) {
+        for (int i = 0; i < installments.length; i++) {
             GetLoansLoanIdRepaymentPeriod period = loanResponse.getRepaymentSchedule().getPeriods().get(i);
             Double principalDue = period.getPrincipalDue();
             Double amount = installments[i].principalAmount;
@@ -671,6 +675,11 @@ public abstract class BaseLoanIntegrationTest {
     protected PostLoansLoanIdRequest approveLoanRequest(Double amount, String approvalDate) {
         return new PostLoansLoanIdRequest().approvedLoanAmount(BigDecimal.valueOf(amount)).dateFormat(DATETIME_PATTERN)
                 .approvedOnDate(approvalDate).locale("en");
+    }
+
+    protected PostLoansLoanIdRequest approveLoanRequest(Double amount, String approvalDate, String expectedDisbursementDate) {
+        return new PostLoansLoanIdRequest().approvedLoanAmount(BigDecimal.valueOf(amount))
+                .expectedDisbursementDate(expectedDisbursementDate).dateFormat(DATETIME_PATTERN).approvedOnDate(approvalDate).locale("en");
     }
 
     protected Long applyAndApproveLoan(Long clientId, Long loanProductId, String loanDisbursementDate, Double amount,
@@ -844,6 +853,15 @@ public abstract class BaseLoanIntegrationTest {
         GetLoansLoanIdResponse loanDetails = loanTransactionHelper.getLoanDetails(loanId);
 
         assertEquals(loanStatus.getCode(), loanDetails.getStatus().getCode());
+    }
+
+    protected void undoLoanApproval(Long loanId) {
+        loanTransactionHelper.undoApprovalForLoan(loanId, new PostLoansLoanIdRequest());
+    }
+
+    protected void rejectLoan(Long loanId, String rejectedOnDate) {
+        loanTransactionHelper.rejectLoan(loanId,
+                new PostLoansLoanIdRequest().rejectedOnDate(rejectedOnDate).locale("en").dateFormat(DATETIME_PATTERN));
     }
 
     @RequiredArgsConstructor

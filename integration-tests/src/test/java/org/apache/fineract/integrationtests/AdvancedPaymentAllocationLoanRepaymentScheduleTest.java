@@ -40,6 +40,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import org.apache.fineract.client.models.AdvancedPaymentData;
 import org.apache.fineract.client.models.BusinessDateRequest;
+import org.apache.fineract.client.models.CreditAllocationData;
+import org.apache.fineract.client.models.CreditAllocationOrder;
 import org.apache.fineract.client.models.GetLoansLoanIdLoanChargeData;
 import org.apache.fineract.client.models.GetLoansLoanIdRepaymentPeriod;
 import org.apache.fineract.client.models.GetLoansLoanIdResponse;
@@ -60,6 +62,7 @@ import org.apache.fineract.infrastructure.businessdate.domain.BusinessDateType;
 import org.apache.fineract.integrationtests.common.BusinessDateHelper;
 import org.apache.fineract.integrationtests.common.ClientHelper;
 import org.apache.fineract.integrationtests.common.CommonConstants;
+import org.apache.fineract.integrationtests.common.GlobalConfigurationHelper;
 import org.apache.fineract.integrationtests.common.LoanRescheduleRequestHelper;
 import org.apache.fineract.integrationtests.common.Utils;
 import org.apache.fineract.integrationtests.common.accounting.Account;
@@ -69,6 +72,7 @@ import org.apache.fineract.integrationtests.common.loans.LoanProductTestBuilder;
 import org.apache.fineract.integrationtests.common.loans.LoanTestLifecycleExtension;
 import org.apache.fineract.integrationtests.common.loans.LoanTransactionHelper;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.impl.AdvancedPaymentScheduleTransactionProcessor;
+import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.impl.EarlyPaymentLoanRepaymentScheduleTransactionProcessor;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.impl.FineractStyleLoanRepaymentScheduleTransactionProcessor;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleProcessingType;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleType;
@@ -1802,7 +1806,8 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
-    // UC103: Advanced payment allocation, add charge after maturity -> N+1 installment, repay the loan
+    // UC103: Advanced payment allocation, add charge after maturity -> N+1
+    // installment, repay the loan
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
     // 1. Disburse the loan (500)
     // 2. Add charge after maturity date
@@ -1872,7 +1877,8 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
     // 1. Disburse the loan (500)
     // 2. Add charge for 3rd and 4th installments
     // 3. Pay little more than the charge of 1st installment
-    // 4. Pay little more than the principal of 1st installment and charge of 2nd installment
+    // 4. Pay little more than the principal of 1st installment and charge of 2nd
+    // installment
     @Test
     public void uc104() {
         runAt("22 February 2023", () -> {
@@ -2026,9 +2032,11 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
-    // UC106: Advanced payment allocation, horizontal repayment processing, mixed grouping of allocation rules
+    // UC106: Advanced payment allocation, horizontal repayment processing, mixed
+    // grouping of allocation rules
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
-    // 1. Create a Loan product, but the allocation rules are mixed -> expect validation error
+    // 1. Create a Loan product, but the allocation rules are mixed -> expect
+    // validation error
     @Test
     public void uc106() {
         runAt("22 February 2023", () -> {
@@ -2048,11 +2056,15 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
-    // UC107: Advanced payment allocation, vertical repayment processing, mixed grouping of allocation rules
+    // UC107: Advanced payment allocation, vertical repayment processing, mixed
+    // grouping of allocation rules
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
-    // 1. Create a Loan product, but the allocation rules are mixed -> no validation error
-    // 2. Change transaction processor while submitting loan -> expect validation error
-    // 3. Change to HORIZONTAL loan schedule processing and allocation rules are mixed - > expect validation error
+    // 1. Create a Loan product, but the allocation rules are mixed -> no validation
+    // error
+    // 2. Change transaction processor while submitting loan -> expect validation
+    // error
+    // 3. Change to HORIZONTAL loan schedule processing and allocation rules are
+    // mixed - > expect validation error
     @Test
     public void uc107() {
         runAt("22 February 2023", () -> {
@@ -2068,8 +2080,12 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
                     overpaymentAccount);
             assertNotNull(localLoanProductId);
 
+            Integer localLoanProductId2 = createLoanProduct("500", "15", "4", false, LoanScheduleType.CUMULATIVE, assetAccount,
+                    incomeAccount, expenseAccount, overpaymentAccount);
+            assertNotNull(localLoanProductId2);
+
             CallFailedRuntimeException exception = assertThrows(CallFailedRuntimeException.class,
-                    () -> applyForLoanApplication(client.getClientId(), localLoanProductId, BigDecimal.valueOf(500.0), 45, 15, 3,
+                    () -> applyForLoanApplication(client.getClientId(), localLoanProductId2, BigDecimal.valueOf(500.0), 45, 15, 3,
                             BigDecimal.ZERO, "01 January 2023", "01 January 2023",
                             FineractStyleLoanRepaymentScheduleTransactionProcessor.STRATEGY_CODE,
                             LoanScheduleProcessingType.VERTICAL.name()));
@@ -2087,7 +2103,8 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
-    // UC108: Advanced payment allocation, progressive loan schedule handling, rounding test
+    // UC108: Advanced payment allocation, progressive loan schedule handling,
+    // rounding test
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
     // 1. Create a Loan product, 1000 principal, across 3 installment
     // 2. Submit the loan, and check the generated repayment schedule
@@ -2175,7 +2192,8 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
-    // UC109: Advanced payment allocation, progressive loan schedule handling, rounding test
+    // UC109: Advanced payment allocation, progressive loan schedule handling,
+    // rounding test
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
     // 1. Create a Loan product, 1000 principal, across 3 installment
     // 2. Submit the loan, and check the generated repayment schedule
@@ -2263,9 +2281,11 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
-    // UC110: Advanced payment allocation, progressive loan schedule handling, rounding test
+    // UC110: Advanced payment allocation, progressive loan schedule handling,
+    // rounding test
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
-    // 1. Create a Loan product, 40.50 principal, across 4 installment (1 down payment, 3 normal installment)
+    // 1. Create a Loan product, 40.50 principal, across 4 installment (1 down
+    // payment, 3 normal installment)
     // 2. Submit the loan, and check the generated repayment schedule
     @Test
     public void uc110() {
@@ -2314,9 +2334,11 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
-    // UC111: Advanced payment allocation, progressive loan schedule handling, rounding test
+    // UC111: Advanced payment allocation, progressive loan schedule handling,
+    // rounding test
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
-    // 1. Create a Loan product, 40.50 principal, across 4 installment (1 down payment, 3 normal installment)
+    // 1. Create a Loan product, 40.50 principal, across 4 installment (1 down
+    // payment, 3 normal installment)
     // 2. Submit the loan, and check the generated repayment schedule
     @Test
     public void uc111() {
@@ -2785,7 +2807,8 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
-    // UC116: Advanced payment allocation, horizontal repayment processing, disbursement on due date of an installment
+    // UC116: Advanced payment allocation, horizontal repayment processing,
+    // disbursement on due date of an installment
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
     // 1. Disburse the loan (1000)
     // 2. Add charge on disbursement date(50)
@@ -2869,7 +2892,8 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
-    // UC117: Advanced payment allocation, horizontal repayment processing, multi disbursement on due date of an
+    // UC117: Advanced payment allocation, horizontal repayment processing, multi
+    // disbursement on due date of an
     // installment
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
     // 1. Disburse the loan (1000)
@@ -2962,7 +2986,8 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
-    // UC118: Advanced payment allocation, horizontal repayment processing, multi disbursement on disbursement date
+    // UC118: Advanced payment allocation, horizontal repayment processing, multi
+    // disbursement on disbursement date
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
     // 1. Disburse the loan (1000)
     // 2. Disburse on disbursement date (400)
@@ -3019,7 +3044,8 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
 
     // UC119: Advanced payment allocation with Loan Schedule as Cumulative
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
-    // 1. Create a Loan product with Adv. Pment. Alloc., but the loan schedule as Cumulative -> expect validation error
+    // 1. Create a Loan product with Adv. Pment. Alloc., but the loan schedule as
+    // Cumulative -> expect validation error
     @Test
     public void uc119() {
         runAt("02 February 2023", () -> {
@@ -3038,7 +3064,8 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
-    // UC120: Advanced payment allocation with auto down payment and multiple disbursement on the first day
+    // UC120: Advanced payment allocation with auto down payment and multiple
+    // disbursement on the first day
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
     // 1. Create a Loan product with Adv. Pment. Alloc., and auto down payment
     // 2. Submit Loan and approve
@@ -3095,7 +3122,8 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
-    // UC121: Advanced payment allocation, horizontal repayment processing product and Loan application
+    // UC121: Advanced payment allocation, horizontal repayment processing product
+    // and Loan application
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
     @Test
     public void uc121() {
@@ -3542,7 +3570,8 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
-    // UC126: Advanced payment allocation with Fixed Length for 40 days and Loan Term for 45 days (3 repayments every 15
+    // UC126: Advanced payment allocation with Fixed Length for 40 days and Loan
+    // Term for 45 days (3 repayments every 15
     // days)
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
     // 1. Create a Loan product with Adv. Pment. Alloc. and No Interest
@@ -3587,7 +3616,8 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
-    // UC127: Advanced payment allocation with Fixed Length for 5 weeks and Loan Term for 6 weeks (3 repayments every 2
+    // UC127: Advanced payment allocation with Fixed Length for 5 weeks and Loan
+    // Term for 6 weeks (3 repayments every 2
     // weeks)
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
     // 1. Create a Loan product with Adv. Pment. Alloc. and No Interest
@@ -3636,7 +3666,8 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
-    // UC128: Advanced payment allocation with Fixed Length for 11 months and Loan Term for 12 months (6 repayments each
+    // UC128: Advanced payment allocation with Fixed Length for 11 months and Loan
+    // Term for 12 months (6 repayments each
     // 2 months)
     // every 2 months)
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
@@ -3690,7 +3721,8 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
-    // UC129: Advanced payment allocation with Fixed Length for 5 months and Loan Term for 6 months (6 repayments
+    // UC129: Advanced payment allocation with Fixed Length for 5 months and Loan
+    // Term for 6 months (6 repayments
     // every month)
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
     // 1. Create a Loan product with Adv. Pment. Alloc. and No Interest
@@ -3714,11 +3746,13 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
-    // UC130: Advanced payment allocation with Fixed Length for 5 months and Loan Term for 6 months (6 repayments
+    // UC130: Advanced payment allocation with Fixed Length for 5 months and Loan
+    // Term for 6 months (6 repayments
     // every month)
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
     // 1. Create a Loan product with Adv. Pment. Alloc. and No Interest
-    // 2. Submit Loan and approve -> expect validation error - Fixed Length without Advanced Payment Allocation
+    // 2. Submit Loan and approve -> expect validation error - Fixed Length without
+    // Advanced Payment Allocation
     @Test
     public void uc130() {
         final String operationDate = "22 November 2023";
@@ -3730,7 +3764,8 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
                     .numberOfRepayments(6).repaymentEvery(1).repaymentFrequencyType(repaymentFrequencyType.longValue()).fixedLength(6);
             PostLoanProductsResponse loanProductResponse = loanProductHelper.createLoanProduct(product);
 
-            // Try to use Fixed Length without Advanced Payment Allocation as transaction processing strategy code
+            // Try to use Fixed Length without Advanced Payment Allocation as transaction
+            // processing strategy code
             LOG.info("Try to use Fixed Length without Advanced Payment Allocation as transaction processing strategy code");
             CallFailedRuntimeException exception = assertThrows(CallFailedRuntimeException.class,
                     () -> loanTransactionHelper.applyLoan(new PostLoansRequest().clientId(client.getClientId())
@@ -3749,11 +3784,13 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
-    // UC131: Advanced payment allocation with Fixed Length for 5 months and Loan Term for 6 months (6 repayments
+    // UC131: Advanced payment allocation with Fixed Length for 5 months and Loan
+    // Term for 6 months (6 repayments
     // every month)
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
     // 1. Create a Loan product with Adv. Pment. Alloc. and No Interest
-    // 2. Submit Loan and approve -> expect validation error - Interest Rate value higher than Zero
+    // 2. Submit Loan and approve -> expect validation error - Interest Rate value
+    // higher than Zero
     @Test
     public void uc131() {
         final String operationDate = "22 November 2023";
@@ -3784,11 +3821,13 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
-    // UC132: Advanced payment allocation with Fixed Length for 5 months and Loan Term for 6 months (3 repayments
+    // UC132: Advanced payment allocation with Fixed Length for 5 months and Loan
+    // Term for 6 months (3 repayments
     // every 2 months)
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
     // 1. Create a Loan product with Adv. Pment. Alloc. and No Interest
-    // 2. Submit Loan and approve -> expect validation error - Loan acount Fixed Length with a wrong Loan Term setup
+    // 2. Submit Loan and approve -> expect validation error - Loan acount Fixed
+    // Length with a wrong Loan Term setup
     @Test
     public void uc132() {
         final String operationDate = "22 November 2023";
@@ -3819,7 +3858,8 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
-    // UC133: Advanced payment allocation with higher Fixed Length for 50 days than Loan Term for 45 days (3 repayments
+    // UC133: Advanced payment allocation with higher Fixed Length for 50 days than
+    // Loan Term for 45 days (3 repayments
     // every 15 days)
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
     // 1. Create a Loan product with Adv. Pment. Alloc. and No Interest
@@ -3867,7 +3907,8 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
-    // UC134: Advanced payment allocation with Fixed Length for 119 days and Loan Term for 120 days (4 repayments every
+    // UC134: Advanced payment allocation with Fixed Length for 119 days and Loan
+    // Term for 120 days (4 repayments every
     // 30
     // days) and Reschedule
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
@@ -3939,7 +3980,8 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
-    // UC135: Advanced payment allocation with Fixed Length for 119 days and Loan Term for 120 days (4 repayments every
+    // UC135: Advanced payment allocation with Fixed Length for 119 days and Loan
+    // Term for 120 days (4 repayments every
     // 30
     // days) and Reschedule
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
@@ -4011,6 +4053,282 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
+    // UC136: Advanced payment allocation, using auto downpayment with installment
+    // amount in multiples of 1
+    // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
+    // 1. Create a Loan product with Adv. Pment. Alloc.
+    // 2. Submit Loan and approve
+    // 3. Disburse the loan and validate downpayment
+    @Test
+    public void uc136() {
+        AtomicLong createdLoanId = new AtomicLong();
+        runAt("23 March 2024", () -> {
+            // Rounding mode - HALF_DOWN
+            GlobalConfigurationHelper.updateValueForGlobalConfigurationInternal(requestSpec, responseSpec, "23", 5);
+            createLoanForRoundingMethodValidation(true);
+
+            // Rounding mode - HALF_UP
+            GlobalConfigurationHelper.updateValueForGlobalConfigurationInternal(requestSpec, responseSpec, "23", 4);
+            createLoanForRoundingMethodValidation(false);
+
+            // Rounding mode - HALF_EVEN - Default
+            GlobalConfigurationHelper.updateValueForGlobalConfigurationInternal(requestSpec, responseSpec, "23", 6);
+        });
+    }
+
+    // UC137: Loan Progressive processing type only with Advanced payment allocation
+    // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
+    // 1. Create a Loan product, Loan Progressive type and other transaction processing strategy code
+    // different than advanced-payment-allocation-strategy
+    // - > Expect validation error
+    @Test
+    public void uc137() {
+        runAt("22 February 2023", () -> {
+
+            final Account assetAccount = accountHelper.createAssetAccount();
+            final Account incomeAccount = accountHelper.createIncomeAccount();
+            final Account expenseAccount = accountHelper.createExpenseAccount();
+            final Account overpaymentAccount = accountHelper.createLiabilityAccount();
+            AdvancedPaymentData defaultPaymentAllocation = createDefaultPaymentAllocationWithMixedGrouping();
+
+            // First scenario (Legacy): Loan product no Advanced Payment Allocation and Cumulative Loan Schedule type
+            PostLoanProductsResponse loanProductResponse = loanProductHelper.createLoanProduct(
+                    createOnePeriod30DaysLongNoInterestPeriodicAccrualProduct().loanScheduleType(LoanScheduleType.CUMULATIVE.toString()));
+            assertNotNull(loanProductResponse.getResourceId());
+
+            // Second scenario: Loan product with Advanced Payment Allocation and Progressive Loan Schedule type
+            loanProductResponse = loanProductHelper
+                    .createLoanProduct(createOnePeriod30DaysLongNoInterestPeriodicAccrualProductWithAdvancedPaymentAllocation()
+                            .loanScheduleType(LoanScheduleType.PROGRESSIVE.toString()));
+            assertNotNull(loanProductResponse.getResourceId());
+
+            // Third scenario: Loan product no Advanced Payment Allocation and Progressive Loan Schedule type,
+            // validation expected
+            CallFailedRuntimeException exception = assertThrows(CallFailedRuntimeException.class,
+                    () -> loanProductHelper.createLoanProduct(createOnePeriod30DaysLongNoInterestPeriodicAccrualProduct()
+                            .loanScheduleType(LoanScheduleType.PROGRESSIVE.toString()) //
+                            .loanScheduleProcessingType(LoanScheduleProcessingType.HORIZONTAL.toString())));
+            assertEquals(400, exception.getResponse().code());
+            assertTrue(exception.getMessage().contains("supported.only.with.advanced.payment.allocation.strategy"));
+        });
+    }
+
+    @Test
+    public void testChargebackTransactionForProgressiveWithLoanAdvancedPaymentAllocationStrategyAndChargebackAllocation() {
+        runAt("15 January 2023", () -> {
+            Integer numberOfRepayments = 4;
+            double amount = 1000.0;
+            String loanDisbursementDate = "1 January 2023";
+
+            Long clientId = clientHelper.createClient(ClientHelper.defaultClientCreationRequest()).getClientId();
+
+            LOG.info("------------------------------CREATING NEW LOAN PRODUCT ---------------------------------------");
+            PostLoanProductsResponse loanProductResponse = loanProductHelper
+                    .createLoanProduct(createOnePeriod30DaysLongNoInterestPeriodicAccrualProductWithAdvancedPaymentAllocation()
+                            .addCreditAllocationItem(createChargebackAllocation())
+                            .loanScheduleType(LoanScheduleType.PROGRESSIVE.toString()));
+
+            Long loanId = applyAndApproveLoanProgressiveAdvancedPaymentAllocationStrategyMonthlyRepayments(clientId,
+                    loanProductResponse.getResourceId(), numberOfRepayments, loanDisbursementDate, amount);
+
+            verifyRepaymentSchedule(loanId, //
+                    installment(1000.0, null, "01 January 2023"), //
+                    installment(250.0, false, "01 February 2023"), //
+                    installment(250.0, false, "01 March 2023"), //
+                    installment(250.0, false, "01 April 2023"), //
+                    installment(250.0, false, "01 May 2023") //
+            );
+
+            loanTransactionHelper.disburseLoan(loanId, new PostLoansLoanIdRequest().actualDisbursementDate("1 January 2023")
+                    .dateFormat(DATETIME_PATTERN).transactionAmount(BigDecimal.valueOf(1000.0)).locale("en"));
+
+            verifyTransactions(loanId, //
+                    transaction(1000.0, "Disbursement", "01 January 2023", 1000.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
+
+            addCharge(loanId, true, 25, "1 January 2023");
+
+            verifyRepaymentSchedule(loanId, //
+                    installment(1000.0, null, "01 January 2023"), //
+                    installment(250.0, 0, 0, 25, 275.0, false, "01 February 2023", 750.0), //
+                    installment(250.0, false, "01 March 2023"), //
+                    installment(250.0, false, "01 April 2023"), //
+                    installment(250.0, false, "01 May 2023") //
+            );
+
+            Long repayment1TransactionId = addRepaymentForLoan(loanId, 265.0, "2 January 2023");
+
+            assertNotNull(repayment1TransactionId);
+
+            verifyTransactions(loanId, //
+                    transaction(1000.0, "Disbursement", "01 January 2023", 1000.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                    transaction(265.0, "Repayment", "02 January 2023", 760.0, 240.0, 0.0, 0.0, 25.0, 0.0, 0.0));
+
+            verifyRepaymentSchedule(loanId, //
+                    installment(1000.0, null, "01 January 2023"), //
+                    installment(250.0, 0, 0, 25, 10.0, false, "01 February 2023", 750.0), //
+                    installment(250.0, false, "01 March 2023"), //
+                    installment(250.0, false, "01 April 2023"), //
+                    installment(250.0, false, "01 May 2023") //
+            );
+
+            Long repayment2TransactionId = addRepaymentForLoan(loanId, 250.0, "3 January 2023");
+
+            assertNotNull(repayment2TransactionId);
+
+            verifyTransactions(loanId, //
+                    transaction(1000.0, "Disbursement", "01 January 2023", 1000.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                    transaction(265.0, "Repayment", "02 January 2023", 760.0, 240.0, 0.0, 0.0, 25.0, 0.0, 0.0),
+                    transaction(250.0, "Repayment", "03 January 2023", 510.0, 250.0, 0.0, 0.0, 0.0, 0.0, 0.0));
+
+            verifyRepaymentSchedule(loanId, //
+                    installment(1000.0, null, "01 January 2023"), //
+                    installment(250.0, 0, 0, 25, 0.0, true, "01 February 2023", 750.0), //
+                    installment(250.0, 0, 0, 0, 10.0, false, "01 March 2023", 500.0), //
+                    installment(250.0, false, "01 April 2023"), //
+                    installment(250.0, false, "01 May 2023") //
+            );
+
+            addChargebackForLoan(loanId, repayment2TransactionId, 250.0);
+
+            verifyTransactions(loanId, //
+                    transaction(1000.0, "Disbursement", "01 January 2023", 1000.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                    transaction(265.0, "Repayment", "02 January 2023", 760.0, 240.0, 0.0, 0.0, 25.0, 0.0, 0.0),
+                    transaction(250.0, "Repayment", "03 January 2023", 510.0, 250.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                    transaction(250.0, "Chargeback", "15 January 2023", 760.0, 250.0, 0.0, 0.0, 0.0, 0.0, 0.0));
+
+            verifyRepaymentSchedule(loanId, //
+                    installment(1000.0, null, "01 January 2023"), //
+                    installment(500.0, 0, 0, 25, 250.0, false, "01 February 2023", 750.0), //
+                    installment(250.0, 0, 0, 0, 10.0, false, "01 March 2023", 500.0), //
+                    installment(250.0, false, "01 April 2023"), //
+                    installment(250.0, false, "01 May 2023") //
+            );
+
+            loanTransactionHelper.reverseRepayment(Math.toIntExact(loanId), Math.toIntExact(repayment1TransactionId), "2 January 2023");
+
+            verifyTransactions(loanId, //
+                    transaction(1000.0, "Disbursement", "01 January 2023", 1000.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                    transaction(265.0, "Repayment", "02 January 2023", 760.0, 240.0, 0.0, 0.0, 25.0, 0.0, 0.0, true),
+                    transaction(250.0, "Repayment", "03 January 2023", 775.0, 225.0, 0.0, 0.0, 25.0, 0.0, 0.0),
+                    transaction(250.0, "Chargeback", "15 January 2023", 1000.0, 225.0, 0.0, 0.0, 25.0, 0.0, 0.0));
+
+            verifyRepaymentSchedule(loanId, //
+                    installment(1000.0, null, "01 January 2023"), //
+                    installment(475.0, 0, 0, 50, 275.0, false, "01 February 2023", 750.0), //
+                    installment(250.0, 0, 0, 0, 250.0, false, "01 March 2023", 500.0), //
+                    installment(250.0, false, "01 April 2023"), //
+                    installment(250.0, false, "01 May 2023") //
+            );
+
+            Long repayment3TransactionId = addRepaymentForLoan(loanId, 320.0, "1 January 2023");
+
+            assertNotNull(repayment3TransactionId);
+            verifyTransactions(loanId, //
+                    transaction(1000.0, "Disbursement", "01 January 2023", 1000.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                    transaction(265.0, "Repayment", "02 January 2023", 760.0, 240.0, 0.0, 0.0, 25.0, 0.0, 0.0, true),
+                    transaction(250.0, "Repayment", "03 January 2023", 455.0, 250.0, 0.0, 0.0, 0, 0.0, 0.0),
+                    transaction(250.0, "Chargeback", "15 January 2023", 705.0, 250.0, 0.0, 0.0, 0, 0.0, 0.0),
+                    transaction(320.0, "Repayment", "01 January 2023", 705.0, 295.0, 0.0, 0.0, 25.0, 0.0, 0.0));
+            verifyRepaymentSchedule(loanId, //
+                    installment(1000.0, null, "01 January 2023"), //
+                    installment(500.0, 0, 0, 25, 250.0, false, "01 February 2023", 750.0), //
+                    installment(250.0, 0, 0, 0, 0, true, "01 March 2023", 500.0), //
+                    installment(250.0, 0, 0, 0, 205, false, "01 April 2023", 250.0), //
+                    installment(250.0, false, "01 May 2023") //
+            );
+
+        });
+    }
+
+    private Long applyAndApproveLoanProgressiveAdvancedPaymentAllocationStrategyMonthlyRepayments(Long clientId, Long loanProductId,
+            Integer numberOfRepayments, String loanDisbursementDate, double amount) {
+        LOG.info("------------------------------APPLY AND APPROVE LOAN ---------------------------------------");
+        PostLoansRequest applicationRequest = applyLoanRequestProgressiveAdvancedPaymentAllocationStrategyMonthlyRepayments(clientId,
+                loanProductId, amount, numberOfRepayments, loanDisbursementDate);
+
+        PostLoansResponse loanResponse = loanTransactionHelper.applyLoan(applicationRequest);
+
+        Long loanId = loanResponse.getLoanId();
+
+        assertNotNull(loanId);
+
+        loanTransactionHelper.approveLoan(loanId, new PostLoansLoanIdRequest().approvedLoanAmount(BigDecimal.valueOf(amount))
+                .dateFormat(DATETIME_PATTERN).approvedOnDate(loanDisbursementDate).locale("en"));
+
+        return loanId;
+    }
+
+    private PostLoansRequest applyLoanRequestProgressiveAdvancedPaymentAllocationStrategyMonthlyRepayments(Long clientId, Long loanId,
+            double amount, Integer numberOfRepayments, String loanDisbursementDate) {
+        return new PostLoansRequest().clientId(clientId).productId(loanId).submittedOnDate(loanDisbursementDate)
+                .expectedDisbursementDate(loanDisbursementDate).dateFormat(DATETIME_PATTERN).locale("en").loanType("individual")
+                .transactionProcessingStrategyCode(LoanProductTestBuilder.ADVANCED_PAYMENT_ALLOCATION_STRATEGY).amortizationType(1)
+                .interestRatePerPeriod(BigDecimal.ZERO).interestCalculationPeriodType(1).interestType(0)
+                .maxOutstandingLoanBalance(BigDecimal.valueOf(amount)).principal(BigDecimal.valueOf(amount))
+                .loanTermFrequencyType(RepaymentFrequencyType.MONTHS).loanTermFrequency(numberOfRepayments)
+                .repaymentFrequencyType(RepaymentFrequencyType.MONTHS).repaymentEvery(1).numberOfRepayments(numberOfRepayments);
+    }
+
+    private CreditAllocationData createChargebackAllocation() {
+        CreditAllocationData creditAllocationData = new CreditAllocationData();
+        creditAllocationData.setTransactionType("CHARGEBACK");
+        creditAllocationData.setCreditAllocationOrder(createCreditAllocationOrders("PENALTY", "FEE", "INTEREST", "PRINCIPAL"));
+        return creditAllocationData;
+    }
+
+    public List<CreditAllocationOrder> createCreditAllocationOrders(String... allocationRule) {
+        AtomicInteger integer = new AtomicInteger(1);
+        return Arrays.stream(allocationRule).map(allocation -> {
+            CreditAllocationOrder creditAllocationOrder = new CreditAllocationOrder();
+            creditAllocationOrder.setCreditAllocationRule(allocation);
+            creditAllocationOrder.setOrder(integer.getAndIncrement());
+            return creditAllocationOrder;
+        }).toList();
+    }
+
+    private void createLoanForRoundingMethodValidation(boolean isHalfDown) {
+        LOG.info("------------------------------ROUNDING HALF DOWN {} ---------------------------------------", isHalfDown);
+
+        PostLoanProductsRequest product = createOnePeriod30DaysLongNoInterestPeriodicAccrualProductWithAdvancedPaymentAllocation()
+                .installmentAmountInMultiplesOf(null).numberOfRepayments(3).repaymentEvery(15).enableDownPayment(true)
+                .enableAutoRepaymentForDownPayment(true).disbursedAmountPercentageForDownPayment(BigDecimal.valueOf(25)).minPrincipal(10.0)
+                .installmentAmountInMultiplesOf(1);
+        PostLoanProductsResponse loanProductResponse = loanProductHelper.createLoanProduct(product);
+        PostLoansRequest applicationRequest = applyLoanRequest(client.getClientId(), loanProductResponse.getResourceId(), "23 March 2024",
+                10.0, 4);
+
+        applicationRequest = applicationRequest.numberOfRepayments(3).loanTermFrequency(45)
+                .transactionProcessingStrategyCode(LoanProductTestBuilder.ADVANCED_PAYMENT_ALLOCATION_STRATEGY).repaymentEvery(15);
+
+        PostLoansResponse loanResponse = loanTransactionHelper.applyLoan(applicationRequest);
+
+        loanTransactionHelper.approveLoan(loanResponse.getLoanId(), new PostLoansLoanIdRequest().approvedLoanAmount(BigDecimal.valueOf(10))
+                .dateFormat(DATETIME_PATTERN).approvedOnDate("23 March 2024").locale("en"));
+
+        loanTransactionHelper.disburseLoan(loanResponse.getLoanId(), new PostLoansLoanIdRequest().actualDisbursementDate("23 March 2024")
+                .dateFormat(DATETIME_PATTERN).transactionAmount(BigDecimal.valueOf(10.0)).locale("en"));
+
+        // verify schedule
+        if (isHalfDown) {
+            verifyRepaymentSchedule(loanResponse.getLoanId(), //
+                    installment(10, null, "23 March 2024"), //
+                    installment(2, 0, 0, 0, 0.0, true, "23 March 2024", 8), //
+                    installment(3, 0, 0, 0, 3, false, "07 April 2024", 5), //
+                    installment(3, 0, 0, 0, 3, false, "22 April 2024", 2), //
+                    installment(2, 0, 0, 0, 2, false, "07 May 2024", 0.0) //
+            );
+        } else {
+            LOG.info("Loan Id {}", loanResponse.getLoanId());
+            verifyRepaymentSchedule(loanResponse.getLoanId(), //
+                    installment(10, null, "23 March 2024"), //
+                    installment(3, 0, 0, 0, 0.0, true, "23 March 2024", 7), //
+                    installment(2, 0, 0, 0, 2, false, "07 April 2024", 5), //
+                    installment(2, 0, 0, 0, 2, false, "22 April 2024", 3), //
+                    installment(3, 0, 0, 0, 3, false, "07 May 2024", 0.0) //
+            );
+        }
+    }
+
     private static List<PaymentAllocationOrder> getPaymentAllocationOrder(PaymentAllocationType... paymentAllocationTypes) {
         AtomicInteger integer = new AtomicInteger(1);
         return Arrays.stream(paymentAllocationTypes).map(pat -> {
@@ -4080,6 +4398,21 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
                 .withInterestTypeAsDecliningBalance().withMultiDisburse().withDisallowExpectedDisbursements(true)
                 .withLoanScheduleType(loanScheduleType).withLoanScheduleProcessingType(loanScheduleProcessingType).withDaysInMonth("30")
                 .withDaysInYear("365").withMoratorium("0", "0").build(null);
+        return loanTransactionHelper.getLoanProductId(loanProductJSON);
+    }
+
+    private static Integer createLoanProduct(final String principal, final String repaymentAfterEvery, final String numberOfRepayments,
+            boolean autoPayForDownPayment, LoanScheduleType loanScheduleType, final Account... accounts) {
+        LOG.info("------------------------------CREATING NEW LOAN PRODUCT ---------------------------------------");
+        final String loanProductJSON = new LoanProductTestBuilder().withMinPrincipal(principal).withPrincipal(principal)
+                .withRepaymentTypeAsDays().withRepaymentAfterEvery(repaymentAfterEvery).withNumberOfRepayments(numberOfRepayments)
+                .withEnableDownPayment(true, "25", autoPayForDownPayment).withinterestRatePerPeriod("0")
+                .withInterestRateFrequencyTypeAsMonths()
+                .withRepaymentStrategy(EarlyPaymentLoanRepaymentScheduleTransactionProcessor.STRATEGY_CODE)
+                .withAmortizationTypeAsEqualPrincipalPayment().withInterestTypeAsFlat().withAccountingRulePeriodicAccrual(accounts)
+                .withInterestCalculationPeriodTypeAsRepaymentPeriod(true).withInterestTypeAsDecliningBalance().withMultiDisburse()
+                .withDisallowExpectedDisbursements(true).withLoanScheduleType(loanScheduleType).withDaysInMonth("30").withDaysInYear("365")
+                .withMoratorium("0", "0").build(null);
         return loanTransactionHelper.getLoanProductId(loanProductJSON);
     }
 

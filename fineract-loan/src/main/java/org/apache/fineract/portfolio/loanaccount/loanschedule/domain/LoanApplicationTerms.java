@@ -221,7 +221,6 @@ public final class LoanApplicationTerms {
 
     private RepaymentStartDateType repaymentStartDateType;
     private LocalDate submittedOnDate;
-    private boolean isScheduleExtensionForDownPaymentDisabled;
     private Money disbursedPrincipal;
     private final LoanScheduleType loanScheduleType;
     private final LoanScheduleProcessingType loanScheduleProcessingType;
@@ -307,10 +306,10 @@ public final class LoanApplicationTerms {
         final Money principalMoney = loanProductRelatedDetail.getPrincipal();
 
         //
-        final Integer graceOnPrincipalPayment = loanProductRelatedDetail.graceOnPrincipalPayment();
-        final Integer recurringMoratoriumOnPrincipalPeriods = loanProductRelatedDetail.recurringMoratoriumOnPrincipalPeriods();
-        final Integer graceOnInterestPayment = loanProductRelatedDetail.graceOnInterestPayment();
-        final Integer graceOnInterestCharged = loanProductRelatedDetail.graceOnInterestCharged();
+        final Integer graceOnPrincipalPayment = loanProductRelatedDetail.getGraceOnPrincipalPayment();
+        final Integer recurringMoratoriumOnPrincipalPeriods = loanProductRelatedDetail.getRecurringMoratoriumOnPrincipalPeriods();
+        final Integer graceOnInterestPayment = loanProductRelatedDetail.getGraceOnInterestPayment();
+        final Integer graceOnInterestCharged = loanProductRelatedDetail.getGraceOnInterestCharged();
 
         // Interest recalculation settings
         final DaysInMonthType daysInMonthType = loanProductRelatedDetail.fetchDaysInMonthType();
@@ -335,7 +334,7 @@ public final class LoanApplicationTerms {
                 repaymentsStartingFromDate, calculatedRepaymentsStartingFromDate, graceOnPrincipalPayment,
                 recurringMoratoriumOnPrincipalPeriods, graceOnInterestPayment, graceOnInterestCharged, interestChargedFromDate,
                 inArrearsTolerance, multiDisburseLoan, emiAmount, disbursementDatas, maxOutstandingBalance,
-                loanProductRelatedDetail.getGraceOnDueDate(), daysInMonthType, daysInYearType, isInterestRecalculationEnabled,
+                loanProductRelatedDetail.getGraceOnArrearsAgeing(), daysInMonthType, daysInYearType, isInterestRecalculationEnabled,
                 rescheduleStrategyMethod, compoundingMethod, restCalendarInstance, recalculationFrequencyType, compoundingCalendarInstance,
                 compoundingFrequencyType, principalThresholdForLastInstalment, installmentAmountInMultiplesOf,
                 loanPreClosureInterestCalculationStrategy, loanCalendar, approvedAmount, loanTermVariations, calendarHistoryDataWrapper,
@@ -1206,10 +1205,11 @@ public final class LoanApplicationTerms {
             double installmentAmount = FinanicalFunctions.pmt(periodicInterestRate.doubleValue(), periodsRemaining.doubleValue(),
                     principalDouble, futureValue, false);
 
+            BigDecimal fixedEmiAmount = BigDecimal.valueOf(installmentAmount);
             if (this.installmentAmountInMultiplesOf != null) {
-                installmentAmount = Money.roundToMultiplesOf(installmentAmount, this.installmentAmountInMultiplesOf);
+                fixedEmiAmount = Money.roundToMultiplesOf(fixedEmiAmount, this.installmentAmountInMultiplesOf);
             }
-            setFixedEmiAmount(BigDecimal.valueOf(installmentAmount));
+            setFixedEmiAmount(fixedEmiAmount);
         }
         return getFixedEmiAmount().doubleValue();
     }
@@ -1417,8 +1417,12 @@ public final class LoanApplicationTerms {
     }
 
     @NotNull
-    public Money getMaxOutstandingBalance() {
+    public Money getMaxOutstandingBalanceMoney() {
         return Money.of(getCurrency(), this.maxOutstandingBalance);
+    }
+
+    public BigDecimal getMaxOutstandingBalance() {
+        return maxOutstandingBalance;
     }
 
     public BigDecimal getFixedEmiAmount() {
@@ -1820,10 +1824,6 @@ public final class LoanApplicationTerms {
         return submittedOnDate;
     }
 
-    public boolean isScheduleExtensionForDownPaymentDisabled() {
-        return isScheduleExtensionForDownPaymentDisabled;
-    }
-
     public Integer getInstallmentAmountInMultiplesOf() {
         return installmentAmountInMultiplesOf;
     }
@@ -1880,6 +1880,10 @@ public final class LoanApplicationTerms {
 
     public void updateVariationDays(final long daysToAdd) {
         this.variationDays += daysToAdd;
+    }
+
+    public LocalDate getLoanEndDate() {
+        return loanEndDate;
     }
 
 }

@@ -349,19 +349,19 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService, Loa
                 arrayPos = arrayPos + 1;
             }
 
-            if (searchParameters.isOrderByRequested()) {
+            if (searchParameters.hasOrderBy()) {
                 sqlBuilder.append(" order by ").append(searchParameters.getOrderBy());
                 this.columnValidator.validateSqlInjection(sqlBuilder.toString(), searchParameters.getOrderBy());
 
-                if (searchParameters.isSortOrderProvided()) {
+                if (searchParameters.hasSortOrder()) {
                     sqlBuilder.append(' ').append(searchParameters.getSortOrder());
                     this.columnValidator.validateSqlInjection(sqlBuilder.toString(), searchParameters.getSortOrder());
                 }
             }
 
-            if (searchParameters.isLimited()) {
+            if (searchParameters.hasLimit()) {
                 sqlBuilder.append(" ");
-                if (searchParameters.isOffset()) {
+                if (searchParameters.hasOffset()) {
                     sqlBuilder.append(sqlGenerator.limit(searchParameters.getLimit(), searchParameters.getOffset()));
                 } else {
                     sqlBuilder.append(sqlGenerator.limit(searchParameters.getLimit()));
@@ -1676,7 +1676,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService, Loa
                 if (!backdatePenalties && !isDueToday) {
                     continue;
                 }
-                Optional<Charge> penaltyCharge = loan.getLoanProduct().getLoanProductCharges().stream()
+                Optional<Charge> penaltyCharge = loan.getLoanProduct().getCharges().stream()
                         .filter((e) -> ChargeTimeType.OVERDUE_INSTALLMENT.getValue().equals(e.getChargeTimeType()) && e.isLoanCharge())
                         .findFirst();
 
