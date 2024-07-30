@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Set;
 import org.apache.fineract.accounting.producttoaccountmapping.data.ChargeToGLAccountMapper;
 import org.apache.fineract.infrastructure.core.data.EnumOptionData;
+import org.apache.fineract.infrastructure.core.data.StringEnumOptionData;
 import org.apache.fineract.portfolio.delinquency.api.DelinquencyApiResourceSwagger.GetDelinquencyBucketsResponse;
 
 /**
@@ -169,6 +170,8 @@ final class LoanProductsApiResourceSwagger {
         public Boolean enableAutoRepaymentForDownPayment;
         @Schema(example = "1")
         public Integer repaymentStartDateType;
+        @Schema(example = "false")
+        public Boolean enableAccrualActivityPosting;
 
         // Interest Recalculation
         @Schema(example = "false")
@@ -189,6 +192,12 @@ final class LoanProductsApiResourceSwagger {
         public Integer recalculationCompoundingFrequencyInterval;
         @Schema(example = "1")
         public Integer recalculationCompoundingFrequencyOnDayType;
+        @Schema(example = "false")
+        public Boolean isArrearsBasedOnOriginalSchedule;
+        @Schema(example = "false")
+        public Boolean isCompoundingToBePostedAsTransaction;
+        @Schema(example = "false")
+        public Boolean allowCompoundingOnEod;
 
         // Accounting
         @Schema(example = "3")
@@ -310,6 +319,7 @@ final class LoanProductsApiResourceSwagger {
             public boolean active;
         }
 
+        public List<String> supportedInterestRefundTypes;
     }
 
     @Schema(description = "PostLoanProductsResponse")
@@ -507,6 +517,10 @@ final class LoanProductsApiResourceSwagger {
             public GetLoanProductsPreClosureInterestCalculationStrategy preClosureInterestCalculationStrategy;
             @Schema(example = "true")
             public Boolean isArrearsBasedOnOriginalSchedule;
+            @Schema(example = "true")
+            public Boolean isCompoundingToBePostedAsTransaction;
+            @Schema(example = "true")
+            public Boolean allowCompoundingOnEod;
             @Schema(example = "1")
             public Integer recalculationCompoundingFrequencyInterval;
             @Schema(example = "1")
@@ -588,6 +602,7 @@ final class LoanProductsApiResourceSwagger {
         @Schema(example = "0")
         public Integer principalThresholdForLastInstalment;
         public GetLoanProductsResponse.GetLoanProductsRepaymentStartDateType repaymentStartDateType;
+        public List<StringEnumOptionData> supportedInterestRefundTypes;
     }
 
     @Schema(description = "GetLoanProductsTemplateResponse")
@@ -1051,6 +1066,8 @@ final class LoanProductsApiResourceSwagger {
         public List<EnumOptionData> creditAllocationAllocationTypes;
         public List<EnumOptionData> creditAllocationTransactionTypes;
 
+        public List<StringEnumOptionData> supportedInterestRefundTypes;
+        public List<StringEnumOptionData> supportedInterestRefundTypesOptions;
     }
 
     @Schema(description = "GetLoanProductsProductIdResponse")
@@ -1144,13 +1161,22 @@ final class LoanProductsApiResourceSwagger {
             public GetGlAccountMapping loanPortfolioAccount;
             public GetGlAccountMapping transfersInSuspenseAccount;
             public GetGlAccountMapping receivableInterestAccount;
+            public GetGlAccountMapping receivableFeeAccount;
             public GetGlAccountMapping receivablePenaltyAccount;
             public GetGlAccountMapping interestOnLoanAccount;
             public GetGlAccountMapping incomeFromFeeAccount;
             public GetGlAccountMapping incomeFromPenaltyAccount;
             public GetGlAccountMapping incomeFromRecoveryAccount;
+            public GetGlAccountMapping incomeFromChargeOffFeesAccount;
+            public GetGlAccountMapping incomeFromChargeOffInterestAccount;
+            public GetGlAccountMapping incomeFromChargeOffPenaltyAccount;
+            public GetGlAccountMapping incomeFromGoodwillCreditInterestAccount;
+            public GetGlAccountMapping incomeFromGoodwillCreditFeesAccount;
+            public GetGlAccountMapping incomeFromGoodwillCreditPenaltyAccount;
             public GetGlAccountMapping writeOffAccount;
             public GetGlAccountMapping goodwillCreditAccount;
+            public GetGlAccountMapping chargeOffExpenseAccount;
+            public GetGlAccountMapping chargeOffFraudExpenseAccount;
             public GetGlAccountMapping overpaymentLiabilityAccount;
         }
 
@@ -1196,6 +1222,8 @@ final class LoanProductsApiResourceSwagger {
         public String name;
         @Schema(example = "ad11")
         public String shortName;
+        @Schema(example = "sample description")
+        public String description;
         @Schema(example = "true")
         public Boolean includeInBorrowerCycle;
         @Schema(example = "true")
@@ -1211,6 +1239,10 @@ final class LoanProductsApiResourceSwagger {
         public Double maxPrincipal;
         @Schema(example = "7")
         public Integer numberOfRepayments;
+        @Schema(example = "5")
+        public Integer minNumberOfRepayments;
+        @Schema(example = "10")
+        public Integer maxNumberOfRepayments;
         @Schema(example = "7")
         public Integer repaymentEvery;
         public GetLoanProductsResponse.GetLoanProductsRepaymentFrequencyType repaymentFrequencyType;
@@ -1218,14 +1250,30 @@ final class LoanProductsApiResourceSwagger {
         public Integer fixedLength;
         @Schema(example = "5.000000")
         public Double interestRatePerPeriod;
+        @Schema(example = "0.000000")
+        public Double minInterestRatePerPeriod;
+        @Schema(example = "10.000000")
+        public Double maxInterestRatePerPeriod;
         public GetLoanProductsProductIdResponse.GetLoanProductsInterestRateFrequencyType interestRateFrequencyType;
         @Schema(example = "60.000000")
         public Double annualInterestRate;
+        @Schema(example = "false")
+        public Boolean isLinkedToFloatingInterestRates;
+        @Schema(example = "false")
+        public Boolean isFloatingInterestRateCalculationAllowed;
+        @Schema(example = "false")
+        public Boolean allowVariableInstallments;
+        @Schema(example = "0")
+        public Integer minimumGap;
+        @Schema(example = "1")
+        public Integer maximumGap;
         public GetLoanProductsResponse.GetLoanProductsAmortizationType amortizationType;
         @Schema(example = "5.5")
         public BigDecimal fixedPrincipalPercentagePerInstallment;
         public GetLoanProductsTemplateResponse.GetLoanProductsInterestTemplateType interestType;
         public GetLoanProductsResponse.GetLoansProductsInterestCalculationPeriodType interestCalculationPeriodType;
+        @Schema(example = "false")
+        public Boolean allowPartialPeriodInterestCalculation;
         @Schema(example = "mifos-standard-strategy")
         public String transactionProcessingStrategyCode;
         @Schema(example = "Mifos style")
@@ -1234,6 +1282,11 @@ final class LoanProductsApiResourceSwagger {
         public List<AdvancedPaymentData> paymentAllocation;
         @Schema(example = "[]")
         public List<CreditAllocationData> creditAllocation;
+        @Schema(example = "false")
+        public Boolean isInterestRecalculationEnabled;
+        public GetLoanProductsResponse.GetLoanProductsInterestRecalculationData interestRecalculationData;
+        @Schema(example = "false")
+        public Boolean canDefineInstallmentAmount;
         @Schema(example = "[]")
         public List<Integer> charges;
         public Set<GetLoanProductsPrincipalVariationsForBorrowerCycle> productsPrincipalVariationsForBorrowerCycle;
@@ -1242,24 +1295,33 @@ final class LoanProductsApiResourceSwagger {
         @Schema(example = "[]")
         public List<Integer> numberOfRepaymentVariationsForBorrowerCycle;
         public GetLoanProductsResponse.GetLoanProductsAccountingRule accountingRule;
+        @Schema(example = "false")
+        public Boolean canUseForTopup;
         public GetLoanAccountingMappings accountingMappings;
         public Set<GetLoanPaymentChannelToFundSourceMappings> paymentChannelToFundSourceMappings;
         public Set<GetLoanFeeToIncomeAccountMappings> feeToIncomeAccountMappings;
+        @Schema(example = "false")
+        public Boolean isRatesEnabled;
         @Schema(example = "true")
         public Boolean multiDisburseLoan;
         @Schema(example = "3")
         public Integer maxTrancheCount;
         @Schema(example = "36000.000000")
         public Double outstandingLoanBalance;
+        @Schema(example = "true")
+        public Boolean disallowExpectedDisbursements;
+        @Schema(example = "true")
+        public Boolean allowApprovedDisbursedAmountsOverApplied;
+        @Schema(example = "flat")
+        public String overAppliedCalculationType;
         @Schema(example = "2")
         public Integer overdueDaysForNPA;
         @Schema(example = "50")
         public Integer principalThresholdForLastInstalment;
         public GetDelinquencyBucketsResponse delinquencyBucket;
+        public List<GetDelinquencyBucketsResponse> delinquencyBucketOptions;
         @Schema(example = "false")
         public Boolean enableInstallmentLevelDelinquency;
-        @Schema(example = "true")
-        public Boolean disallowExpectedDisbursements;
         @Schema(example = "3")
         public Integer dueDaysForRepaymentEvent;
         @Schema(example = "3")
@@ -1277,6 +1339,9 @@ final class LoanProductsApiResourceSwagger {
         public EnumOptionData loanScheduleType;
         @Schema(example = "HORIZONTAL")
         public EnumOptionData loanScheduleProcessingType;
+        @Schema(example = "false")
+        public Boolean enableAccrualActivityPosting;
+        public List<StringEnumOptionData> supportedInterestRefundTypes;
     }
 
     @Schema(description = "PutLoanProductsProductIdRequest")
@@ -1434,6 +1499,12 @@ final class LoanProductsApiResourceSwagger {
         public Integer recalculationCompoundingFrequencyInterval;
         @Schema(example = "1")
         public Integer recalculationCompoundingFrequencyOnDayType;
+        @Schema(example = "false")
+        public Boolean isArrearsBasedOnOriginalSchedule;
+        @Schema(example = "false")
+        public Boolean isCompoundingToBePostedAsTransaction;
+        @Schema(example = "false")
+        public Boolean allowCompoundingOnEod;
 
         // Accounting
         @Schema(example = "3")
@@ -1487,6 +1558,8 @@ final class LoanProductsApiResourceSwagger {
         public List<GetLoanProductsProductIdResponse.GetLoanPaymentChannelToFundSourceMappings> paymentChannelToFundSourceMappings;
         public List<GetLoanProductsProductIdResponse.GetLoanFeeToIncomeAccountMappings> feeToIncomeAccountMappings;
         public List<ChargeToGLAccountMapper> penaltyToIncomeAccountMappings;
+        @Schema(example = "false")
+        public Boolean enableAccrualActivityPosting;
 
         // Multi Disburse
         @Schema(example = "true")
@@ -1560,6 +1633,7 @@ final class LoanProductsApiResourceSwagger {
             public boolean active;
         }
 
+        public List<String> supportedInterestRefundTypes;
     }
 
     public static final class AdvancedPaymentData {

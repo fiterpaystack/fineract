@@ -47,6 +47,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class CustomSnapshotEventIntegrationTest extends BaseLoanIntegrationTest {
 
     private SchedulerJobHelper schedulerJobHelper = new SchedulerJobHelper(this.requestSpec);
+    private Gson gson = new Gson();
 
     @Test
     public void testSnapshotEventGenerationWhenLoanInstallmentIsNotPayed() {
@@ -92,6 +93,26 @@ public class CustomSnapshotEventIntegrationTest extends BaseLoanIntegrationTest 
             Assertions.assertEquals(1, allExternalEvents.size());
             Assertions.assertEquals("LoanAccountCustomSnapshotBusinessEvent", allExternalEvents.get(0).getType());
             Assertions.assertEquals(loanId, allExternalEvents.get(0).getAggregateRootId());
+
+            // Loan Delinquency data validation
+            Map<String, Object> payLoad = (Map<String, Object>) allExternalEvents.get(0).getPayLoad().get("delinquent");
+            log.info("Payload: {}", payLoad.toString());
+
+            Assertions.assertNotNull(payLoad.get("delinquentPrincipal"));
+            Assertions.assertEquals(312.0, payLoad.get("delinquentPrincipal"));
+            Assertions.assertNotNull(payLoad.get("delinquentInterest"));
+            Assertions.assertEquals(0.0, payLoad.get("delinquentInterest"));
+            Assertions.assertNotNull(payLoad.get("delinquentFee"));
+            Assertions.assertEquals(0.0, payLoad.get("delinquentFee"));
+            Assertions.assertNotNull(payLoad.get("delinquentPenalty"));
+            Assertions.assertEquals(0.0, payLoad.get("delinquentPenalty"));
+
+            payLoad = (Map<String, Object>) allExternalEvents.get(0).getPayLoad().get("summary");
+            log.info("Payload: {}", payLoad.toString());
+            Assertions.assertNotNull(payLoad.get("totalInterestPaymentWaiver"));
+            Assertions.assertEquals(0.0, payLoad.get("totalInterestPaymentWaiver"));
+            Assertions.assertNotNull(payLoad.get("totalRepaymentTransactionReversed"));
+            Assertions.assertEquals(0.0, payLoad.get("totalRepaymentTransactionReversed"));
         });
     }
 

@@ -23,12 +23,13 @@ import java.util.List;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import org.apache.fineract.organisation.monetary.domain.Money;
 
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class EMICalculationResult {
 
     @Getter
-    private final BigDecimal equalMonthlyInstallmentValue;
+    private final Money equalMonthlyInstallmentValue;
     private final List<BigDecimal> repaymentPeriodRateFactorMinus1List;
 
     private int counter = 0;

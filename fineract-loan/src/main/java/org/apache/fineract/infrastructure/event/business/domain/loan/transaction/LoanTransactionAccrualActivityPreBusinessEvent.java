@@ -16,18 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.loanaccount.service;
+package org.apache.fineract.infrastructure.event.business.domain.loan.transaction;
 
-import java.time.LocalDate;
-import java.util.Collection;
-import org.apache.fineract.portfolio.loanaccount.data.LoanScheduleAccrualData;
+import org.apache.fineract.infrastructure.event.business.domain.loan.LoanBusinessEvent;
+import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 
-public interface LoanAccrualWritePlatformService {
+public class LoanTransactionAccrualActivityPreBusinessEvent extends LoanBusinessEvent {
 
-    void addAccrualAccounting(Long loanId, Collection<LoanScheduleAccrualData> loanScheduleAccrualDatas) throws Exception;
+    private static final String TYPE = "LoanTransactionAccrualActivityPreBusinessEvent";
 
-    void addPeriodicAccruals(LocalDate tilldate, Long loanId, Collection<LoanScheduleAccrualData> loanScheduleAccrualDatas)
-            throws Exception;
+    public LoanTransactionAccrualActivityPreBusinessEvent(Loan value) {
+        super(value);
+    }
 
-    void addIncomeAndAccrualTransactions(Long loanId) throws Exception;
+    @Override
+    public String getType() {
+        return TYPE;
+    }
 }

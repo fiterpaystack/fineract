@@ -16,20 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.loanaccount.service;
+package org.apache.fineract.portfolio.loanproduct.calc;
 
-import java.time.LocalDate;
-import java.util.Collection;
-import org.apache.fineract.infrastructure.core.exception.MultiException;
-import org.apache.fineract.portfolio.loanaccount.data.LoanScheduleAccrualData;
-import org.apache.fineract.portfolio.loanaccount.domain.Loan;
+import java.util.ArrayList;
+import java.util.List;
+import lombok.Getter;
 
-public interface LoanAccrualPlatformService {
+@Getter
+public class RepaymentScheduleModel {
 
-    void addPeriodicAccruals(LocalDate tilldate) throws MultiException;
+    List<RepaymentPeriodModel> scheduleList = new ArrayList<>();
 
-    void addPeriodicAccruals(LocalDate tilldate, Loan loan) throws MultiException;
-
-    void addPeriodicAccruals(LocalDate tilldate, Collection<LoanScheduleAccrualData> loanScheduleAccrualDatas) throws MultiException;
-
+    public void addRepaymentPeriodModel(final RepaymentPeriodModel repaymentPeriodModel) {
+        scheduleList.add(repaymentPeriodModel);
+    }
 }
