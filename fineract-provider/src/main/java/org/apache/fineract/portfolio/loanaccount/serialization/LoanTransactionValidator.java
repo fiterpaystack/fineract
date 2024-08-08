@@ -80,6 +80,7 @@ import org.apache.fineract.portfolio.loanaccount.exception.DateMismatchException
 import org.apache.fineract.portfolio.loanaccount.exception.InvalidLoanStateTransitionException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanApplicationDateException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanChargeRefundException;
+import org.apache.fineract.portfolio.loanaccount.exception.LoanDisbursalException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanNotFoundException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanRepaymentScheduleNotFoundException;
 import org.apache.fineract.portfolio.loanaccount.service.LoanUtilService;
@@ -213,6 +214,22 @@ public final class LoanTransactionValidator {
                         loan.getExpectedDisbursedOnLocalDate());
             }
 
+            if ((loan.getStatus().isActive() || loan.getStatus().isClosedObligationsMet() || loan.getStatus().isOverpaid())
+                    && loan.isAllTranchesNotDisbursed()) {
+                LocalDate submittedOnDate = loan.getSubmittedOnDate();
+                if (DateUtils.isBefore(actualDisbursementDate, submittedOnDate)) {
+                    final String errorMsg = "Loan can't be disbursed before " + submittedOnDate;
+                    throw new LoanDisbursalException(errorMsg, "actualdisbursementdate.before.submittedDate", submittedOnDate,
+                            actualDisbursementDate);
+                }
+            }
+
+            LocalDate approvedOnDate = loan.getApprovedOnDate();
+            if (DateUtils.isBefore(actualDisbursementDate, approvedOnDate)) {
+                final String errorMessage = "The date on which a loan is disbursed cannot be before its approval date: " + approvedOnDate;
+                throw new InvalidLoanStateTransitionException("disbursal", "cannot.be.before.approval.date", errorMessage,
+                        actualDisbursementDate, approvedOnDate);
+            }
         });
     }
 
@@ -425,7 +442,7 @@ public final class LoanTransactionValidator {
             final Calendar calendar = calendarInstance.getCalendar();
             if (calendar != null && repaymentDate != null) {
                 // Disbursement date should fall on a meeting date
-                if (!CalendarUtils.isValidRedurringDate(calendar.getRecurrence(), calendar.getStartDateLocalDate(), repaymentDate)) {
+                if (!CalendarUtils.isValidRecurringDate(calendar.getRecurrence(), calendar.getStartDateLocalDate(), repaymentDate)) {
                     final String errorMessage = "Transaction date '" + repaymentDate.toString() + "' does not fall on a meeting date.";
                     throw new NotValidRecurringDateException("loan.transaction.date", errorMessage, repaymentDate.toString(),
                             calendar.getTitle());

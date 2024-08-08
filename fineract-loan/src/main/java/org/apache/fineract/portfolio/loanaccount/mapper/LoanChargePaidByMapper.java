@@ -16,9 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.loanproduct.calc;
+package org.apache.fineract.portfolio.loanaccount.mapper;
 
-import org.apache.fineract.organisation.monetary.domain.Money;
+import java.util.List;
+import org.apache.fineract.infrastructure.core.config.MapstructMapperConfig;
+import org.apache.fineract.portfolio.loanaccount.data.LoanChargePaidByData;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanChargePaidBy;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
-public record RepaymentPeriodModel(Money balanceOfLoan, Money emi, Money principal, Money interest) {
+@Mapper(config = MapstructMapperConfig.class)
+public interface LoanChargePaidByMapper {
+
+    @Mapping(target = "transactionId", source = "source.loanTransaction.id")
+    @Mapping(target = "chargeId", source = "source.loanCharge.id")
+    @Mapping(target = "name", source = "source.loanCharge.charge.name")
+    LoanChargePaidByData map(LoanChargePaidBy source);
+
+    List<LoanChargePaidByData> map(List<LoanChargePaidBy> sources);
+
 }

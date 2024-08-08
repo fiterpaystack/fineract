@@ -16,12 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.loanaccount.service;
+package org.apache.fineract.infrastructure.event.business.service;
 
-import java.util.List;
-import org.apache.fineract.portfolio.loanaccount.data.LoanChargePaidByData;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 
-public interface LoanChargePaidByReadPlatformService {
+@Component
+@Transactional(propagation = Propagation.SUPPORTS)
+public class TransactionHelper {
 
-    List<LoanChargePaidByData> getLoanChargesPaidByTransactionId(Long id);
+    boolean hasTransaction() {
+        return TransactionAspectSupport.currentTransactionStatus().hasTransaction();
+    }
 }
