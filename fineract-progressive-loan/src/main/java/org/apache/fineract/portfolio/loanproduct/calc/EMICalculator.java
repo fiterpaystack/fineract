@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.portfolio.loanproduct.calc;
 
+import java.math.BigDecimal;
 import java.math.MathContext;
 import java.time.LocalDate;
 import java.util.List;
@@ -41,6 +42,15 @@ public interface EMICalculator {
             LocalDate dueDate);
 
     void addDisbursement(ProgressiveLoanInterestScheduleModel scheduleModel, LocalDate disbursementDueDate, Money disbursedAmount);
+
+    void changeInterestRate(ProgressiveLoanInterestScheduleModel scheduleModel, LocalDate newInterestEffectiveDate,
+            BigDecimal newInterestRate);
+
+    void addBalanceCorrection(ProgressiveLoanInterestScheduleModel scheduleModel, LocalDate balanceCorrectionDate,
+            Money balanceCorrectionAmount);
+
+    Optional<ProgressiveLoanInterestRepaymentModel> getPayableDetails(ProgressiveLoanInterestScheduleModel scheduleModel,
+            LocalDate periodDueDate, LocalDate payDate);
 
     ProgressiveLoanInterestScheduleModel makeScheduleModelDeepCopy(ProgressiveLoanInterestScheduleModel scheduleModel);
 

@@ -18,22 +18,30 @@
  */
 package org.apache.fineract.portfolio.loanaccount.loanschedule.domain;
 
+import static java.time.temporal.ChronoUnit.DAYS;
+
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.service.MathUtil;
 import org.apache.fineract.organisation.monetary.domain.ApplicationCurrency;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
+import org.apache.fineract.organisation.monetary.domain.MoneyHelper;
 import org.apache.fineract.portfolio.loanaccount.data.DisbursementData;
 import org.apache.fineract.portfolio.loanaccount.data.HolidayDetailDTO;
 import org.apache.fineract.portfolio.loanaccount.data.LoanTermVariationsData;
+import org.apache.fineract.portfolio.loanaccount.data.OutstandingAmountsDTO;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCharge;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleInstallment;
@@ -48,6 +56,7 @@ import org.apache.fineract.portfolio.loanproduct.calc.EMICalculator;
 import org.apache.fineract.portfolio.loanproduct.domain.RepaymentStartDateType;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class ProgressiveLoanScheduleGenerator implements LoanScheduleGenerator {
@@ -67,7 +76,6 @@ public class ProgressiveLoanScheduleGenerator implements LoanScheduleGenerator {
         if (lastDueDateVariation != null) {
             loanEndDate = lastDueDateVariation.getDateValue();
         }
-        loanApplicationTerms.updateLoanEndDate(loanEndDate);
 
         // determine the total charges due at time of disbursement
         final BigDecimal chargesDueAtTimeOfDisbursement = deriveTotalChargesDueAtTimeOfDisbursement(loanCharges);
@@ -96,12 +104,25 @@ public class ProgressiveLoanScheduleGenerator implements LoanScheduleGenerator {
 
         prepareDisbursementsOnLoanApplicationTerms(loanApplicationTerms);
 
+        final ArrayList<DisbursementData> disbursementDataList = new ArrayList<>(loanApplicationTerms.getDisbursementDatas());
+        disbursementDataList.sort(Comparator.comparing(DisbursementData::disbursementDate));
+
         for (LoanScheduleModelRepaymentPeriod repaymentPeriod : expectedRepaymentPeriods) {
             scheduleParams.setPeriodStartDate(repaymentPeriod.getFromDate());
             scheduleParams.setActualRepaymentDate(repaymentPeriod.getDueDate());
 
-            processDisbursements(loanApplicationTerms, scheduleParams, interestScheduleModel, periods, chargesDueAtTimeOfDisbursement);
+            processDisbursements(loanApplicationTerms, disbursementDataList, scheduleParams, interestScheduleModel, periods,
+                    chargesDueAtTimeOfDisbursement);
             repaymentPeriod.setPeriodNumber(scheduleParams.getInstalmentNumber());
+
+            for (var interestRateChange : loanApplicationTerms.getLoanTermVariations().getInterestRateFromInstallment()) {
+                final LocalDate interestRateChangeEffectiveDate = interestRateChange.getTermVariationApplicableFrom().minusDays(1);
+                final BigDecimal newInterestRate = interestRateChange.getDecimalValue();
+                if (interestRateChangeEffectiveDate.isAfter(repaymentPeriod.getFromDate())
+                        && !interestRateChangeEffectiveDate.isAfter(repaymentPeriod.getDueDate())) {
+                    emiCalculator.changeInterestRate(interestScheduleModel, interestRateChangeEffectiveDate, newInterestRate);
+                }
+            }
 
             emiCalculator.findInterestRepaymentPeriod(interestScheduleModel, repaymentPeriod.getDueDate())
                     .ifPresent(interestRepaymentPeriod -> {
@@ -126,7 +147,7 @@ public class ProgressiveLoanScheduleGenerator implements LoanScheduleGenerator {
         }
 
         if (loanApplicationTerms.isMultiDisburseLoan()) {
-            processDisbursements(loanApplicationTerms, scheduleParams, null, periods, chargesDueAtTimeOfDisbursement);
+            processDisbursements(loanApplicationTerms, disbursementDataList, scheduleParams, null, periods, chargesDueAtTimeOfDisbursement);
         }
 
         // determine fees and penalties for charges which depends on total
@@ -153,11 +174,12 @@ public class ProgressiveLoanScheduleGenerator implements LoanScheduleGenerator {
         }
     }
 
-    private void processDisbursements(final LoanApplicationTerms loanApplicationTerms, final LoanScheduleParams scheduleParams,
+    private void processDisbursements(final LoanApplicationTerms loanApplicationTerms,
+            final ArrayList<DisbursementData> disbursementDataList, final LoanScheduleParams scheduleParams,
             final ProgressiveLoanInterestScheduleModel interestScheduleModel, final List<LoanScheduleModelPeriod> periods,
             final BigDecimal chargesDueAtTimeOfDisbursement) {
 
-        for (DisbursementData disbursementData : loanApplicationTerms.getDisbursementDatas()) {
+        for (DisbursementData disbursementData : disbursementDataList) {
             final LocalDate disbursementDate = disbursementData.disbursementDate();
             final LocalDate periodFromDate = scheduleParams.getPeriodStartDate();
             final LocalDate periodDueDate = scheduleParams.getActualRepaymentDate();
@@ -222,10 +244,80 @@ public class ProgressiveLoanScheduleGenerator implements LoanScheduleGenerator {
     }
 
     @Override
-    public LoanRepaymentScheduleInstallment calculatePrepaymentAmount(MonetaryCurrency currency, LocalDate onDate,
+    public OutstandingAmountsDTO calculatePrepaymentAmount(MonetaryCurrency currency, LocalDate onDate,
             LoanApplicationTerms loanApplicationTerms, MathContext mc, Loan loan, HolidayDetailDTO holidayDetailDTO,
             LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor) {
-        return null;
+        return switch (loanApplicationTerms.getPreClosureInterestCalculationStrategy()) {
+            case TILL_PRE_CLOSURE_DATE -> {
+                log.debug("calculating prepayment amount till pre closure date (Strategy A)");
+                OutstandingAmountsDTO outstandingAmounts = new OutstandingAmountsDTO(currency);
+                AtomicBoolean firstAfterPayoff = new AtomicBoolean(true);
+                loan.getRepaymentScheduleInstallments().forEach(installment -> {
+                    boolean isInstallmentAfterPayoff = installment.getDueDate().isAfter(onDate);
+
+                    outstandingAmounts.plusPrincipal(installment.getPrincipalOutstanding(currency));
+                    if (isInstallmentAfterPayoff) {
+                        if (firstAfterPayoff.getAndSet(false)) {
+                            outstandingAmounts.plusInterest(calculatePayableInterest(loan, installment, onDate));
+                        } else {
+                            log.debug("Installment {} - {} is after payoff, not counting interest", installment.getFromDate(),
+                                    installment.getDueDate());
+                        }
+                    } else {
+                        log.debug("adding interest for {} - {}: {}", installment.getFromDate(), installment.getDueDate(),
+                                installment.getInterestOutstanding(currency));
+                        outstandingAmounts.plusInterest(installment.getInterestOutstanding(currency));
+                    }
+                    outstandingAmounts.plusFeeCharges(installment.getFeeChargesOutstanding(currency));
+                    outstandingAmounts.plusPenaltyCharges(installment.getPenaltyChargesOutstanding(currency));
+                });
+                yield outstandingAmounts;
+            }
+
+            case TILL_REST_FREQUENCY_DATE -> {
+                log.debug("calculating prepayment amount till rest frequency date (Strategy B)");
+                OutstandingAmountsDTO outstandingAmounts = new OutstandingAmountsDTO(currency);
+                loan.getRepaymentScheduleInstallments().forEach(installment -> {
+                    boolean isPayoffBeforeInstallment = installment.getFromDate().isBefore(onDate);
+
+                    outstandingAmounts.plusPrincipal(installment.getPrincipalOutstanding(currency));
+                    if (isPayoffBeforeInstallment) {
+                        outstandingAmounts.plusInterest(installment.getInterestOutstanding(currency));
+                    } else {
+                        log.debug("Payoff after installment {}, not counting interest", installment.getDueDate());
+                    }
+                    outstandingAmounts.plusFeeCharges(installment.getFeeChargesOutstanding(currency));
+                    outstandingAmounts.plusPenaltyCharges(installment.getPenaltyChargesOutstanding(currency));
+                });
+
+                yield outstandingAmounts;
+            }
+            case NONE -> throw new UnsupportedOperationException("Pre-closure interest calculation strategy not supported");
+        };
+    }
+
+    private Money calculatePayableInterest(Loan loan, LoanRepaymentScheduleInstallment installment, LocalDate onDate) {
+        RoundingMode roundingMode = MoneyHelper.getRoundingMode();
+        MonetaryCurrency currency = loan.getCurrency();
+        Money originalInterest = installment.getInterestCharged(currency);
+        log.debug("calculating interest for {} from {} to {}", originalInterest, installment.getFromDate(), installment.getDueDate());
+
+        LocalDate start = installment.getFromDate();
+        Money payableInterest = Money.zero(currency);
+
+        while (!start.isEqual(onDate)) {
+            long between = DAYS.between(start, installment.getDueDate());
+            Money dailyInterest = originalInterest.minus(payableInterest).dividedBy(between, roundingMode);
+            log.debug("Daily interest is {}: {} / {}, total: {}", dailyInterest, originalInterest.minus(payableInterest), between,
+                    payableInterest.add(dailyInterest));
+            payableInterest = payableInterest.add(dailyInterest);
+            start = start.plusDays(1);
+        }
+
+        payableInterest = payableInterest.minus(installment.getInterestPaid(currency).minus(installment.getInterestWaived(currency)));
+
+        log.debug("Payable interest is {}", payableInterest);
+        return payableInterest;
     }
 
     // Private, internal methods

@@ -109,6 +109,7 @@ import org.apache.fineract.portfolio.loanaccount.api.LoanApiConstants;
 import org.apache.fineract.portfolio.loanaccount.data.DisbursementData;
 import org.apache.fineract.portfolio.loanaccount.data.HolidayDetailDTO;
 import org.apache.fineract.portfolio.loanaccount.data.LoanTermVariationsData;
+import org.apache.fineract.portfolio.loanaccount.data.OutstandingAmountsDTO;
 import org.apache.fineract.portfolio.loanaccount.data.ScheduleGeneratorDTO;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.LoanRepaymentScheduleTransactionProcessor;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.MoneyHolder;
@@ -1300,7 +1301,9 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
 
     public void updateLoanSummaryDerivedFields() {
         if (isNotDisbursed()) {
-            this.summary.zeroFields();
+            if (this.summary != null) {
+                this.summary.zeroFields();
+            }
             this.totalOverpaid = null;
         } else {
             final Money overpaidBy = calculateTotalOverpayment();
@@ -3017,7 +3020,7 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     }
 
     public LoanStatus getStatus() {
-        return LoanStatus.fromInt(this.loanStatus);
+        return this.loanStatus == null ? null : LoanStatus.fromInt(this.loanStatus);
     }
 
     public Integer getPlainStatus() {
@@ -4366,8 +4369,8 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
                 loanRepaymentScheduleTransactionProcessor, generatorDTO.getRecalculateFrom());
     }
 
-    public LoanRepaymentScheduleInstallment fetchPrepaymentDetail(final ScheduleGeneratorDTO scheduleGeneratorDTO, final LocalDate onDate) {
-        LoanRepaymentScheduleInstallment installment;
+    public OutstandingAmountsDTO fetchPrepaymentDetail(final ScheduleGeneratorDTO scheduleGeneratorDTO, final LocalDate onDate) {
+        OutstandingAmountsDTO outstandingAmounts;
 
         if (this.loanRepaymentScheduleDetail.isInterestRecalculationEnabled()) {
             final MathContext mc = MoneyHelper.getMathContext();
@@ -4379,12 +4382,12 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
                     .create(loanApplicationTerms.getLoanScheduleType(), interestMethod);
             final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor = this.transactionProcessorFactory
                     .determineProcessor(this.transactionProcessingStrategyCode);
-            installment = loanScheduleGenerator.calculatePrepaymentAmount(getCurrency(), onDate, loanApplicationTerms, mc, this,
+            outstandingAmounts = loanScheduleGenerator.calculatePrepaymentAmount(getCurrency(), onDate, loanApplicationTerms, mc, this,
                     scheduleGeneratorDTO.getHolidayDetailDTO(), loanRepaymentScheduleTransactionProcessor);
         } else {
-            installment = this.getTotalOutstandingOnLoan();
+            outstandingAmounts = this.getTotalOutstandingOnLoan();
         }
-        return installment;
+        return outstandingAmounts;
     }
 
     public LoanApplicationTerms constructLoanApplicationTerms(final ScheduleGeneratorDTO scheduleGeneratorDTO) {
@@ -4458,11 +4461,11 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         return annualNominalInterestRate;
     }
 
-    private LoanRepaymentScheduleInstallment getTotalOutstandingOnLoan() {
-        Money feeCharges = Money.zero(loanCurrency());
-        Money penaltyCharges = Money.zero(loanCurrency());
+    private OutstandingAmountsDTO getTotalOutstandingOnLoan() {
         Money totalPrincipal = Money.zero(loanCurrency());
         Money totalInterest = Money.zero(loanCurrency());
+        Money feeCharges = Money.zero(loanCurrency());
+        Money penaltyCharges = Money.zero(loanCurrency());
         final Set<LoanInterestRecalcualtionAdditionalDetails> compoundingDetails = null;
         List<LoanRepaymentScheduleInstallment> repaymentSchedule = getRepaymentScheduleInstallments();
         for (final LoanRepaymentScheduleInstallment scheduledRepayment : repaymentSchedule) {
@@ -4471,9 +4474,8 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
             feeCharges = feeCharges.plus(scheduledRepayment.getFeeChargesOutstanding(loanCurrency()));
             penaltyCharges = penaltyCharges.plus(scheduledRepayment.getPenaltyChargesOutstanding(loanCurrency()));
         }
-        LocalDate businessDate = DateUtils.getBusinessLocalDate();
-        return new LoanRepaymentScheduleInstallment(null, 0, businessDate, businessDate, totalPrincipal.getAmount(),
-                totalInterest.getAmount(), feeCharges.getAmount(), penaltyCharges.getAmount(), false, compoundingDetails);
+        return new OutstandingAmountsDTO(totalPrincipal.getCurrency()).principal(totalPrincipal).interest(totalInterest)
+                .feeCharges(feeCharges).penaltyCharges(penaltyCharges);
     }
 
     public LocalDate fetchInterestRecalculateFromDate() {
@@ -4562,6 +4564,21 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
             }
         }
         return installment;
+    }
+
+    /**
+     * @param date
+     * @return a schedule installment is related to the provided date
+     **/
+    public LoanRepaymentScheduleInstallment getRelatedRepaymentScheduleInstallment(LocalDate date) {
+        if (date == null) {
+            return null;
+        }
+        return getRepaymentScheduleInstallments()//
+                .stream()//
+                .filter(installment -> date.isAfter(installment.getFromDate()) && !date.isAfter(installment.getDueDate()))//
+                .findAny()//
+                .orElse(null);//
     }
 
     /**

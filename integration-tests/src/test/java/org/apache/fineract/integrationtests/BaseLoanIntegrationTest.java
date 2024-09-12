@@ -49,6 +49,7 @@ import java.util.function.Consumer;
 import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.batch.domain.BatchRequest;
 import org.apache.fineract.batch.domain.BatchResponse;
 import org.apache.fineract.client.models.AdvancedPaymentData;
@@ -100,6 +101,7 @@ import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+@Slf4j
 @ExtendWith(LoanTestLifecycleExtension.class)
 public abstract class BaseLoanIntegrationTest {
 
@@ -173,6 +175,12 @@ public abstract class BaseLoanIntegrationTest {
     }
 
     protected static void validateRepaymentPeriod(GetLoansLoanIdResponse loanDetails, Integer index, LocalDate dueDate, double principalDue,
+            double feeDue, double penaltyDue, double interestDue) {
+        validateRepaymentPeriod(loanDetails, index, dueDate, principalDue, 0, principalDue, feeDue, 0, feeDue, penaltyDue, 0, penaltyDue,
+                interestDue, 0, interestDue, 0, 0);
+    }
+
+    protected static void validateRepaymentPeriod(GetLoansLoanIdResponse loanDetails, Integer index, LocalDate dueDate, double principalDue,
             double principalPaid, double principalOutstanding, double feeDue, double feePaid, double feeOutstanding, double penaltyDue,
             double penaltyPaid, double penaltyOutstanding, double interestDue, double interestPaid, double interestOutstanding,
             double paidInAdvance, double paidLate) {
@@ -205,8 +213,12 @@ public abstract class BaseLoanIntegrationTest {
         return Utils.loginIntoServerAndGetBase64EncodedAuthenticationKey();
     }
 
-    // Loan product with proper accounting setup
     protected PostLoanProductsRequest createOnePeriod30DaysLongNoInterestPeriodicAccrualProduct() {
+        return createOnePeriod30DaysPeriodicAccrualProduct((double) 0);
+    }
+
+    // Loan product with proper accounting setup
+    protected PostLoanProductsRequest createOnePeriod30DaysPeriodicAccrualProduct(double interestRatePerPeriod) {
         return new PostLoanProductsRequest().name(Utils.uniqueRandomStringGenerator("LOAN_PRODUCT_", 6))//
                 .shortName(Utils.uniqueRandomStringGenerator("", 4))//
                 .description("Loan Product Description")//
@@ -224,7 +236,7 @@ public abstract class BaseLoanIntegrationTest {
                 .maxNumberOfRepayments(30)//
                 .isLinkedToFloatingInterestRates(false)//
                 .minInterestRatePerPeriod((double) 0)//
-                .interestRatePerPeriod((double) 0)//
+                .interestRatePerPeriod(interestRatePerPeriod)//
                 .maxInterestRatePerPeriod((double) 100)//
                 .interestRateFrequencyType(2)//
                 .repaymentEvery(30)//
@@ -302,6 +314,21 @@ public abstract class BaseLoanIntegrationTest {
                 .addPaymentAllocationItem(defaultAllocation);
     }
 
+    protected PostLoanProductsRequest createOnePeriod30DaysPeriodicAccrualProductWithAdvancedPaymentAllocationAndInterestRecalculation(
+            final double interestRatePerPeriod, final Integer rescheduleStrategyMethod) {
+        String futureInstallmentAllocationRule = "NEXT_INSTALLMENT";
+        AdvancedPaymentData defaultAllocation = createDefaultPaymentAllocation(futureInstallmentAllocationRule);
+
+        return createOnePeriod30DaysPeriodicAccrualProduct(interestRatePerPeriod) //
+                .transactionProcessingStrategyCode("advanced-payment-allocation-strategy")//
+                .loanScheduleType(LoanScheduleType.PROGRESSIVE.toString()) //
+                .loanScheduleProcessingType(LoanScheduleProcessingType.HORIZONTAL.toString()) //
+                .addPaymentAllocationItem(defaultAllocation).enableDownPayment(false) //
+                .isInterestRecalculationEnabled(true).interestRecalculationCompoundingMethod(0) //
+                .preClosureInterestCalculationStrategy(1).recalculationRestFrequencyType(1).allowPartialPeriodInterestCalcualtion(true) //
+                .rescheduleStrategyMethod(rescheduleStrategyMethod);
+    }
+
     private List<PaymentAllocationOrder> getPaymentAllocationOrder(PaymentAllocationType... paymentAllocationTypes) {
         AtomicInteger integer = new AtomicInteger(1);
         return Arrays.stream(paymentAllocationTypes).map(pat -> {
@@ -312,7 +339,7 @@ public abstract class BaseLoanIntegrationTest {
         }).toList();
     }
 
-    private AdvancedPaymentData createDefaultPaymentAllocation(String futureInstallmentAllocationRule) {
+    public AdvancedPaymentData createDefaultPaymentAllocation(String futureInstallmentAllocationRule) {
         AdvancedPaymentData advancedPaymentData = new AdvancedPaymentData();
         advancedPaymentData.setTransactionType("DEFAULT");
         advancedPaymentData.setFutureInstallmentAllocationRule(futureInstallmentAllocationRule);
