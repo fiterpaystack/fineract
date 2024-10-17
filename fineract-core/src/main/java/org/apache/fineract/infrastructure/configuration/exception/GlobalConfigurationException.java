@@ -16,29 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.loanproduct.calc;
+package org.apache.fineract.infrastructure.configuration.exception;
 
-import java.math.BigDecimal;
-import java.util.List;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import org.apache.fineract.organisation.monetary.domain.Money;
+public class GlobalConfigurationException extends RuntimeException {
 
-@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
-public class EMICalculationResult {
-
-    @Getter
-    private final Money equalMonthlyInstallmentValue;
-    private final List<BigDecimal> repaymentPeriodRateFactorMinus1List;
-
-    private int counter = 0;
-
-    public BigDecimal getNextRepaymentPeriodRateFactorMinus1() {
-        return counter < repaymentPeriodRateFactorMinus1List.size() ? repaymentPeriodRateFactorMinus1List.get(counter++) : BigDecimal.ZERO;
-    }
-
-    public void reset() {
-        counter = 0;
+    public GlobalConfigurationException(final String name) {
+        super("Global configuration with name: '" + name
+                + "' is not in the supported format! Global configuration name can only contains lowercase letters or -, and must start with letters!");
     }
 }

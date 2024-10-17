@@ -28,8 +28,8 @@
         </sql>
     </changeSet>
     <changeSet author="fineract" id="2">
+        <validCheckSum>9:64863870bbd61795b1a8ced20a6dd7a3</validCheckSum>
         <insert tableName="c_configuration">
-            <column name="id" valueNumeric="60"/>
             <column name="name" value="enable-payment-hub-integration"/>
             <column name="value" valueNumeric="0"/>
             <column name="date_value"/>

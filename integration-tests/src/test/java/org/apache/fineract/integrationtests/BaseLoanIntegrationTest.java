@@ -18,8 +18,7 @@
  */
 package org.apache.fineract.integrationtests;
 
-import static java.lang.Boolean.FALSE;
-import static java.lang.Boolean.TRUE;
+import static java.lang.System.lineSeparator;
 import static org.apache.fineract.infrastructure.businessdate.domain.BusinessDateType.BUSINESS_DATE;
 import static org.apache.fineract.integrationtests.BaseLoanIntegrationTest.TransactionProcessingStrategyCode.ADVANCED_PAYMENT_ALLOCATION_STRATEGY;
 import static org.apache.fineract.integrationtests.common.loans.LoanApplicationTestBuilder.DUE_PENALTY_INTEREST_PRINCIPAL_FEE_IN_ADVANCE_PENALTY_INTEREST_PRINCIPAL_FEE_STRATEGY;
@@ -28,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.builder.ResponseSpecBuilder;
@@ -41,6 +41,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -61,6 +62,7 @@ import org.apache.fineract.client.models.GetJournalEntriesTransactionIdResponse;
 import org.apache.fineract.client.models.GetLoansLoanIdRepaymentPeriod;
 import org.apache.fineract.client.models.GetLoansLoanIdResponse;
 import org.apache.fineract.client.models.GetLoansLoanIdTransactions;
+import org.apache.fineract.client.models.JournalEntryTransactionItem;
 import org.apache.fineract.client.models.PaymentAllocationOrder;
 import org.apache.fineract.client.models.PostChargesResponse;
 import org.apache.fineract.client.models.PostLoanProductsRequest;
@@ -72,8 +74,10 @@ import org.apache.fineract.client.models.PostLoansLoanIdTransactionsResponse;
 import org.apache.fineract.client.models.PostLoansLoanIdTransactionsTransactionIdRequest;
 import org.apache.fineract.client.models.PostLoansRequest;
 import org.apache.fineract.client.models.PostLoansResponse;
+import org.apache.fineract.client.models.PutGlobalConfigurationsRequest;
 import org.apache.fineract.client.models.PutLoansLoanIdResponse;
 import org.apache.fineract.client.util.CallFailedRuntimeException;
+import org.apache.fineract.infrastructure.configuration.api.GlobalConfigurationConstants;
 import org.apache.fineract.integrationtests.common.BatchHelper;
 import org.apache.fineract.integrationtests.common.BusinessDateHelper;
 import org.apache.fineract.integrationtests.common.ClientHelper;
@@ -152,6 +156,7 @@ public abstract class BaseLoanIntegrationTest {
             createResponseSpecification(Matchers.is(202)));
     protected BusinessDateHelper businessDateHelper = new BusinessDateHelper();
     protected DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(DATETIME_PATTERN);
+    protected GlobalConfigurationHelper globalConfigurationHelper = new GlobalConfigurationHelper();
 
     protected static void validateRepaymentPeriod(GetLoansLoanIdResponse loanDetails, Integer index, LocalDate dueDate, double principalDue,
             double principalPaid, double principalOutstanding, double paidInAdvance, double paidLate) {
@@ -192,6 +197,13 @@ public abstract class BaseLoanIntegrationTest {
             double principalDue, double feeDue, double penaltyDue, double interestDue, double paidLate) {
         validateRepaymentPeriod(loanDetails, index, LocalDate.parse(dueDate, DateTimeFormatter.ofPattern(DATETIME_PATTERN, Locale.ENGLISH)),
                 principalDue, principalDue, 0, feeDue, feeDue, 0, penaltyDue, penaltyDue, 0, interestDue, interestDue, 0, 0, paidLate);
+    }
+
+    protected static void validateFullyPaidRepaymentPeriod(GetLoansLoanIdResponse loanDetails, Integer index, String dueDate,
+            double principalDue, double feeDue, double penaltyDue, double interestDue, double paidLate, double paidInAdvance) {
+        validateRepaymentPeriod(loanDetails, index, LocalDate.parse(dueDate, DateTimeFormatter.ofPattern(DATETIME_PATTERN, Locale.ENGLISH)),
+                principalDue, principalDue, 0, feeDue, feeDue, 0, penaltyDue, penaltyDue, 0, interestDue, interestDue, 0, paidInAdvance,
+                paidLate);
     }
 
     protected static void validateRepaymentPeriod(GetLoansLoanIdResponse loanDetails, Integer index, LocalDate dueDate, double principalDue,
@@ -633,6 +645,9 @@ public abstract class BaseLoanIntegrationTest {
         loanTransactionHelper.undoLastDisbursalLoan(loanId, new PostLoansLoanIdRequest());
     }
 
+    // Note: this is buggy because if multiple journal entries are for the same account, amount and type, the
+    // verification will pass
+    // not all journal entries have been validated - since there might be duplicates
     protected void verifyJournalEntries(Long loanId, Journal... entries) {
         GetJournalEntriesTransactionIdResponse journalEntriesForLoan = journalEntryHelper.getJournalEntriesForLoan(loanId);
         Assertions.assertEquals(entries.length, journalEntriesForLoan.getPageItems().size());
@@ -643,6 +658,27 @@ public abstract class BaseLoanIntegrationTest {
                             && Objects.requireNonNull(item.getEntryType()).getValue().equals(journalEntry.type));
             Assertions.assertTrue(found, "Required journal entry not found: " + journalEntry);
         });
+    }
+
+    protected void verifyJournalEntriesSequentially(Long loanId, Journal... entries) {
+        GetJournalEntriesTransactionIdResponse journalEntriesForLoan = journalEntryHelper.getJournalEntriesForLoan(loanId);
+        List<JournalEntryTransactionItem> sortedJournalEntries = journalEntriesForLoan.getPageItems().stream()
+                .sorted(Comparator.comparing(JournalEntryTransactionItem::getId)).toList();
+        for (int i = 0; i < entries.length && i < journalEntriesForLoan.getPageItems().size(); i++) {
+            Journal journalEntry = entries[i];
+            JournalEntryTransactionItem item = sortedJournalEntries.get(i);
+            boolean found = Objects.equals(item.getAmount(), journalEntry.amount)
+                    && Objects.equals(item.getGlAccountId(), journalEntry.account.getAccountID().longValue())
+                    && Objects.requireNonNull(item.getEntryType()).getValue().equals(journalEntry.type);
+            assertTrue(found, "Journal entry mismatch at position " + i + "." + lineSeparator() + "Wanted Journal entry: " + journalEntry
+                    + lineSeparator() + "Actual Journal entry: " + item);
+        }
+        if (journalEntriesForLoan.getPageItems().size() > entries.length) {
+            fail("Some Journal Entries are not verified. The missing entries are here: "
+                    + sortedJournalEntries.subList(entries.length, sortedJournalEntries.size()));
+        }
+        Assertions.assertEquals(entries.length, journalEntriesForLoan.getPageItems().size(),
+                "There were more journal entries expected than actually present.");
     }
 
     protected void verifyTRJournalEntries(Long transactionId, Journal... entries) {
@@ -665,6 +701,13 @@ public abstract class BaseLoanIntegrationTest {
                 LoanTransactionHelper.getSpecifiedDueDateChargesForLoanAsJSON(String.valueOf(chargeId), dueDate, String.valueOf(amount)));
         assertNotNull(loanChargeId);
         return loanChargeId.longValue();
+    }
+
+    protected Long createDisbursementPercentageCharge(double percentageAmount) {
+        Integer chargeId = ChargesHelper.createCharges(requestSpec, responseSpec, ChargesHelper
+                .getLoanDisbursementJSON(ChargesHelper.CHARGE_CALCULATION_TYPE_PERCENTAGE_AMOUNT, String.valueOf(percentageAmount)));
+        assertNotNull(chargeId);
+        return chargeId.longValue();
     }
 
     protected void verifyRepaymentSchedule(Long loanId, Installment... installments) {
@@ -778,14 +821,14 @@ public abstract class BaseLoanIntegrationTest {
 
     protected void runAt(String date, Runnable runnable) {
         try {
-            GlobalConfigurationHelper.updateEnabledFlagForGlobalConfiguration(requestSpec, responseSpec, 42, true);
-            GlobalConfigurationHelper.updateIsBusinessDateEnabled(requestSpec, responseSpec, TRUE);
+            globalConfigurationHelper.updateGlobalConfiguration(GlobalConfigurationConstants.ENABLE_BUSINESS_DATE,
+                    new PutGlobalConfigurationsRequest().enabled(true));
             businessDateHelper.updateBusinessDate(
                     new BusinessDateRequest().type(BUSINESS_DATE.getName()).date(date).dateFormat(DATETIME_PATTERN).locale("en"));
             runnable.run();
         } finally {
-            GlobalConfigurationHelper.updateIsBusinessDateEnabled(requestSpec, responseSpec, FALSE);
-            GlobalConfigurationHelper.updateEnabledFlagForGlobalConfiguration(requestSpec, responseSpec, 42, false);
+            globalConfigurationHelper.updateGlobalConfiguration(GlobalConfigurationConstants.ENABLE_BUSINESS_DATE,
+                    new PutGlobalConfigurationsRequest().enabled(false));
         }
     }
 
@@ -1184,6 +1227,11 @@ public abstract class BaseLoanIntegrationTest {
         public static final Integer FLAT = 1;
     }
 
+    public static class InterestRecalculationCompoundingMethod {
+
+        public static final Integer NONE = 0;
+    }
+
     public static class RepaymentFrequencyType {
 
         public static final Integer MONTHS = 2;
@@ -1209,6 +1257,7 @@ public abstract class BaseLoanIntegrationTest {
 
         public static final Integer MONTHS = 2;
         public static final Integer YEARS = 3;
+        public static final Integer WHOLE_TERM = 4;
     }
 
     public static class TransactionProcessingStrategyCode {
@@ -1218,6 +1267,7 @@ public abstract class BaseLoanIntegrationTest {
 
     public static class RescheduleStrategyMethod {
 
+        public static final Integer REDUCE_EMI_AMOUNT = 3;
         public static final Integer ADJUST_LAST_UNPAID_PERIOD = 4;
     }
 
@@ -1228,5 +1278,10 @@ public abstract class BaseLoanIntegrationTest {
         public static final Integer DAYS_360 = 360;
         public static final Integer DAYS_364 = 364;
         public static final Integer DAYS_365 = 365;
+    }
+
+    public static class FuturePaymentAllocationRule {
+
+        public static final String LAST_INSTALLMENT = "LAST_INSTALLMENT";
     }
 }

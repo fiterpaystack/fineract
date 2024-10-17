@@ -16,17 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.loanaccount.loanschedule.data;
+package org.apache.fineract.integrationtests.common.report;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import org.jetbrains.annotations.NotNull;
+import java.io.IOException;
+import java.util.Map;
+import okhttp3.ResponseBody;
+import org.apache.fineract.integrationtests.client.IntegrationTest;
+import retrofit2.Response;
 
-public record ProgressiveLoanInterestRate(LocalDate effectiveFrom, LocalDate validFrom,
-        BigDecimal interestRate) implements Comparable<ProgressiveLoanInterestRate> {
+public class ReportHelper extends IntegrationTest {
 
-    @Override
-    public int compareTo(@NotNull ProgressiveLoanInterestRate o) {
-        return this.effectiveFrom().compareTo(o.effectiveFrom());
+    public Response<ResponseBody> runReport(String reportName, Map<String, String> reportParameters) throws IOException {
+        return fineract().reportsRun.runReportGetFile("Transaction Summary Report with Asset Owner", reportParameters, false).execute();
     }
 }
