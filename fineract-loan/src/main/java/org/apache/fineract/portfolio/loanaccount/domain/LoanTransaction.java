@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
+import lombok.Getter;
 import org.apache.fineract.infrastructure.core.domain.AbstractAuditableWithUTCDateTimeCustom;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
@@ -60,6 +61,7 @@ import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
  * All monetary transactions against a loan are modelled through this entity. Disbursements, Repayments, Waivers,
  * Write-off etc
  */
+@Getter
 @Entity
 @Table(name = "m_loan_transaction", uniqueConstraints = { @UniqueConstraint(columnNames = { "external_id" }, name = "external_id_UNIQUE") })
 public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long> {
@@ -189,6 +191,11 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
                 chargeRefundChargeType);
     }
 
+    public static LoanTransaction interestRefund(final Loan loan, final BigDecimal amount, final LocalDate date,
+            final ExternalId externalId) {
+        return new LoanTransaction(loan, loan.getOffice(), LoanTransactionType.INTEREST_REFUND, null, amount, date, externalId);
+    }
+
     public static LoanTransaction chargeAdjustment(final Loan loan, final BigDecimal amount, final LocalDate transactionDate,
             final ExternalId externalId, PaymentDetail paymentDetail) {
         return new LoanTransaction(loan, loan.getOffice(), LoanTransactionType.CHARGE_ADJUSTMENT, paymentDetail, amount, transactionDate,
@@ -199,6 +206,12 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
             final LocalDate paymentDate, final ExternalId externalId) {
         return new LoanTransaction(null, office, LoanTransactionType.DOWN_PAYMENT, paymentDetail, amount.getAmount(), paymentDate,
                 externalId);
+    }
+
+    public static LoanTransaction refund(Loan loan, LoanTransactionType loanTransactionType, BigDecimal transactionAmount,
+            PaymentDetail paymentDetail, LocalDate transactionDate, ExternalId txnExternalId) {
+        return new LoanTransaction(loan, loan.getOffice(), loanTransactionType, paymentDetail, transactionAmount, transactionDate,
+                txnExternalId);
     }
 
     public void setLoanTransactionToRepaymentScheduleMappings(final Integer installmentId, final BigDecimal chargePerInstallment) {
@@ -526,22 +539,6 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
         return Money.of(currency, this.principalPortion);
     }
 
-    public BigDecimal getPrincipalPortion() {
-        return this.principalPortion;
-    }
-
-    public BigDecimal getInterestPortion() {
-        return this.interestPortion;
-    }
-
-    public BigDecimal getPenaltyChargesPortion() {
-        return this.penaltyChargesPortion;
-    }
-
-    public BigDecimal getFeeChargesPortion() {
-        return this.feeChargesPortion;
-    }
-
     public Money getInterestPortion(final MonetaryCurrency currency) {
         return Money.of(currency, this.interestPortion);
     }
@@ -570,10 +567,6 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
         return this.dateOf;
     }
 
-    public LocalDate getDateOf() {
-        return this.dateOf;
-    }
-
     public LoanTransactionType getTypeOf() {
         return LoanTransactionType.fromInt(this.typeOf);
     }
@@ -596,7 +589,7 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
 
     public boolean isRepaymentLikeType() {
         return isRepayment() || isMerchantIssuedRefund() || isPayoutRefund() || isGoodwillCredit() || isChargeRefund()
-                || isChargeAdjustment() || isDownPayment() || isInterestPaymentWaiver();
+                || isChargeAdjustment() || isDownPayment() || isInterestPaymentWaiver() || isInterestRefund();
     }
 
     public boolean isTypeAllowedForChargeback() {
@@ -861,20 +854,8 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
         return thisTransactionData;
     }
 
-    public Loan getLoan() {
-        return this.loan;
-    }
-
-    public Set<LoanChargePaidBy> getLoanChargesPaid() {
-        return this.loanChargesPaid;
-    }
-
     public void setLoanChargesPaid(final Set<LoanChargePaidBy> loanChargesPaid) {
         this.loanChargesPaid = loanChargesPaid;
-    }
-
-    public ExternalId getExternalId() {
-        return this.externalId;
     }
 
     public boolean isRefund() {
@@ -913,14 +894,6 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
 
     public boolean isRefundForActiveLoan() {
         return LoanTransactionType.REFUND_FOR_ACTIVE_LOAN.equals(getTypeOf()) && isNotReversed();
-    }
-
-    public boolean isManuallyAdjustedOrReversed() {
-        return this.manuallyAdjustedOrReversed;
-    }
-
-    public boolean isNotManuallyAdjustedOrReversed() {
-        return !this.manuallyAdjustedOrReversed;
     }
 
     public void manuallyAdjustedOrReversed() {
@@ -1019,25 +992,13 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
         return isAccrual();
     }
 
-    public BigDecimal getOutstandingLoanBalance() {
-        return outstandingLoanBalance;
-    }
-
     public Money getOutstandingLoanBalanceMoney(final MonetaryCurrency currency) {
         return Money.of(currency, this.outstandingLoanBalance);
-    }
-
-    public PaymentDetail getPaymentDetail() {
-        return this.paymentDetail;
     }
 
     public boolean isPaymentTransaction() {
         return this.isNotReversed() && !(this.isDisbursement() || this.isRepaymentAtDisbursement() || this.isNonMonetaryTransaction()
                 || this.isIncomePosting());
-    }
-
-    public Set<LoanCollateralManagement> getLoanCollateralManagementSet() {
-        return this.loanCollateralManagementSet;
     }
 
     public LocalDate getSubmittedOnDate() {
@@ -1046,10 +1007,6 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
 
     public boolean hasLoanTransactionRelations() {
         return !loanTransactionRelations.isEmpty();
-    }
-
-    public Set<LoanTransactionRelation> getLoanTransactionRelations() {
-        return loanTransactionRelations;
     }
 
     public List<LoanTransactionRelation> getLoanTransactionRelations(Predicate<LoanTransactionRelation> predicate) {
@@ -1067,10 +1024,6 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
         }
     }
 
-    public BigDecimal getAmount() {
-        return amount;
-    }
-
     public boolean isBefore(final LocalDate date) {
         return DateUtils.isBefore(getTransactionDate(), date);
     }
@@ -1083,39 +1036,24 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
         return DateUtils.isEqual(getTransactionDate(), date);
     }
 
-    public LoanReAgeParameter getLoanReAgeParameter() {
-        return loanReAgeParameter;
-    }
-
     public void setLoanReAgeParameter(LoanReAgeParameter loanReAgeParameter) {
         this.loanReAgeParameter = loanReAgeParameter;
     }
 
     public boolean happenedBefore(LoanTransaction loanTransaction) {
-        // compare transaction date, creation date and then transaction id
-        if (DateUtils.isBefore(getTransactionDate(), loanTransaction.getTransactionDate())) {
-            return true;
-        }
-        if (DateUtils.isEqual(getTransactionDate(), loanTransaction.getTransactionDate())) {
-            if (DateUtils.isBefore(getCreatedDateTime(), loanTransaction.getCreatedDateTime())) {
-                return true;
-            }
-            if (DateUtils.isEqual(getCreatedDateTime(), loanTransaction.getCreatedDateTime())) {
-                if (getId().compareTo(loanTransaction.getId()) < 0) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    public String getChargeRefundChargeType() {
-        return chargeRefundChargeType;
+        return LoanTransactionComparator.INSTANCE.compare(this, loanTransaction) < 0;
     }
 
     public boolean isOverPaid() {
         return MathUtil.isGreaterThanZero(overPaymentPortion);
+    }
+
+    public boolean isInterestRefund() {
+        return getTypeOf().isInterestRefund();
+    }
+
+    public void updateAmount(BigDecimal bigDecimal) {
+        this.amount = bigDecimal;
     }
 
     // TODO missing hashCode(), equals(Object obj), but probably OK as long as

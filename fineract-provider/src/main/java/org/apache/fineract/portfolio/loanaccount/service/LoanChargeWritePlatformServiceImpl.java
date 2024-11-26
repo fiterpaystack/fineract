@@ -85,7 +85,6 @@ import org.apache.fineract.portfolio.charge.exception.LoanChargeNotFoundExceptio
 import org.apache.fineract.portfolio.charge.exception.LoanChargeWaiveCannotBeReversedException;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.exception.ClientNotActiveException;
-import org.apache.fineract.portfolio.collateralmanagement.domain.ClientCollateralManagement;
 import org.apache.fineract.portfolio.common.domain.PeriodFrequencyType;
 import org.apache.fineract.portfolio.group.domain.Group;
 import org.apache.fineract.portfolio.group.exception.GroupNotActiveException;
@@ -98,7 +97,6 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanAccountDomainService
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCharge;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanChargePaidBy;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanChargeRepository;
-import org.apache.fineract.portfolio.loanaccount.domain.LoanCollateralManagement;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanDisbursementDetails;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanEvent;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanInstallmentCharge;
@@ -125,6 +123,7 @@ import org.apache.fineract.portfolio.loanaccount.exception.LoanChargeRefundExcep
 import org.apache.fineract.portfolio.loanaccount.exception.LoanTransactionNotFoundException;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.data.OverdueLoanScheduleData;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.DefaultScheduledDateGenerator;
+import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleType;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.ScheduledDateGenerator;
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanChargeApiJsonValidator;
 import org.apache.fineract.portfolio.loanproduct.data.LoanOverdueDTO;
@@ -726,21 +725,7 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
                 paymentDetail);
 
         // Update loan transaction on repayment.
-        if (loan.getLoanType().isIndividualAccount()) {
-            Set<LoanCollateralManagement> loanCollateralManagements = loan.getLoanCollateralManagements();
-            for (LoanCollateralManagement loanCollateralManagement : loanCollateralManagements) {
-                loanCollateralManagement.setLoanTransactionData(loanTransaction);
-                ClientCollateralManagement clientCollateralManagement = loanCollateralManagement.getClientCollateralManagement();
-
-                if (loan.getStatus().isClosed()) {
-                    loanCollateralManagement.setIsReleased(true);
-                    BigDecimal quantity = loanCollateralManagement.getQuantity();
-                    clientCollateralManagement.updateQuantity(clientCollateralManagement.getQuantity().add(quantity));
-                    loanCollateralManagement.setClientCollateralManagement(clientCollateralManagement);
-                }
-            }
-            this.loanAccountDomainService.updateLoanCollateralTransaction(loanCollateralManagements);
-        }
+        loanAccountDomainService.updateAndSaveLoanCollateralTransactionsForIndividualAccounts(loan, loanTransaction);
 
         final String noteText = command.stringValueOfParameterNamed("note");
         if (StringUtils.isNotBlank(noteText)) {
@@ -852,16 +837,20 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
                 LoanTransactionRelationTypeEnum.CHARGE_ADJUSTMENT);
         loanChargeAdjustmentTransaction.getLoanTransactionRelations().add(loanTransactionRelation);
 
-        loanAccountDomainService.saveLoanTransactionWithDataIntegrityViolationChecks(loanChargeAdjustmentTransaction);
-
         defaultLoanLifecycleStateMachine.transition(LoanEvent.LOAN_REPAYMENT_OR_WAIVER, loan);
         final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor = loanRepaymentScheduleTransactionProcessorFactory
                 .determineProcessor(loan.transactionProcessingStrategy());
-        loanRepaymentScheduleTransactionProcessor.processLatestTransaction(loanChargeAdjustmentTransaction,
-                new TransactionCtx(loan.getCurrency(), loan.getRepaymentScheduleInstallments(), loan.getActiveCharges(),
-                        new MoneyHolder(loan.getTotalOverpaidAsMoney()), null));
-
         loan.addLoanTransaction(loanChargeAdjustmentTransaction);
+        if (loan.isInterestBearing() && loan.getLoanProductRelatedDetail().isInterestRecalculationEnabled()) {
+            loanRepaymentScheduleTransactionProcessor.reprocessLoanTransactions(loan.getDisbursementDate(),
+                    loan.retrieveListOfTransactionsForReprocessing(), loan.getCurrency(), loan.getRepaymentScheduleInstallments(),
+                    loan.getActiveCharges());
+        } else {
+            loanRepaymentScheduleTransactionProcessor.processLatestTransaction(loanChargeAdjustmentTransaction,
+                    new TransactionCtx(loan.getCurrency(), loan.getRepaymentScheduleInstallments(), loan.getActiveCharges(),
+                            new MoneyHolder(loan.getTotalOverpaidAsMoney()), null));
+        }
+        loanAccountDomainService.saveLoanTransactionWithDataIntegrityViolationChecks(loanChargeAdjustmentTransaction);
         loan.updateLoanSummaryAndStatus();
 
         loanAccountDomainService.saveAndFlushLoanWithDataIntegrityViolationChecks(loan);
@@ -998,7 +987,9 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
                     chargeDefinition.getName());
         } else if (loanCharge.getDueLocalDate() != null) {
             // TODO: Review, error message seems not valid if interest recalculation is not enabled.
-            LocalDate validationDate = loan.repaymentScheduleDetail().isInterestRecalculationEnabled() ? loan.getLastUserTransactionDate()
+            boolean isCumulative = loan.getLoanRepaymentScheduleDetail().getLoanScheduleType().equals(LoanScheduleType.CUMULATIVE);
+            LocalDate validationDate = loan.repaymentScheduleDetail().isInterestRecalculationEnabled() && isCumulative
+                    ? loan.getLastUserTransactionDate()
                     : loan.getDisbursementDate();
             if (DateUtils.isBefore(loanCharge.getDueLocalDate(), validationDate)) {
                 final String defaultUserMessage = "charge with date before last transaction date can not be added to loan.";
@@ -1040,8 +1031,9 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
         loanCharge = this.loanChargeRepository.saveAndFlush(loanCharge);
 
         // we want to apply charge transactions only for those loans charges that are applied when a loan is active and
-        // the loan product uses Upfront Accruals
-        if (loan.getStatus().isActive() && loan.isNoneOrCashOrUpfrontAccrualAccountingEnabledOnLoanProduct()) {
+        // the loan product uses Upfront Accruals, or only when the loan are closed too,
+        if ((loan.getStatus().isActive() && loan.isNoneOrCashOrUpfrontAccrualAccountingEnabledOnLoanProduct())
+                || loan.getStatus().isOverpaid() || loan.getStatus().isClosedObligationsMet()) {
             final LoanTransaction applyLoanChargeTransaction = loan.handleChargeAppliedTransaction(loanCharge, null);
             this.loanTransactionRepository.saveAndFlush(applyLoanChargeTransaction);
         }

@@ -18,14 +18,35 @@
  */
 package org.apache.fineract.portfolio.loanaccount.loanschedule.data;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import lombok.Data;
-import org.apache.fineract.organisation.monetary.domain.Money;
 
 @Data
-public class PayableDetails {
+public final class LoanSchedulePlanRepaymentPeriod implements LoanSchedulePlanPeriod {
 
-    private final Money emi;
-    private final Money payablePrincipal;
-    private final Money payableInterest;
-    private final Money outstandingBalance;
+    private final int periodNumber;
+    private final LocalDate periodFromDate;
+    private final LocalDate periodDueDate;
+    private final BigDecimal principalAmount;
+    private final BigDecimal interestAmount;
+    private final BigDecimal feeAmount;
+    private final BigDecimal penaltyAmount;
+    private final BigDecimal totalDueAmount;
+    private final BigDecimal outstandingLoanBalance;
+
+    @Override
+    public Integer periodNumber() {
+        return periodNumber;
+    }
+
+    @Override
+    public LocalDate periodFromDate() {
+        return periodFromDate;
+    }
+
+    @Override
+    public LocalDate periodDueDate() {
+        return periodDueDate;
+    }
 }

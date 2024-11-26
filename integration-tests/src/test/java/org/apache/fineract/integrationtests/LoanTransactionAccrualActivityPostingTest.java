@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.integrationtests;
 
+import static org.apache.fineract.integrationtests.common.funds.FundsResourceHandler.createFund;
 import static org.apache.fineract.integrationtests.common.loans.LoanProductTestBuilder.ADVANCED_PAYMENT_ALLOCATION_STRATEGY;
 import static org.apache.fineract.integrationtests.common.loans.LoanProductTestBuilder.DEFAULT_STRATEGY;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -55,23 +56,22 @@ import org.apache.fineract.integrationtests.common.ClientHelper;
 import org.apache.fineract.integrationtests.common.SchedulerJobHelper;
 import org.apache.fineract.integrationtests.common.Utils;
 import org.apache.fineract.integrationtests.common.charges.ChargesHelper;
-import org.apache.fineract.integrationtests.common.loans.LoanTestLifecycleExtension;
 import org.apache.fineract.integrationtests.common.loans.LoanTransactionHelper;
+import org.apache.fineract.integrationtests.common.products.DelinquencyBucketsHelper;
 import org.apache.fineract.integrationtests.inlinecob.InlineLoanCOBHelper;
 import org.apache.fineract.portfolio.charge.domain.ChargeCalculationType;
 import org.apache.fineract.portfolio.charge.domain.ChargePaymentMode;
 import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleType;
 import org.apache.fineract.portfolio.loanproduct.domain.PaymentAllocationType;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@ExtendWith(LoanTestLifecycleExtension.class)
 public class LoanTransactionAccrualActivityPostingTest extends BaseLoanIntegrationTest {
 
     private static final Logger LOG = LoggerFactory.getLogger(LoanTransactionAccrualActivityPostingTest.class);
@@ -980,13 +980,20 @@ public class LoanTransactionAccrualActivityPostingTest extends BaseLoanIntegrati
         loanPaymentChannelToFundSourceMappings.fundSourceAccountId(fundSource.getAccountID().longValue());
         loanPaymentChannelToFundSourceMappings.paymentTypeId(1L);
         paymentChannelToFundSourceMappings.add(loanPaymentChannelToFundSourceMappings);
+
+        final Integer fundId = createFund(requestSpec, responseSpec);
+        Assertions.assertNotNull(fundId);
+
+        final Integer delinquencyBucketId = DelinquencyBucketsHelper.createDelinquencyBucket(requestSpec, responseSpec);
+        Assertions.assertNotNull(delinquencyBucketId);
+
         return new PostLoanProductsRequest()//
                 .name(name)//
                 .enableAccrualActivityPosting(true)//
                 .shortName(shortName)//
                 .description(
                         "LP1 with 12% DECLINING BALANCE interest, interest period: Daily, Interest recalculation-Daily, Compounding:none")//
-                .fundId(1L)//
+                .fundId(fundId.longValue())//
                 .startDate(null)//
                 .closeDate(null)//
                 .includeInBorrowerCycle(false)//
@@ -1066,7 +1073,7 @@ public class LoanTransactionAccrualActivityPostingTest extends BaseLoanIntegrati
                 .locale("en")//
                 .disallowExpectedDisbursements(false)//
                 .allowApprovedDisbursedAmountsOverApplied(false)//
-                .delinquencyBucketId(1L)//
+                .delinquencyBucketId(delinquencyBucketId.longValue())//
                 .paymentChannelToFundSourceMappings(paymentChannelToFundSourceMappings)//
                 .penaltyToIncomeAccountMappings(penaltyToIncomeAccountMappings)//
                 .feeToIncomeAccountMappings(feeToIncomeAccountMappings)//

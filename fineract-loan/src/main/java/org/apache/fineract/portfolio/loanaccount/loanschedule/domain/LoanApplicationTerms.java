@@ -248,7 +248,20 @@ public final class LoanApplicationTerms {
         this.fixedLength = builder.fixedLength;
         this.inArrearsTolerance = builder.inArrearsTolerance;
         this.disbursementDatas = builder.disbursementDatas;
-        this.downPaymentAmount = builder.downPaymentAmount;
+        this.submittedOnDate = builder.submittedOnDate;
+        this.seedDate = builder.seedDate;
+        this.isDownPaymentEnabled = builder.isDownPaymentEnabled;
+        this.disbursedAmountPercentageForDownPayment = builder.downPaymentPercentage;
+        if (isDownPaymentEnabled) {
+            this.downPaymentAmount = Money.of(getCurrency(),
+                    MathUtil.percentageOf(getPrincipal().getAmount(), getDisbursedAmountPercentageForDownPayment(), builder.mc),
+                    builder.mc);
+            if (getInstallmentAmountInMultiplesOf() != null) {
+                this.downPaymentAmount = Money.roundToMultiplesOf(this.downPaymentAmount, getInstallmentAmountInMultiplesOf(), builder.mc);
+            }
+        } else {
+            this.downPaymentAmount = Money.zero(getCurrency(), builder.mc);
+        }
     }
 
     public static class Builder {
@@ -271,7 +284,11 @@ public final class LoanApplicationTerms {
         private Integer fixedLength;
         private Money inArrearsTolerance;
         private List<DisbursementData> disbursementDatas;
-        private Money downPaymentAmount;
+        private BigDecimal downPaymentPercentage;
+        private boolean isDownPaymentEnabled;
+        private LocalDate submittedOnDate;
+        private LocalDate seedDate;
+        private MathContext mc;
 
         public Builder currency(ApplicationCurrency currency) {
             this.currency = currency;
@@ -343,11 +360,6 @@ public final class LoanApplicationTerms {
             return this;
         }
 
-        public Builder variationsDataWrapper(LoanTermVariationsDataWrapper variationsDataWrapper) {
-            this.variationsDataWrapper = variationsDataWrapper;
-            return this;
-        }
-
         public Builder fixedLength(Integer fixedLength) {
             this.fixedLength = fixedLength;
             return this;
@@ -363,8 +375,28 @@ public final class LoanApplicationTerms {
             return this;
         }
 
-        public Builder downPaymentAmount(Money downPaymentAmount) {
-            this.downPaymentAmount = downPaymentAmount;
+        public Builder downPaymentPercentage(BigDecimal downPaymentPercentage) {
+            this.downPaymentPercentage = downPaymentPercentage;
+            return this;
+        }
+
+        public Builder submittedOnDate(LocalDate submittedOnDate) {
+            this.submittedOnDate = submittedOnDate;
+            return this;
+        }
+
+        public Builder seedDate(LocalDate seedDate) {
+            this.seedDate = seedDate;
+            return this;
+        }
+
+        public Builder isDownPaymentEnabled(boolean isDownPaymentEnabled) {
+            this.isDownPaymentEnabled = isDownPaymentEnabled;
+            return this;
+        }
+
+        public Builder mc(MathContext mc) {
+            this.mc = mc;
             return this;
         }
 
@@ -373,16 +405,16 @@ public final class LoanApplicationTerms {
         }
     }
 
-    public static LoanApplicationTerms assembleFrom(LoanRepaymentScheduleModelData modelData) {
-        Money principal = Money.of(modelData.currency().toData(), modelData.disbursementAmount());
-        Money downPaymentAmount = Money.zero(modelData.currency().toData());
+    public static LoanApplicationTerms assembleFrom(LoanRepaymentScheduleModelData modelData, MathContext mc) {
+        Money principal = Money.of(modelData.currency().toData(), modelData.disbursementAmount(), mc);
+        BigDecimal downPaymentPercentage = modelData.downPaymentPercentage();
 
-        if (modelData.downPaymentEnabled()) {
-            downPaymentAmount = Money.of(modelData.currency().toData(),
-                    MathUtil.percentageOf(principal.getAmount(), modelData.disbursementAmount(), 19));
-            if (modelData.installmentAmountInMultiplesOf() != null) {
-                downPaymentAmount = Money.roundToMultiplesOf(downPaymentAmount, modelData.installmentAmountInMultiplesOf());
-            }
+        LocalDate seedDate;
+
+        if (modelData.disbursementDate() != null) {
+            seedDate = modelData.disbursementDate();
+        } else {
+            seedDate = modelData.scheduleGenerationStartDate();
         }
 
         return new Builder().currency(modelData.currency()).loanTermFrequency(modelData.numberOfRepayments())
@@ -394,8 +426,9 @@ public final class LoanApplicationTerms {
                 .annualNominalInterestRate(modelData.annualNominalInterestRate()).principal(principal)
                 .expectedDisbursementDate(modelData.disbursementDate()).repaymentsStartingFromDate(modelData.scheduleGenerationStartDate())
                 .daysInMonthType(modelData.daysInMonth()).daysInYearType(modelData.daysInYear()).fixedLength(modelData.fixedLength())
-                .inArrearsTolerance(Money.zero(modelData.currency().toData())).disbursementDatas(new ArrayList<>())
-                .downPaymentAmount(downPaymentAmount).build();
+                .inArrearsTolerance(Money.zero(modelData.currency().toData(), mc)).disbursementDatas(new ArrayList<>())
+                .isDownPaymentEnabled(modelData.downPaymentEnabled()).downPaymentPercentage(downPaymentPercentage)
+                .submittedOnDate(modelData.scheduleGenerationStartDate()).seedDate(seedDate).mc(mc).build();
     }
 
     public static LoanApplicationTerms assembleFrom(final ApplicationCurrency currency, final Integer loanTermFrequency,
@@ -662,7 +695,7 @@ public final class LoanApplicationTerms {
         } else if (this.actualFixedEmiAmount != null) {
             final Money difference = this.principal.minus(totalCumulativePrincipalToDate);
             final Money principalThreshold = principalForPeriod.multipliedBy(this.principalThresholdForLastInstalment).dividedBy(100,
-                    MoneyHelper.getRoundingMode());
+                    MoneyHelper.getMathContext());
             if (difference.isLessThan(principalThreshold)) {
                 adjusted = principalForPeriod.plus(difference.abs());
             }
@@ -717,8 +750,7 @@ public final class LoanApplicationTerms {
 
                 final Money totalInterestPerInstallment = calculateTotalInterestPerInstallmentWithoutGrace(calculator, mc);
 
-                final Money totalGraceOnInterestCharged = totalInterestPerInstallment.multiplyRetainScale(getInterestChargingGrace(),
-                        mc.getRoundingMode());
+                final Money totalGraceOnInterestCharged = totalInterestPerInstallment.multiplyRetainScale(getInterestChargingGrace(), mc);
 
                 totalInterestCharged = totalInterestChargedForLoanTerm.minus(totalGraceOnInterestCharged);
             break;
@@ -884,7 +916,7 @@ public final class LoanApplicationTerms {
             case FLAT:
                 final BigDecimal interestRateForLoanTerm = calculateFlatInterestRateForLoanTerm(calculator, mc);
                 totalInterestDue = this.disbursedPrincipal.minus(totalPrincipalAccountedForInterestCalcualtion)
-                        .multiplyRetainScale(interestRateForLoanTerm, mc.getRoundingMode());
+                        .multiplyRetainScale(interestRateForLoanTerm, mc);
 
             break;
             case DECLINING_BALANCE:
@@ -921,7 +953,7 @@ public final class LoanApplicationTerms {
                     loanStartDate = getInterestChargedFromLocalDate();
                 }
 
-                final int periodsInLoanTermInteger = Math.toIntExact(ChronoUnit.DAYS.between(loanStartDate, this.loanEndDate));
+                final int periodsInLoanTermInteger = DateUtils.getExactDifferenceInDays(loanStartDate, this.loanEndDate);
                 periodsInLoanTerm = BigDecimal.valueOf(periodsInLoanTermInteger);
             break;
             case INVALID:
@@ -944,17 +976,17 @@ public final class LoanApplicationTerms {
         BigDecimal numberOfPeriods = BigDecimal.ZERO;
         switch (this.repaymentPeriodFrequencyType) {
             case DAYS:
-                int numOfDays = Math.toIntExact(ChronoUnit.DAYS.between(startDate, endDate));
+                int numOfDays = DateUtils.getExactDifferenceInDays(startDate, endDate);
                 numberOfPeriods = BigDecimal.valueOf((double) numOfDays);
             break;
             case WEEKS:
-                int numberOfWeeks = Math.toIntExact(ChronoUnit.WEEKS.between(startDate, endDate));
-                int daysLeftAfterWeeks = Math.toIntExact(ChronoUnit.DAYS.between(startDate.plusWeeks(numberOfWeeks), endDate));
+                int numberOfWeeks = DateUtils.getExactDifference(startDate, endDate, ChronoUnit.WEEKS);
+                int daysLeftAfterWeeks = DateUtils.getExactDifferenceInDays(startDate.plusWeeks(numberOfWeeks), endDate);
                 numberOfPeriods = numberOfPeriods.add(BigDecimal.valueOf(numberOfWeeks))
                         .add(BigDecimal.valueOf((double) daysLeftAfterWeeks / 7));
             break;
             case MONTHS:
-                int numberOfMonths = Math.toIntExact(ChronoUnit.MONTHS.between(startDate, endDate));
+                int numberOfMonths = DateUtils.getExactDifference(startDate, endDate, ChronoUnit.MONTHS);
                 LocalDate startDateAfterConsideringMonths = null;
                 LocalDate endDateAfterConsideringMonths = null;
                 int diffDays = 0;
@@ -975,7 +1007,7 @@ public final class LoanApplicationTerms {
                                 this.holidayDetailDTO.getWorkingDays(), isSkipRepaymentOnFirstDayOfMonth, numberOfDays);
                     }
                     if (!DateUtils.isEqual(expectedStartDate, startDate)) {
-                        diffDays = Math.toIntExact(ChronoUnit.DAYS.between(startDate, expectedStartDate));
+                        diffDays = DateUtils.getExactDifferenceInDays(startDate, expectedStartDate);
                     }
                     if (numberOfMonths == 0) {
                         startDateAfterConsideringMonths = expectedStartDate;
@@ -990,19 +1022,19 @@ public final class LoanApplicationTerms {
                             CalendarUtils.getMeetingFrequencyFromPeriodFrequencyType(getLoanTermPeriodFrequencyType()),
                             this.holidayDetailDTO.getWorkingDays(), isSkipRepaymentOnFirstDayOfMonth, numberOfDays);
                 }
-                int daysLeftAfterMonths = Math.toIntExact(ChronoUnit.DAYS.between(startDateAfterConsideringMonths, endDate)) + diffDays;
-                int daysInPeriodAfterMonths = Math
-                        .toIntExact(ChronoUnit.DAYS.between(startDateAfterConsideringMonths, endDateAfterConsideringMonths));
+                int daysLeftAfterMonths = DateUtils.getExactDifferenceInDays(startDateAfterConsideringMonths, endDate) + diffDays;
+                int daysInPeriodAfterMonths = DateUtils.getExactDifferenceInDays(startDateAfterConsideringMonths,
+                        endDateAfterConsideringMonths);
                 numberOfPeriods = numberOfPeriods.add(BigDecimal.valueOf(numberOfMonths))
                         .add(BigDecimal.valueOf((double) daysLeftAfterMonths / daysInPeriodAfterMonths));
             break;
             case YEARS:
-                int numberOfYears = Math.toIntExact(ChronoUnit.YEARS.between(startDate, endDate));
+                int numberOfYears = DateUtils.getExactDifference(startDate, endDate, ChronoUnit.YEARS);
                 LocalDate startDateAfterConsideringYears = startDate.plusYears(numberOfYears);
                 LocalDate endDateAfterConsideringYears = startDate.plusYears(numberOfYears + 1);
-                int daysLeftAfterYears = Math.toIntExact(ChronoUnit.DAYS.between(startDateAfterConsideringYears, endDate));
-                int daysInPeriodAfterYears = Math
-                        .toIntExact(ChronoUnit.DAYS.between(startDateAfterConsideringYears, endDateAfterConsideringYears));
+                int daysLeftAfterYears = DateUtils.getExactDifferenceInDays(startDateAfterConsideringYears, endDate);
+                int daysInPeriodAfterYears = DateUtils.getExactDifferenceInDays(startDateAfterConsideringYears,
+                        endDateAfterConsideringYears);
                 numberOfPeriods = numberOfPeriods.add(BigDecimal.valueOf(numberOfYears))
                         .add(BigDecimal.valueOf((double) daysLeftAfterYears / daysInPeriodAfterYears));
             break;
@@ -1024,12 +1056,12 @@ public final class LoanApplicationTerms {
     }
 
     private Money flatInterestPerInstallment(final MathContext mc, final Money totalInterestForLoanTerm) {
-        Money interestPerInstallment = totalInterestForLoanTerm.dividedBy(
-                Long.valueOf(this.actualNumberOfRepayments) - defaultToZeroIfNull(this.excludePeriodsForCalculation), mc.getRoundingMode());
+        Money interestPerInstallment = totalInterestForLoanTerm
+                .dividedBy(Long.valueOf(this.actualNumberOfRepayments) - defaultToZeroIfNull(this.excludePeriodsForCalculation), mc);
         if (this.excludePeriodsForCalculation < this.periodsCompleted) {
             Money interestLeft = this.totalInterestDue.minus(this.totalInterestAccounted);
-            interestPerInstallment = interestLeft.dividedBy(
-                    Long.valueOf(this.actualNumberOfRepayments) - defaultToZeroIfNull(this.periodsCompleted), mc.getRoundingMode());
+            interestPerInstallment = interestLeft
+                    .dividedBy(Long.valueOf(this.actualNumberOfRepayments) - defaultToZeroIfNull(this.periodsCompleted), mc);
         }
 
         return interestPerInstallment;
@@ -1042,19 +1074,17 @@ public final class LoanApplicationTerms {
         if (getFixedEmiAmount() == null) {
             if (this.fixedPrincipalPercentagePerInstallment != null) {
                 principalPerPeriod = this.principal.minus(totalPrincipalAccounted)
-                        .percentageOf(this.fixedPrincipalPercentagePerInstallment, mc.getRoundingMode())
-                        .plus(this.adjustPrincipalForFlatLoans);
+                        .percentageOf(this.fixedPrincipalPercentagePerInstallment, mc).plus(this.adjustPrincipalForFlatLoans);
             } else {
-                principalPerPeriod = this.principal.minus(totalPrincipalAccounted)
-                        .dividedBy(totalRepaymentsWithCapitalPayment, mc.getRoundingMode()).plus(this.adjustPrincipalForFlatLoans);
+                principalPerPeriod = this.principal.minus(totalPrincipalAccounted).dividedBy(totalRepaymentsWithCapitalPayment, mc)
+                        .plus(this.adjustPrincipalForFlatLoans);
             }
             if (isPrincipalGraceApplicableForThisPeriod(periodNumber)) {
                 principalPerPeriod = principalPerPeriod.zero();
             }
             if (!isPrincipalGraceApplicableForThisPeriod(periodNumber) && currentPeriodFixedPrincipalAmount != null) {
-                this.adjustPrincipalForFlatLoans = this.adjustPrincipalForFlatLoans
-                        .plus(principalPerPeriod.minus(currentPeriodFixedPrincipalAmount)
-                                .dividedBy(this.actualNumberOfRepayments - periodNumber, mc.getRoundingMode()));
+                this.adjustPrincipalForFlatLoans = this.adjustPrincipalForFlatLoans.plus(principalPerPeriod
+                        .minus(currentPeriodFixedPrincipalAmount).dividedBy(this.actualNumberOfRepayments - periodNumber, mc));
                 principalPerPeriod = this.principal.zero().plus(currentPeriodFixedPrincipalAmount);
 
             }
@@ -1129,13 +1159,12 @@ public final class LoanApplicationTerms {
 
             Integer interestPaymentDuePeriods = calculateNumberOfRemainingInterestPaymentPeriods(this.actualNumberOfRepayments,
                     this.excludePeriodsForCalculation);
-            interestForInstallment = realTotalInterestForLoan.dividedBy(BigDecimal.valueOf(interestPaymentDuePeriods),
-                    mc.getRoundingMode());
+            interestForInstallment = realTotalInterestForLoan.dividedBy(BigDecimal.valueOf(interestPaymentDuePeriods), mc);
             if (this.excludePeriodsForCalculation < this.periodsCompleted) {
                 Money interestLeft = this.totalInterestDue.minus(this.totalInterestAccounted);
                 Integer interestDuePeriods = calculateNumberOfRemainingInterestPaymentPeriods(this.actualNumberOfRepayments,
                         this.periodsCompleted);
-                interestForInstallment = interestLeft.dividedBy(Long.valueOf(interestDuePeriods), mc.getRoundingMode());
+                interestForInstallment = interestLeft.dividedBy(Long.valueOf(interestDuePeriods), mc);
             }
             if (!this.periodNumbersApplicableForInterestGrace.isEmpty()) {
                 int periodsElapsed = calculateLastInterestGracePeriod(periodNumber);
@@ -1143,7 +1172,7 @@ public final class LoanApplicationTerms {
                     Money interestLeft = this.totalInterestDue.minus(this.totalInterestAccounted);
                     Integer interestDuePeriods = calculateNumberOfRemainingInterestPaymentPeriods(this.actualNumberOfRepayments,
                             periodsElapsed);
-                    interestForInstallment = interestLeft.dividedBy(Long.valueOf(interestDuePeriods), mc.getRoundingMode());
+                    interestForInstallment = interestLeft.dividedBy(Long.valueOf(interestDuePeriods), mc);
                 }
             }
 
@@ -1179,7 +1208,7 @@ public final class LoanApplicationTerms {
             break;
             case DAILY:
                 // For daily work out number of days in the period
-                BigDecimal numberOfDaysInPeriod = BigDecimal.valueOf(ChronoUnit.DAYS.between(periodStartDate, periodEndDate));
+                BigDecimal numberOfDaysInPeriod = BigDecimal.valueOf(DateUtils.getDifferenceInDays(periodStartDate, periodEndDate));
 
                 final BigDecimal oneDayOfYearInterestRate = this.annualNominalInterestRate.divide(loanTermPeriodsInYearBigDecimal, mc)
                         .divide(divisor, mc);
@@ -1241,7 +1270,7 @@ public final class LoanApplicationTerms {
             final Money outstandingBalance, final LocalDate fromDate, final LocalDate toDate) {
 
         long loanTermPeriodsInOneYear = calculator.calculate(PeriodFrequencyType.DAYS).longValue();
-        int repaymentEvery = Math.toIntExact(ChronoUnit.DAYS.between(fromDate, toDate));
+        int repaymentEvery = DateUtils.getExactDifferenceInDays(fromDate, toDate);
         if (isFallingInRepaymentPeriod(fromDate, toDate)) {
             loanTermPeriodsInOneYear = calculatePeriodsInOneYear(calculator);
             repaymentEvery = getPeriodsBetween(fromDate, toDate);
@@ -1399,7 +1428,7 @@ public final class LoanApplicationTerms {
 
         final BigDecimal periodicInterestRate = periodicInterestRate(calculator, mc, this.daysInMonthType, this.daysInYearType,
                 periodStartDate, periodEndDate);// 0.021232877 ob:14911.64
-        interestDue = outstandingBalance.multiplyRetainScale(periodicInterestRate, mc.getRoundingMode());
+        interestDue = outstandingBalance.multiplyRetainScale(periodicInterestRate, mc);
 
         return interestDue;
     }
@@ -1446,11 +1475,11 @@ public final class LoanApplicationTerms {
         if (this.fixedPrincipalAmount == null) {
             final Integer numberOfPrincipalPaymentPeriods = calculateNumberOfRemainingPrincipalPaymentPeriods(this.actualNumberOfRepayments,
                     periodNumber);
-            principal = this.principal.dividedBy(numberOfPrincipalPaymentPeriods, mc.getRoundingMode());
+            principal = this.principal.dividedBy(numberOfPrincipalPaymentPeriods, mc);
             this.fixedPrincipalAmount = principal.getAmount();
         }
         if (this.fixedPrincipalPercentagePerInstallment != null) {
-            principal = this.principal.percentageOf(this.fixedPrincipalPercentagePerInstallment, mc.getRoundingMode());
+            principal = this.principal.percentageOf(this.fixedPrincipalPercentagePerInstallment, mc);
         } else {
             principal = Money.of(getCurrency(), getFixedPrincipalAmount());
         }
@@ -1463,7 +1492,7 @@ public final class LoanApplicationTerms {
     public void updateFixedPrincipalAmount(final MathContext mc, final int periodNumber, final Money outstandingAmount) {
         final Integer numberOfPrincipalPaymentPeriods = calculateNumberOfRemainingPrincipalPaymentPeriods(this.actualNumberOfRepayments,
                 periodNumber - 1);
-        Money principal = outstandingAmount.dividedBy(numberOfPrincipalPaymentPeriods, mc.getRoundingMode());
+        Money principal = outstandingAmount.dividedBy(numberOfPrincipalPaymentPeriods, mc);
         this.fixedPrincipalAmount = principal.getAmount();
     }
 
@@ -1652,7 +1681,7 @@ public final class LoanApplicationTerms {
         if (this.interestCalculationPeriodMethod.getValue().equals(InterestCalculationPeriodMethod.SAME_AS_REPAYMENT_PERIOD.getValue())) {
             switch (this.repaymentPeriodFrequencyType) {
                 case WEEKS:
-                    int days = Math.toIntExact(ChronoUnit.DAYS.between(fromDate, toDate));
+                    int days = DateUtils.getExactDifferenceInDays(fromDate, toDate);
                     isSameAsRepaymentPeriod = (days % 7) == 0;
                 break;
                 case MONTHS:
@@ -1686,16 +1715,16 @@ public final class LoanApplicationTerms {
         Integer numberOfPeriods = 0;
         switch (this.repaymentPeriodFrequencyType) {
             case DAYS:
-                numberOfPeriods = Math.toIntExact(ChronoUnit.DAYS.between(fromDate, toDate));
+                numberOfPeriods = DateUtils.getExactDifferenceInDays(fromDate, toDate);
             break;
             case WEEKS:
-                numberOfPeriods = Math.toIntExact(ChronoUnit.WEEKS.between(fromDate, toDate));
+                numberOfPeriods = DateUtils.getExactDifference(fromDate, toDate, ChronoUnit.WEEKS);
             break;
             case MONTHS:
-                numberOfPeriods = Math.toIntExact(ChronoUnit.MONTHS.between(fromDate, toDate));
+                numberOfPeriods = DateUtils.getExactDifference(fromDate, toDate, ChronoUnit.MONTHS);
             break;
             case YEARS:
-                numberOfPeriods = Math.toIntExact(ChronoUnit.YEARS.between(fromDate, toDate));
+                numberOfPeriods = DateUtils.getExactDifference(fromDate, toDate, ChronoUnit.YEARS);
             break;
             default:
             break;

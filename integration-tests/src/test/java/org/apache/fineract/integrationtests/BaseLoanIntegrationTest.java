@@ -23,6 +23,7 @@ import static org.apache.fineract.infrastructure.businessdate.domain.BusinessDat
 import static org.apache.fineract.integrationtests.BaseLoanIntegrationTest.TransactionProcessingStrategyCode.ADVANCED_PAYMENT_ALLOCATION_STRATEGY;
 import static org.apache.fineract.integrationtests.common.loans.LoanApplicationTestBuilder.DUE_PENALTY_INTEREST_PRINCIPAL_FEE_IN_ADVANCE_PENALTY_INTEREST_PRINCIPAL_FEE_STRATEGY;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -94,6 +95,7 @@ import org.apache.fineract.integrationtests.common.loans.LoanProductHelper;
 import org.apache.fineract.integrationtests.common.loans.LoanProductTestBuilder;
 import org.apache.fineract.integrationtests.common.loans.LoanTestLifecycleExtension;
 import org.apache.fineract.integrationtests.common.loans.LoanTransactionHelper;
+import org.apache.fineract.integrationtests.common.products.DelinquencyBucketsHelper;
 import org.apache.fineract.integrationtests.common.system.CodeHelper;
 import org.apache.fineract.integrationtests.inlinecob.InlineLoanCOBHelper;
 import org.apache.fineract.integrationtests.useradministration.users.UserHelper;
@@ -250,6 +252,9 @@ public abstract class BaseLoanIntegrationTest {
     }
 
     protected PostLoanProductsRequest create4IProgressive() {
+        final Integer delinquencyBucketId = DelinquencyBucketsHelper.createDelinquencyBucket(requestSpec, responseSpec);
+        Assertions.assertNotNull(delinquencyBucketId);
+
         return new PostLoanProductsRequest().name(Utils.uniqueRandomStringGenerator("4I_PROGRESSIVE_", 6))//
                 .shortName(Utils.uniqueRandomStringGenerator("", 4))//
                 .description("4 installment product - progressive")//
@@ -291,7 +296,6 @@ public abstract class BaseLoanIntegrationTest {
                 .allowCompoundingOnEod(false)//
                 .canDefineInstallmentAmount(true)//
                 .repaymentStartDateType(1)//
-                .supportedInterestRefundTypes(List.of())//
                 .charges(List.of())//
                 .principalVariationsForBorrowerCycle(List.of())//
                 .interestRateVariationsForBorrowerCycle(List.of())//
@@ -342,7 +346,7 @@ public abstract class BaseLoanIntegrationTest {
                         .graceOnPrincipalAndInterestPayment(true)//
                         .graceOnArrearsAgeing(true)//
                 ).isEqualAmortization(false)//
-                .delinquencyBucketId(1L)//
+                .delinquencyBucketId(delinquencyBucketId.longValue())//
                 .enableDownPayment(false)//
                 .enableInstallmentLevelDelinquency(false)//
                 .loanScheduleType("PROGRESSIVE")//
@@ -650,7 +654,8 @@ public abstract class BaseLoanIntegrationTest {
     // not all journal entries have been validated - since there might be duplicates
     protected void verifyJournalEntries(Long loanId, Journal... entries) {
         GetJournalEntriesTransactionIdResponse journalEntriesForLoan = journalEntryHelper.getJournalEntriesForLoan(loanId);
-        Assertions.assertEquals(entries.length, journalEntriesForLoan.getPageItems().size());
+        Assertions.assertEquals(entries.length, journalEntriesForLoan.getPageItems().size(),
+                "Actual is: " + lineSeparator() + journalEntriesForLoan.getPageItems().toString());
         Arrays.stream(entries).forEach(journalEntry -> {
             boolean found = journalEntriesForLoan.getPageItems().stream()
                     .anyMatch(item -> Objects.equals(item.getAmount(), journalEntry.amount)
@@ -708,6 +713,35 @@ public abstract class BaseLoanIntegrationTest {
                 .getLoanDisbursementJSON(ChargesHelper.CHARGE_CALCULATION_TYPE_PERCENTAGE_AMOUNT, String.valueOf(percentageAmount)));
         assertNotNull(chargeId);
         return chargeId.longValue();
+    }
+
+    protected void verifyRepaymentSchedule(GetLoansLoanIdResponse savedLoanResponse, GetLoansLoanIdResponse actualLoanResponse,
+            int totalPeriods, int identicalPeriods) {
+        List<GetLoansLoanIdRepaymentPeriod> savedPeriods = savedLoanResponse.getRepaymentSchedule().getPeriods();
+        List<GetLoansLoanIdRepaymentPeriod> actualPeriods = actualLoanResponse.getRepaymentSchedule().getPeriods();
+
+        assertEquals(totalPeriods, savedPeriods.size(), "Unexpected number of periods in savedPeriods list.");
+        assertEquals(totalPeriods, actualPeriods.size(), "Unexpected number of periods in actualPeriods list.");
+
+        verifyPeriodsEquality(savedPeriods, actualPeriods, 0, identicalPeriods, true);
+
+        verifyPeriodsEquality(savedPeriods, actualPeriods, identicalPeriods, totalPeriods, false);
+    }
+
+    private void verifyPeriodsEquality(List<GetLoansLoanIdRepaymentPeriod> savedPeriods, List<GetLoansLoanIdRepaymentPeriod> actualPeriods,
+            int startIndex, int endIndex, boolean shouldEqual) {
+        for (int i = startIndex; i < endIndex; i++) {
+            Double savedTotalDue = savedPeriods.get(i).getTotalDueForPeriod();
+            Double actualTotalDue = actualPeriods.get(i).getTotalDueForPeriod();
+
+            if (shouldEqual) {
+                assertEquals(savedTotalDue, actualTotalDue, String.format(
+                        "Period %d should be identical in both responses. Expected: %s, Actual: %s", i + 1, savedTotalDue, actualTotalDue));
+            } else {
+                assertNotEquals(savedTotalDue, actualTotalDue, String
+                        .format("Period %d should differ between responses. Saved: %s, Actual: %s", i + 1, savedTotalDue, actualTotalDue));
+            }
+        }
     }
 
     protected void verifyRepaymentSchedule(Long loanId, Installment... installments) {
@@ -863,8 +897,8 @@ public abstract class BaseLoanIntegrationTest {
         return postLoansRequest;
     }
 
-    protected PostLoansRequest applyPin4ProgressiveLoanRequest(Long clientId, Long loanProductId, String loanDisbursementDate,
-            Double amount, Double interestRate, int numberOfRepayments, Consumer<PostLoansRequest> customizer) {
+    protected PostLoansRequest applyLP2ProgressiveLoanRequest(Long clientId, Long loanProductId, String loanDisbursementDate, Double amount,
+            Double interestRate, int numberOfRepayments, Consumer<PostLoansRequest> customizer) {
 
         PostLoansRequest postLoansRequest = new PostLoansRequest().clientId(clientId)
                 .transactionProcessingStrategyCode(ADVANCED_PAYMENT_ALLOCATION_STRATEGY).productId(loanProductId)
@@ -908,7 +942,7 @@ public abstract class BaseLoanIntegrationTest {
 
     protected Long applyAndApproveProgressiveLoan(Long clientId, Long loanProductId, String loanDisbursementDate, Double amount,
             Double interestRate, int numberOfRepayments, Consumer<PostLoansRequest> customizer) {
-        PostLoansResponse postLoansResponse = loanTransactionHelper.applyLoan(applyPin4ProgressiveLoanRequest(clientId, loanProductId,
+        PostLoansResponse postLoansResponse = loanTransactionHelper.applyLoan(applyLP2ProgressiveLoanRequest(clientId, loanProductId,
                 loanDisbursementDate, amount, interestRate, numberOfRepayments, customizer));
 
         PostLoansLoanIdResponse approvedLoanResult = loanTransactionHelper.approveLoan(postLoansResponse.getResourceId(),
@@ -1280,8 +1314,21 @@ public abstract class BaseLoanIntegrationTest {
         public static final Integer DAYS_365 = 365;
     }
 
+    public static class DaysInMonthType {
+
+        public static final Integer INVALID = 0;
+        public static final Integer ACTUAL = 1;
+        public static final Integer DAYS_30 = 30;
+    }
+
     public static class FuturePaymentAllocationRule {
 
         public static final String LAST_INSTALLMENT = "LAST_INSTALLMENT";
+    }
+
+    public static class SupportedInterestRefundTypesItem {
+
+        public static final String MERCHANT_ISSUED_REFUND = "MERCHANT_ISSUED_REFUND";
+        public static final String PAYOUT_REFUND = "PAYOUT_REFUND";
     }
 }

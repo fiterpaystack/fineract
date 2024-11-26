@@ -107,6 +107,7 @@ public class LoanProductTestBuilder {
 
     private List<Map<String, Long>> feeToIncomeAccountMappings = null;
     private List<Map<String, Long>> penaltyToIncomeAccountMappings = null;
+    private List<Map<String, Long>> chargeOffReasonsToExpenseMappings = null;
     private Account feeAndPenaltyAssetAccount;
 
     private Boolean multiDisburseLoan = false;
@@ -303,6 +304,10 @@ public class LoanProductTestBuilder {
             map.put("penaltyToIncomeAccountMappings", this.penaltyToIncomeAccountMappings);
         }
 
+        if (this.chargeOffReasonsToExpenseMappings != null) {
+            map.put("chargeOffReasonsToExpenseMappings", this.chargeOffReasonsToExpenseMappings);
+        }
+
         if (this.dueDaysForRepaymentEvent != null) {
             map.put("dueDaysForRepaymentEvent", this.dueDaysForRepaymentEvent);
         }
@@ -497,6 +502,11 @@ public class LoanProductTestBuilder {
         return this;
     }
 
+    public LoanProductTestBuilder withDisallowExpectedDisbursements() {
+        this.disallowExpectedDisbursements = true;
+        return this;
+    }
+
     public LoanProductTestBuilder withFullAccountingConfig(String accountingRule, FullAccountingConfig fullAccountingConfig) {
         this.accountingRule = accountingRule;
         this.fullAccountingConfig = fullAccountingConfig;
@@ -637,6 +647,11 @@ public class LoanProductTestBuilder {
         this.recalculationRestFrequencyInterval = recalculationRestFrequencyInterval;
         this.recalculationRestFrequencyOnDayType = recalculationRestFrequencyOnDayType;
         this.recalculationRestFrequencyDayOfWeekType = recalculationRestFrequencyDayOfWeekType;
+        return this;
+    }
+
+    public LoanProductTestBuilder withRecalculationRestFrequencyType(final String recalculationRestFrequencyType) {
+        this.recalculationRestFrequencyType = recalculationRestFrequencyType;
         return this;
     }
 
@@ -783,6 +798,17 @@ public class LoanProductTestBuilder {
 
     public LoanProductTestBuilder withSupportedInterestRefundTypes(String... refundTypes) {
         this.supportedInterestRefundTypes = List.of(refundTypes);
+        return this;
+    }
+
+    public LoanProductTestBuilder withChargeOffReasonsToExpenseMappings(final Long reasonId, final Long accountId) {
+        if (this.chargeOffReasonsToExpenseMappings == null) {
+            this.chargeOffReasonsToExpenseMappings = new ArrayList<>();
+        }
+        Map<String, Long> newMap = new HashMap<>();
+        newMap.put("chargeOffReasonCodeValueId", reasonId);
+        newMap.put("expenseGLAccountId", accountId);
+        this.chargeOffReasonsToExpenseMappings.add(newMap);
         return this;
     }
 

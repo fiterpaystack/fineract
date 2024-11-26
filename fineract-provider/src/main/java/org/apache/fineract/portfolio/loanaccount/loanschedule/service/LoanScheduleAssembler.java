@@ -32,7 +32,6 @@ import java.math.BigDecimal;
 import java.math.MathContext;
 import java.time.LocalDate;
 import java.time.temporal.ChronoField;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -226,7 +225,12 @@ public class LoanScheduleAssembler {
         }
 
         final BigDecimal interestRatePerPeriod = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed("interestRatePerPeriod", element);
-        final PeriodFrequencyType interestRatePeriodFrequencyType = loanProduct.getInterestPeriodFrequencyType();
+        PeriodFrequencyType interestRatePeriodFrequencyType = loanProduct.getInterestPeriodFrequencyType();
+        if (this.fromApiJsonHelper.parameterExists(LoanApiConstants.interestRateFrequencyTypeParameterName, element)) {
+            final Integer interestRateFrequencyType = this.fromApiJsonHelper
+                    .extractIntegerWithLocaleNamed(LoanApiConstants.interestRateFrequencyTypeParameterName, element);
+            interestRatePeriodFrequencyType = PeriodFrequencyType.fromInt(interestRateFrequencyType);
+        }
 
         BigDecimal annualNominalInterestRate = BigDecimal.ZERO;
         if (interestRatePerPeriod != null) {
@@ -648,7 +652,13 @@ public class LoanScheduleAssembler {
 
     public LoanProductRelatedDetail assembleLoanProductRelatedDetail(final JsonElement element, final LoanProduct loanProduct) {
         final LoanApplicationTerms loanApplicationTerms = assembleLoanApplicationTermsFrom(element, loanProduct);
-        return loanApplicationTerms.toLoanProductRelatedDetail();
+        LoanProductRelatedDetail loanProductRelatedDetail = loanApplicationTerms.toLoanProductRelatedDetail();
+        final String interestRateFrequencyTypeParamName = "interestRateFrequencyType";
+        if (this.fromApiJsonHelper.parameterExists(interestRateFrequencyTypeParamName, element)) {
+            final Integer newValue = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(interestRateFrequencyTypeParamName, element);
+            loanProductRelatedDetail.setInterestPeriodFrequencyType(PeriodFrequencyType.fromInt(newValue));
+        }
+        return loanProductRelatedDetail;
     }
 
     public LoanScheduleModel assembleLoanScheduleFrom(final JsonElement element) {
@@ -906,7 +916,7 @@ public class LoanScheduleAssembler {
 
         LocalDate previousDate = loan.getDisbursementDate();
         for (LocalDate duedate : dueDates) {
-            int gap = Math.toIntExact(ChronoUnit.DAYS.between(previousDate, duedate));
+            int gap = DateUtils.getExactDifferenceInDays(previousDate, duedate);
             previousDate = duedate;
             if (gap < minGap || (maxGap != null && gap > maxGap)) {
                 baseDataValidator.reset().value(duedate).failWithCodeNoParameterAddedToErrorCode(
