@@ -19,16 +19,18 @@
     under the License.
 
 -->
-<configuration>
-    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
-        </encoder>
-    </appender>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
 
-    <logger name="org.springframework" level="WARN" />
+    <changeSet id="1" author="fineract">
+        <insert tableName="r_enum_value">
+            <column name="enum_name" value="transaction_type_enum"/>
+            <column name="enum_id" valueNumeric="33"/>
+            <column name="enum_message_property" value="Interest Refund"/>
+            <column name="enum_value" value="Interest Refund"/>
+            <column name="enum_type" valueBoolean="false"/>
+        </insert>
+    </changeSet>
 
-    <root level="INFO" >
-        <appender-ref ref="STDOUT"/>
-    </root>
-</configuration>
+</databaseChangeLog>

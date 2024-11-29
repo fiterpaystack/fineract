@@ -16,18 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.cob.service;
+package org.apache.fineract.accounting.producttoaccountmapping.data;
 
-import java.util.List;
-import org.apache.fineract.cob.domain.LoanAccountLock;
+import java.io.Serializable;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
+import org.apache.fineract.accounting.glaccount.data.GLAccountData;
+import org.apache.fineract.infrastructure.codes.data.CodeValueData;
 
-public interface LoanAccountLockService {
+@Data
+@NoArgsConstructor
+@Accessors(chain = true)
+public class ChargeOffReasonToGLAccountMapper implements Serializable {
 
-    List<LoanAccountLock> getLockedLoanAccountByPage(int page, int limit);
-
-    boolean isLoanHardLocked(Long loanId);
-
-    boolean isLockOverrulable(Long loanId);
-
-    void updateCobAndRemoveLocks();
+    private static final long serialVersionUID = 1L;
+    private CodeValueData chargeOffReasonsCodeValue;
+    private GLAccountData chargeOffExpenseAccount;
 }

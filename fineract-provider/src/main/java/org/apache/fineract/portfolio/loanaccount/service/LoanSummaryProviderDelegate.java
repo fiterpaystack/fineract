@@ -16,18 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.cob.service;
+package org.apache.fineract.portfolio.loanaccount.service;
 
 import java.util.List;
-import org.apache.fineract.cob.domain.LoanAccountLock;
+import lombok.AllArgsConstructor;
+import org.springframework.stereotype.Component;
 
-public interface LoanAccountLockService {
+@Component
+@AllArgsConstructor
+public class LoanSummaryProviderDelegate {
 
-    List<LoanAccountLock> getLockedLoanAccountByPage(int page, int limit);
+    private final List<LoanSummaryDataProvider> loanSummaryDataProviders;
 
-    boolean isLoanHardLocked(Long loanId);
-
-    boolean isLockOverrulable(Long loanId);
-
-    void updateCobAndRemoveLocks();
+    public LoanSummaryDataProvider resolveLoanSummaryDataProvider(String loanProcessingStrategyCode) {
+        return loanSummaryDataProviders.stream().filter(provider -> provider.accept(loanProcessingStrategyCode)).findAny()
+                .orElseThrow(() -> new IllegalArgumentException("No provider found for :" + loanProcessingStrategyCode));
+    }
 }

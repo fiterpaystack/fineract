@@ -19,16 +19,18 @@
     under the License.
 
 -->
-<configuration>
-    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
-        </encoder>
-    </appender>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
 
-    <logger name="org.springframework" level="WARN" />
-
-    <root level="INFO" >
-        <appender-ref ref="STDOUT"/>
-    </root>
-</configuration>
+    <changeSet author="fineract" id="1023-1">
+        <addColumn tableName="m_product_loan">
+            <column name="charge_off_behaviour" type="varchar(20)" defaultValue="REGULAR"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="fineract" id="1023-2">
+        <addColumn tableName="m_loan">
+            <column name="charge_off_behaviour" type="varchar(20)" defaultValue="REGULAR"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>
