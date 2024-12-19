@@ -198,6 +198,8 @@ final class LoanProductsApiResourceSwagger {
         public Boolean isCompoundingToBePostedAsTransaction;
         @Schema(example = "false")
         public Boolean allowCompoundingOnEod;
+        @Schema(example = "false")
+        public Boolean disallowInterestCalculationOnPastDue;
 
         // Accounting
         @Schema(example = "3")
@@ -246,7 +248,7 @@ final class LoanProductsApiResourceSwagger {
         public Long incomeFromGoodwillCreditPenaltyAccountId;
         public List<GetLoanProductsProductIdResponse.GetLoanPaymentChannelToFundSourceMappings> paymentChannelToFundSourceMappings;
         public List<GetLoanProductsProductIdResponse.GetLoanFeeToIncomeAccountMappings> feeToIncomeAccountMappings;
-        public List<GetLoanProductsProductIdResponse.GetChargeOffReasonsToExpenseMappings> chargeOffReasonsToExpenseMappings;
+        public List<PostChargeOffReasonToExpenseAccountMappings> chargeOffReasonToExpenseAccountMappings;
         public List<ChargeToGLAccountMapper> penaltyToIncomeAccountMappings;
 
         // Multi Disburse
@@ -323,6 +325,16 @@ final class LoanProductsApiResourceSwagger {
         public List<String> supportedInterestRefundTypes;
         @Schema(example = "REGULAR")
         public String chargeOffBehaviour;
+
+        static final class PostChargeOffReasonToExpenseAccountMappings {
+
+            private PostChargeOffReasonToExpenseAccountMappings() {}
+
+            @Schema(example = "1")
+            public Long chargeOffReasonCodeValueId;
+            @Schema(example = "1")
+            public Long expenseGLAccountId;
+        }
     }
 
     @Schema(description = "PostLoanProductsResponse")
@@ -520,6 +532,8 @@ final class LoanProductsApiResourceSwagger {
             public GetLoanProductsPreClosureInterestCalculationStrategy preClosureInterestCalculationStrategy;
             @Schema(example = "true")
             public Boolean isArrearsBasedOnOriginalSchedule;
+            @Schema(example = "false")
+            public Boolean disallowInterestCalculationOnPastDue;
             @Schema(example = "true")
             public Boolean isCompoundingToBePostedAsTransaction;
             @Schema(example = "true")
@@ -1215,14 +1229,41 @@ final class LoanProductsApiResourceSwagger {
             public Long fundSourceAccountId;
         }
 
-        static final class GetChargeOffReasonsToExpenseMappings {
+        static final class GetChargeOffReasonToExpenseAccountMappings {
 
-            private GetChargeOffReasonsToExpenseMappings() {}
+            private GetChargeOffReasonToExpenseAccountMappings() {}
 
-            @Schema(example = "1")
-            public Long chargeOffReasonCodeValueId;
-            @Schema(example = "12")
-            public Long expenseGLAccountId;
+            public GetCodeValueData chargeOffReasonCodeValue;
+            public GetGLAccountData chargeOffExpenseAccount;
+
+            static final class GetCodeValueData {
+
+                private GetCodeValueData() {}
+
+                @Schema(example = "1")
+                public Long id;
+                @Schema(example = "ChargeOffReasons")
+                public String name;
+                @Schema(example = "1")
+                public Integer position;
+                public String description;
+                @Schema(example = "true")
+                public Boolean active;
+                @Schema(example = "false")
+                public Boolean mandatory;
+            }
+
+            static final class GetGLAccountData {
+
+                private GetGLAccountData() {}
+
+                @Schema(example = "1")
+                public Long id;
+                @Schema(example = "Written off")
+                public String name;
+                @Schema(example = "e4")
+                public String glCode;
+            }
         }
 
         static final class GetLoanFeeToIncomeAccountMappings {
@@ -1335,7 +1376,7 @@ final class LoanProductsApiResourceSwagger {
         public GetLoanAccountingMappings accountingMappings;
         public Set<GetLoanPaymentChannelToFundSourceMappings> paymentChannelToFundSourceMappings;
         public Set<GetLoanFeeToIncomeAccountMappings> feeToIncomeAccountMappings;
-        public Set<GetChargeOffReasonsToExpenseMappings> chargeOffReasonsToExpenseMappings;
+        public List<GetChargeOffReasonToExpenseAccountMappings> chargeOffReasonToExpenseAccountMappings;
         @Schema(example = "false")
         public Boolean isRatesEnabled;
         @Schema(example = "true")
@@ -1595,7 +1636,7 @@ final class LoanProductsApiResourceSwagger {
         public Long incomeFromChargeOffPenaltyAccountId;
         public List<GetLoanProductsProductIdResponse.GetLoanPaymentChannelToFundSourceMappings> paymentChannelToFundSourceMappings;
         public List<GetLoanProductsProductIdResponse.GetLoanFeeToIncomeAccountMappings> feeToIncomeAccountMappings;
-        public List<GetLoanProductsProductIdResponse.GetChargeOffReasonsToExpenseMappings> chargeOffReasonsToExpenseMappings;
+        public List<PostLoanProductsRequest.PostChargeOffReasonToExpenseAccountMappings> chargeOffReasonToExpenseAccountMappings;
         public List<ChargeToGLAccountMapper> penaltyToIncomeAccountMappings;
         @Schema(example = "false")
         public Boolean enableAccrualActivityPosting;

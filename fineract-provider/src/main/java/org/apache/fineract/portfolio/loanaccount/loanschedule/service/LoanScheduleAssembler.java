@@ -115,7 +115,10 @@ import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanSchedul
 import org.apache.fineract.portfolio.loanaccount.serialization.VariableLoanScheduleFromApiJsonValidator;
 import org.apache.fineract.portfolio.loanaccount.service.LoanAccrualsProcessingService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanChargeAssembler;
+import org.apache.fineract.portfolio.loanaccount.service.LoanChargeService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanDisbursementDetailsAssembler;
+import org.apache.fineract.portfolio.loanaccount.service.LoanDisbursementService;
+import org.apache.fineract.portfolio.loanaccount.service.LoanScheduleService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanUtilService;
 import org.apache.fineract.portfolio.loanproduct.LoanProductConstants;
 import org.apache.fineract.portfolio.loanproduct.domain.AmortizationMethod;
@@ -158,6 +161,9 @@ public class LoanScheduleAssembler {
     private final LoanRepositoryWrapper loanRepositoryWrapper;
     private final LoanLifecycleStateMachine defaultLoanLifecycleStateMachine;
     private final LoanAccrualsProcessingService loanAccrualsProcessingService;
+    private final LoanDisbursementService loanDisbursementService;
+    private final LoanChargeService loanChargeService;
+    private final LoanScheduleService loanScheduleService;
 
     public LoanApplicationTerms assembleLoanTerms(final JsonElement element) {
         final Long loanProductId = this.fromApiJsonHelper.extractLongNamed("productId", element);
@@ -512,8 +518,8 @@ public class LoanScheduleAssembler {
             fixedLength = this.fromApiJsonHelper.extractIntegerWithLocaleNamed(LoanProductConstants.FIXED_LENGTH, element);
         }
 
-        return LoanApplicationTerms.assembleFrom(applicationCurrency, loanTermFrequency, loanTermPeriodFrequencyType, numberOfRepayments,
-                repaymentEvery, repaymentPeriodFrequencyType, nthDay, weekDayType, amortizationMethod, interestMethod,
+        return LoanApplicationTerms.assembleFrom(applicationCurrency.toData(), loanTermFrequency, loanTermPeriodFrequencyType,
+                numberOfRepayments, repaymentEvery, repaymentPeriodFrequencyType, nthDay, weekDayType, amortizationMethod, interestMethod,
                 interestRatePerPeriod, interestRatePeriodFrequencyType, annualNominalInterestRate, interestCalculationPeriodMethod,
                 allowPartialPeriodInterestCalcualtion, principalMoney, expectedDisbursementDate, repaymentsStartingFromDate,
                 calculatedRepaymentsStartingFromDate, graceOnPrincipalPayment, recurringMoratoriumOnPrincipalPeriods,
@@ -936,7 +942,7 @@ public class LoanScheduleAssembler {
         }
         final LocalDate recalculateFrom = null;
         ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
-        loan.regenerateRepaymentSchedule(scheduleGeneratorDTO);
+        loanScheduleService.regenerateRepaymentSchedule(loan, scheduleGeneratorDTO);
         loanAccrualsProcessingService.reprocessExistingAccruals(loan);
 
     }
@@ -1478,11 +1484,11 @@ public class LoanScheduleAssembler {
             actualChanges.put(LoanApiConstants.disbursementNetDisbursalAmountParameterName, loan.getNetDisbursalAmount());
 
             if (disbursementDataArray != null) {
-                loan.updateDisbursementDetails(command, actualChanges);
+                loanDisbursementService.updateDisbursementDetails(loan, command, actualChanges);
             }
         }
 
-        loan.recalculateAllCharges();
+        loanChargeService.recalculateAllCharges(loan);
 
         loan.setApprovedOnDate(approvedOn);
         loan.setApprovedBy(currentUser);
@@ -1507,7 +1513,7 @@ public class LoanScheduleAssembler {
         if (!actualChanges.isEmpty()) {
             if (actualChanges.containsKey(LoanApiConstants.approvedLoanAmountParameterName)
                     || actualChanges.containsKey("recalculateLoanSchedule") || actualChanges.containsKey("expectedDisbursementDate")) {
-                loan.regenerateRepaymentSchedule(loanUtilService.buildScheduleGeneratorDTO(loan, null));
+                loanScheduleService.regenerateRepaymentSchedule(loan, loanUtilService.buildScheduleGeneratorDTO(loan, null));
                 loanAccrualsProcessingService.reprocessExistingAccruals(loan);
             }
         }

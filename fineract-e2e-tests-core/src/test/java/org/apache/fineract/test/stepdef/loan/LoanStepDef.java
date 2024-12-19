@@ -19,6 +19,7 @@
 package org.apache.fineract.test.stepdef.loan;
 
 import static org.apache.fineract.test.data.TransactionProcessingStrategyCode.ADVANCED_PAYMENT_ALLOCATION;
+import static org.apache.fineract.test.data.loanproduct.DefaultLoanProduct.LP2_ADV_PYMNT_INTEREST_DAILY_INTEREST_RECALCULATION_ZERO_INTEREST_CHARGE_OFF_BEHAVIOUR;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertNotNull;
@@ -1298,6 +1299,8 @@ public class LoanStepDef extends AbstractStepDef {
     public void disburseLoan(String actualDisbursementDate, String transactionAmount) throws IOException {
         Response<PostLoansResponse> loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         long loanId = loanResponse.body().getLoanId();
+        String resourceId = String.valueOf(loanId);
+
         PostLoansLoanIdRequest disburseRequest = LoanRequestFactory.defaultLoanDisburseRequest()
                 .actualDisbursementDate(actualDisbursementDate).transactionAmount(new BigDecimal(transactionAmount));
 
@@ -1310,7 +1313,7 @@ public class LoanStepDef extends AbstractStepDef {
         Long statusExpected = Long.valueOf(loanDetails.body().getStatus().getId());
 
         assertThat(statusActual)//
-                .as(ErrorMessageHelper.wrongLoanStatus(Math.toIntExact(statusActual), Math.toIntExact(statusExpected)))//
+                .as(ErrorMessageHelper.wrongLoanStatus(resourceId, Math.toIntExact(statusActual), Math.toIntExact(statusExpected)))//
                 .isEqualTo(statusExpected);//
         eventCheckHelper.disburseLoanEventCheck(loanId);
         eventCheckHelper.loanDisbursalTransactionEventCheck(loanDisburseResponse);
@@ -1320,6 +1323,8 @@ public class LoanStepDef extends AbstractStepDef {
     public void disburseLoanWithoutAutoDownpayment(String actualDisbursementDate, String transactionAmount) throws IOException {
         Response<PostLoansResponse> loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         long loanId = loanResponse.body().getLoanId();
+        String resourceId = String.valueOf(loanId);
+
         PostLoansLoanIdRequest disburseRequest = LoanRequestFactory.defaultLoanDisburseRequest()
                 .actualDisbursementDate(actualDisbursementDate).transactionAmount(new BigDecimal(transactionAmount));
 
@@ -1333,7 +1338,7 @@ public class LoanStepDef extends AbstractStepDef {
         Long statusExpected = Long.valueOf(loanDetails.body().getStatus().getId());
 
         assertThat(statusActual)//
-                .as(ErrorMessageHelper.wrongLoanStatus(Math.toIntExact(statusActual), Math.toIntExact(statusExpected)))//
+                .as(ErrorMessageHelper.wrongLoanStatus(resourceId, Math.toIntExact(statusActual), Math.toIntExact(statusExpected)))//
                 .isEqualTo(statusExpected);//
         eventCheckHelper.disburseLoanEventCheck(loanId);
         eventCheckHelper.loanDisbursalTransactionEventCheck(loanDisburseResponse);
@@ -1613,8 +1618,10 @@ public class LoanStepDef extends AbstractStepDef {
 
     @Then("Loan Repayment schedule has {int} periods, with the following data for periods:")
     public void loanRepaymentSchedulePeriodsCheck(int linesExpected, DataTable table) throws IOException {
+
         Response<PostLoansResponse> loanCreateResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         long loanId = loanCreateResponse.body().getLoanId();
+        String resourceId = String.valueOf(loanId);
 
         Response<GetLoansLoanIdResponse> loanDetailsResponse = loansApi.retrieveLoan(loanId, false, "repaymentSchedule", "", "").execute();
         ErrorHelper.checkSuccessfulApiCall(loanDetailsResponse);
@@ -1634,9 +1641,9 @@ public class LoanStepDef extends AbstractStepDef {
 
             boolean containsExpectedValues = actualValuesList.stream().anyMatch(actualValues -> actualValues.equals(expectedValues));
             assertThat(containsExpectedValues)
-                    .as(ErrorMessageHelper.wrongValueInLineInRepaymentSchedule(i, actualValuesList, expectedValues)).isTrue();
+                    .as(ErrorMessageHelper.wrongValueInLineInRepaymentSchedule(resourceId, i, actualValuesList, expectedValues)).isTrue();
 
-            assertThat(linesActual).as(ErrorMessageHelper.wrongNumberOfLinesInRepaymentSchedule(linesActual, linesExpected))
+            assertThat(linesActual).as(ErrorMessageHelper.wrongNumberOfLinesInRepaymentSchedule(resourceId, linesActual, linesExpected))
                     .isEqualTo(linesExpected);
         }
     }
@@ -1660,6 +1667,7 @@ public class LoanStepDef extends AbstractStepDef {
     public void loanTransactionsTransactionWithGivenDateDataCheck(String date, DataTable table) throws IOException {
         Response<PostLoansResponse> loanCreateResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         long loanId = loanCreateResponse.body().getLoanId();
+        String resourceId = String.valueOf(loanId);
 
         Response<GetLoansLoanIdResponse> loanDetailsResponse = loansApi.retrieveLoan(loanId, false, "transactions", "", "").execute();
         ErrorHelper.checkSuccessfulApiCall(loanDetailsResponse);
@@ -1673,14 +1681,16 @@ public class LoanStepDef extends AbstractStepDef {
                 .map(t -> fetchValuesOfTransaction(data.get(0), t)).collect(Collectors.toList());
         boolean containsExpectedValues = actualValuesList.stream().anyMatch(actualValues -> actualValues.equals(expectedValues));
 
-        assertThat(containsExpectedValues).as(ErrorMessageHelper.wrongValueInLineInTransactionsTab(1, actualValuesList, expectedValues))
-                .isTrue();
+        assertThat(containsExpectedValues)
+                .as(ErrorMessageHelper.wrongValueInLineInTransactionsTab(resourceId, 1, actualValuesList, expectedValues)).isTrue();
     }
 
     @Then("Loan Transactions tab has the following data:")
     public void loanTransactionsTabCheck(DataTable table) throws IOException {
         Response<PostLoansResponse> loanCreateResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         long loanId = loanCreateResponse.body().getLoanId();
+        String resourceId = String.valueOf(loanId);
+
         Response<GetLoansLoanIdResponse> loanDetailsResponse = loansApi.retrieveLoan(loanId, false, "transactions", "", "").execute();
         ErrorHelper.checkSuccessfulApiCall(loanDetailsResponse);
         List<GetLoansLoanIdTransactions> transactions = loanDetailsResponse.body().getTransactions();
@@ -1694,10 +1704,11 @@ public class LoanStepDef extends AbstractStepDef {
                     .collect(Collectors.toList());//
             boolean containsExpectedValues = actualValuesList.stream()//
                     .anyMatch(actualValues -> actualValues.equals(expectedValues));//
-            assertThat(containsExpectedValues).as(ErrorMessageHelper.wrongValueInLineInTransactionsTab(i, actualValuesList, expectedValues))
-                    .isTrue();
+            assertThat(containsExpectedValues)
+                    .as(ErrorMessageHelper.wrongValueInLineInTransactionsTab(resourceId, i, actualValuesList, expectedValues)).isTrue();
         }
-        assertThat(transactions.size()).as(ErrorMessageHelper.nrOfLinesWrongInTransactionsTab(transactions.size(), data.size() - 1))
+        assertThat(transactions.size())
+                .as(ErrorMessageHelper.nrOfLinesWrongInTransactionsTab(resourceId, transactions.size(), data.size() - 1))
                 .isEqualTo(data.size() - 1);
     }
 
@@ -1767,6 +1778,7 @@ public class LoanStepDef extends AbstractStepDef {
     public void loanChargesGivenChargeDataCheck(DataTable table) throws IOException {
         Response<PostLoansResponse> loanCreateResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         long loanId = loanCreateResponse.body().getLoanId();
+        String resourceId = String.valueOf(loanId);
 
         Response<GetLoansLoanIdResponse> loanDetailsResponse = loansApi.retrieveLoan(loanId, false, "charges", "", "").execute();
         ErrorHelper.checkSuccessfulApiCall(loanDetailsResponse);
@@ -1780,14 +1792,15 @@ public class LoanStepDef extends AbstractStepDef {
 
         boolean containsExpectedValues = actualValuesList.stream().anyMatch(actualValues -> actualValues.equals(expectedValues));
 
-        assertThat(containsExpectedValues).as(ErrorMessageHelper.wrongValueInLineInChargesTab(1, actualValuesList, expectedValues))
-                .isTrue();
+        assertThat(containsExpectedValues)
+                .as(ErrorMessageHelper.wrongValueInLineInChargesTab(resourceId, 1, actualValuesList, expectedValues)).isTrue();
     }
 
     @Then("Loan Charges tab has the following data:")
     public void loanChargesTabCheck(DataTable table) throws IOException {
         Response<PostLoansResponse> loanCreateResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         long loanId = loanCreateResponse.body().getLoanId();
+        String resourceId = String.valueOf(loanId);
 
         Response<GetLoansLoanIdResponse> loanDetailsResponse = loansApi.retrieveLoan(loanId, false, "charges", "", "").execute();
         ErrorHelper.checkSuccessfulApiCall(loanDetailsResponse);
@@ -1802,8 +1815,8 @@ public class LoanStepDef extends AbstractStepDef {
 
             boolean containsExpectedValues = actualValuesList.stream().anyMatch(actualValues -> actualValues.equals(expectedValues));
 
-            assertThat(containsExpectedValues).as(ErrorMessageHelper.wrongValueInLineInChargesTab(i, actualValuesList, expectedValues))
-                    .isTrue();
+            assertThat(containsExpectedValues)
+                    .as(ErrorMessageHelper.wrongValueInLineInChargesTab(resourceId, i, actualValuesList, expectedValues)).isTrue();
         }
     }
 
@@ -1840,6 +1853,7 @@ public class LoanStepDef extends AbstractStepDef {
     public void loanStatus(String statusExpected) throws IOException {
         Response<PostLoansResponse> loanCreateResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         long loanId = loanCreateResponse.body().getLoanId();
+        String resourceId = String.valueOf(loanId);
 
         Response<GetLoansLoanIdResponse> loanDetailsResponse = loansApi.retrieveLoan(loanId, false, "", "", "").execute();
         ErrorHelper.checkSuccessfulApiCall(loanDetailsResponse);
@@ -1849,7 +1863,7 @@ public class LoanStepDef extends AbstractStepDef {
         LoanStatus loanStatusExpected = LoanStatus.valueOf(statusExpected);
         Integer loanStatusExpectedValue = loanStatusExpected.getValue();
 
-        assertThat(loanStatusActualValue).as(ErrorMessageHelper.wrongLoanStatus(loanStatusActualValue, loanStatusExpectedValue))
+        assertThat(loanStatusActualValue).as(ErrorMessageHelper.wrongLoanStatus(resourceId, loanStatusActualValue, loanStatusExpectedValue))
                 .isEqualTo(loanStatusExpectedValue);
     }
 
@@ -2753,6 +2767,34 @@ public class LoanStepDef extends AbstractStepDef {
         eventCheckHelper.createLoanEventCheck(response);
     }
 
+    @When("Admin creates a new zero charge-off Loan with date: {string}")
+    public void createLoanWithInterestRecalculationAndZeroChargeOffBehaviour(final String date) throws IOException {
+        final Response<PostClientsResponse> clientResponse = testContext().get(TestContextKey.CLIENT_CREATE_RESPONSE);
+        final Long clientId = clientResponse.body().getClientId();
+
+        final DefaultLoanProduct product = DefaultLoanProduct
+                .valueOf(LP2_ADV_PYMNT_INTEREST_DAILY_INTEREST_RECALCULATION_ZERO_INTEREST_CHARGE_OFF_BEHAVIOUR.getName());
+        final Long loanProductId = loanProductResolver.resolve(product);
+
+        final PostLoansRequest loansRequest = loanRequestFactory.defaultLoansRequest(clientId).productId(loanProductId)
+                .principal(new BigDecimal(100)).numberOfRepayments(6).submittedOnDate(date).expectedDisbursementDate(date)
+                .loanTermFrequency(6)//
+                .loanTermFrequencyType(LoanTermFrequencyType.MONTHS.value)//
+                .repaymentEvery(1)//
+                .repaymentFrequencyType(RepaymentFrequencyType.MONTHS.value)//
+                .interestRateFrequencyType(3)//
+                .interestRatePerPeriod(new BigDecimal(7))//
+                .interestType(InterestType.DECLINING_BALANCE.value)//
+                .interestCalculationPeriodType(InterestCalculationPeriodTime.DAILY.value)//
+                .transactionProcessingStrategyCode(ADVANCED_PAYMENT_ALLOCATION.value);
+
+        final Response<PostLoansResponse> response = loansApi.calculateLoanScheduleOrSubmitLoanApplication(loansRequest, "").execute();
+        testContext().set(TestContextKey.LOAN_CREATE_RESPONSE, response);
+        ErrorHelper.checkSuccessfulApiCall(response);
+
+        eventCheckHelper.createLoanEventCheck(response);
+    }
+
     private void performLoanDisbursementAndVerifyStatus(final long loanId, final PostLoansLoanIdRequest disburseRequest)
             throws IOException {
         final Response<PostLoansLoanIdResponse> loanDisburseResponse = loansApi.stateTransitions(loanId, disburseRequest, "disburse")
@@ -2770,7 +2812,9 @@ public class LoanStepDef extends AbstractStepDef {
         assertNotNull(loanDetails.body().getStatus());
         final Long statusExpected = Long.valueOf(loanDetails.body().getStatus().getId());
 
-        assertThat(statusActual).as(ErrorMessageHelper.wrongLoanStatus(Math.toIntExact(statusActual), Math.toIntExact(statusExpected)))
+        String resourceId = String.valueOf(loanId);
+        assertThat(statusActual)
+                .as(ErrorMessageHelper.wrongLoanStatus(resourceId, Math.toIntExact(statusActual), Math.toIntExact(statusExpected)))
                 .isEqualTo(statusExpected);
         eventCheckHelper.disburseLoanEventCheck(loanId);
         eventCheckHelper.loanDisbursalTransactionEventCheck(loanDisburseResponse);

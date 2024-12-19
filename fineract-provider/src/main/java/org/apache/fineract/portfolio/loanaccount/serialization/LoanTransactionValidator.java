@@ -79,6 +79,8 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType;
 import org.apache.fineract.portfolio.loanaccount.exception.DateMismatchException;
 import org.apache.fineract.portfolio.loanaccount.exception.InvalidLoanStateTransitionException;
+import org.apache.fineract.portfolio.loanaccount.exception.InvalidLoanTransactionTypeException;
+import org.apache.fineract.portfolio.loanaccount.exception.InvalidRefundDateException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanApplicationDateException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanChargeRefundException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanDisbursalException;
@@ -102,6 +104,7 @@ public final class LoanTransactionValidator {
     private final LoanUtilService loanUtilService;
     private final EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService;
     private final CalendarInstanceRepository calendarInstanceRepository;
+    private final LoanDownPaymentTransactionValidator loanDownPaymentTransactionValidator;
 
     private void throwExceptionIfValidationWarningsExist(final List<ApiParameterError> dataValidationErrors) {
         if (!dataValidationErrors.isEmpty()) {
@@ -231,34 +234,6 @@ public final class LoanTransactionValidator {
                         actualDisbursementDate, approvedOnDate);
             }
         });
-    }
-
-    private static @NotNull BigDecimal collectTotalCollateral(Set<LoanCollateralManagement> loanCollateralManagements) {
-        BigDecimal totalCollateral = BigDecimal.ZERO;
-
-        for (LoanCollateralManagement loanCollateralManagement : loanCollateralManagements) {
-            BigDecimal quantity = loanCollateralManagement.getQuantity();
-            BigDecimal pctToBase = loanCollateralManagement.getClientCollateralManagement().getCollaterals().getPctToBase();
-            BigDecimal basePrice = loanCollateralManagement.getClientCollateralManagement().getCollaterals().getBasePrice();
-            totalCollateral = totalCollateral.add(quantity.multiply(basePrice).multiply(pctToBase).divide(BigDecimal.valueOf(100)));
-        }
-        return totalCollateral;
-    }
-
-    private static @NotNull Set<String> getDisbursementParameters(boolean isAccountTransfer) {
-        Set<String> disbursementParameters;
-
-        if (isAccountTransfer) {
-            disbursementParameters = new HashSet<>(Arrays.asList("actualDisbursementDate", "externalId", "note", "locale", "dateFormat",
-                    LoanApiConstants.principalDisbursedParameterName, LoanApiConstants.fixedEmiAmountParameterName,
-                    LoanApiConstants.disbursementNetDisbursalAmountParameterName));
-        } else {
-            disbursementParameters = new HashSet<>(Arrays.asList("actualDisbursementDate", "externalId", "note", "locale", "dateFormat",
-                    "paymentTypeId", "accountNumber", "checkNumber", "routingCode", "receiptNumber", "bankNumber", "adjustRepaymentDate",
-                    LoanApiConstants.principalDisbursedParameterName, LoanApiConstants.fixedEmiAmountParameterName,
-                    LoanApiConstants.postDatedChecks, LoanApiConstants.disbursementNetDisbursalAmountParameterName));
-        }
-        return disbursementParameters;
     }
 
     public void validateDisbursementWithPostDatedChecks(final String json, final Long loanId) {
@@ -409,50 +384,6 @@ public final class LoanTransactionValidator {
 
     public void validateNewRepaymentTransaction(final String json) {
         validatePaymentTransaction(json);
-    }
-
-    private void validatePaymentTransaction(String json) {
-        if (StringUtils.isBlank(json)) {
-            throw new InvalidJsonException();
-        }
-
-        final Set<String> transactionParameters = new HashSet<>(
-                Arrays.asList("transactionDate", "transactionAmount", "externalId", "note", "locale", "dateFormat", "paymentTypeId",
-                        "accountNumber", "checkNumber", "routingCode", "receiptNumber", "bankNumber", "loanId"));
-
-        final Type typeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
-        this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, json, transactionParameters);
-
-        final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
-        final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("loan.transaction");
-
-        final JsonElement element = this.fromApiJsonHelper.parse(json);
-        final LocalDate transactionDate = this.fromApiJsonHelper.extractLocalDateNamed("transactionDate", element);
-        baseDataValidator.reset().parameter("transactionDate").value(transactionDate).notNull();
-
-        final BigDecimal transactionAmount = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed("transactionAmount", element);
-        baseDataValidator.reset().parameter("transactionAmount").value(transactionAmount).notNull().positiveAmount();
-
-        final String note = this.fromApiJsonHelper.extractStringNamed("note", element);
-        baseDataValidator.reset().parameter("note").value(note).notExceedingLengthOf(1000);
-
-        validatePaymentDetails(baseDataValidator, element);
-        throwExceptionIfValidationWarningsExist(dataValidationErrors);
-    }
-
-    private void validatePaymentDetails(final DataValidatorBuilder baseDataValidator, final JsonElement element) {
-        // Validate all string payment detail fields for max length
-        final Integer paymentTypeId = this.fromApiJsonHelper.extractIntegerWithLocaleNamed("paymentTypeId", element);
-
-        baseDataValidator.reset().parameter("paymentTypeId").value(paymentTypeId).ignoreIfNull().integerGreaterThanZero();
-
-        final Set<String> paymentDetailParameters = new HashSet<>(
-                Arrays.asList("accountNumber", "checkNumber", "routingCode", "receiptNumber", "bankNumber"));
-        for (final String paymentDetailParameterName : paymentDetailParameters) {
-            final String paymentDetailParameterValue = this.fromApiJsonHelper.extractStringNamed(paymentDetailParameterName, element);
-            baseDataValidator.reset().parameter(paymentDetailParameterName).value(paymentDetailParameterValue).ignoreIfNull()
-                    .notExceedingLengthOf(50);
-        }
     }
 
     public void validateTransactionWithNoAmount(final String json) {
@@ -705,17 +636,6 @@ public final class LoanTransactionValidator {
         }
     }
 
-    public void validateLoanStatusIsActiveOrFullyPaidOrOverpaid(final Loan loan) {
-        if (!(loan.isOpen() || loan.isClosedObligationsMet() || loan.isOverPaid())) {
-            final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
-            final String defaultUserMessage = "Loan must be Active, Fully Paid or Overpaid";
-            final ApiParameterError error = ApiParameterError.generalError("error.msg.loan.must.be.active.fully.paid.or.overpaid",
-                    defaultUserMessage);
-            dataValidationErrors.add(error);
-            throw new PlatformApiDataValidationException(dataValidationErrors);
-        }
-    }
-
     public void validateLoanHasNoLaterChargeRefundTransactionToReverseOrCreateATransaction(Loan loan, LocalDate transactionDate,
             String reversedOrCreated) {
         for (LoanTransaction txn : loan.getLoanTransactions()) {
@@ -834,7 +754,7 @@ public final class LoanTransactionValidator {
         validateLoanClientIsActive(loan);
         validateLoanHasCurrency(loan);
         validateLoanGroupIsActive(loan);
-        validateLoanStatusIsActiveOrFullyPaidOrOverpaid(loan);
+        loanDownPaymentTransactionValidator.validateLoanStatusIsActiveOrFullyPaidOrOverpaid(loan);
         validateLoanDisbursementIsBeforeTransactionDate(loan, transactionDate);
         validateLoanHasNoLaterChargeRefundTransactionToReverseOrCreateATransaction(loan, transactionDate, "created");
 
@@ -868,7 +788,7 @@ public final class LoanTransactionValidator {
     public void validateRefund(final Loan loan, LoanTransactionType loanTransactionType, final LocalDate transactionDate,
             ScheduleGeneratorDTO scheduleGeneratorDTO) {
         checkClientOrGroupActive(loan);
-        validateLoanStatusIsActiveOrFullyPaidOrOverpaid(loan);
+        loanDownPaymentTransactionValidator.validateLoanStatusIsActiveOrFullyPaidOrOverpaid(loan);
         validateActivityNotBeforeClientOrGroupTransferDate(loan, transactionDate);
         validateRepaymentTypeTransactionNotBeforeAChargeRefund(loan, loanTransactionType, transactionDate);
         validateTransactionNotBeforeLastTransactionDate(loan, loanTransactionType, transactionDate);
@@ -878,6 +798,165 @@ public final class LoanTransactionValidator {
                 scheduleGeneratorDTO.getHolidayDetailDTO().isAllowTransactionsOnNonWorkingDay());
         validateTransactionShouldNotBeInTheFuture(transactionDate);
         validateTransactionAmountNotExceedThresholdForMultiDisburseLoan(loan);
+    }
+
+    public void validateRepaymentTypeTransactionNotBeforeAChargeRefund(final Loan loan, final LoanTransactionType loanTransactionType,
+            final LocalDate transactionDate) {
+        if (loanTransactionType.isRepaymentType() && !loanTransactionType.isChargeRefund()) {
+            for (LoanTransaction txn : loan.getLoanTransactions()) {
+                if (txn.isChargeRefund() && DateUtils.isBefore(transactionDate, txn.getTransactionDate())) {
+                    final String errorMessage = "loan.transaction.cant.be.created.because.later.charge.refund.exists";
+                    final String details = "Loan Transaction: " + loan.getId() + " Can't be created because a Later Charge Refund Exists.";
+                    throw new LoanChargeRefundException(errorMessage, details);
+                }
+            }
+        }
+    }
+
+    public void validateRefundDateIsAfterLastRepayment(final Loan loan, final LocalDate refundTransactionDate) {
+        final LocalDate possibleNextRefundDate = loan.possibleNextRefundDate();
+
+        if (possibleNextRefundDate == null || DateUtils.isBefore(refundTransactionDate, possibleNextRefundDate)) {
+            throw new InvalidRefundDateException(refundTransactionDate.toString());
+        }
+    }
+
+    public void validateActivityNotBeforeClientOrGroupTransferDate(final Loan loan, final LoanEvent event, final LocalDate activityDate) {
+        if (loan.getClient() != null && loan.getClient().getOfficeJoiningDate() != null) {
+            final LocalDate clientOfficeJoiningDate = loan.getClient().getOfficeJoiningDate();
+            if (DateUtils.isBefore(activityDate, clientOfficeJoiningDate)) {
+                String errorMessage = null;
+                String action = null;
+                String postfix = null;
+                switch (event) {
+                    case LOAN_APPROVED -> {
+                        errorMessage = "The date on which a loan is approved cannot be earlier than client's transfer date to this office";
+                        action = "approval";
+                        postfix = "cannot.be.before.client.transfer.date";
+                    }
+                    case LOAN_APPROVAL_UNDO -> {
+                        errorMessage = "The date on which a loan is approved cannot be earlier than client's transfer date to this office";
+                        action = "approval";
+                        postfix = "cannot.be.undone.before.client.transfer.date";
+                    }
+                    case LOAN_DISBURSED -> {
+                        errorMessage = "The date on which a loan is disbursed cannot be earlier than client's transfer date to this office";
+                        action = "disbursal";
+                        postfix = "cannot.be.before.client.transfer.date";
+                    }
+                    case LOAN_DISBURSAL_UNDO -> {
+                        errorMessage = "Cannot undo a disbursal done in another branch";
+                        action = "disbursal";
+                        postfix = "cannot.be.undone.before.client.transfer.date";
+                    }
+                    case LOAN_REPAYMENT_OR_WAIVER -> {
+                        errorMessage = "The date on which a repayment or waiver is made cannot be earlier than client's transfer date to this office";
+                        action = "repayment.or.waiver";
+                        postfix = "cannot.be.made.before.client.transfer.date";
+                    }
+                    case WRITE_OFF_OUTSTANDING -> {
+                        errorMessage = "The date on which a write off is made cannot be earlier than client's transfer date to this office";
+                        action = "writeoff";
+                        postfix = "cannot.be.undone.before.client.transfer.date";
+                    }
+                    case REPAID_IN_FULL -> {
+                        errorMessage = "The date on which the loan is repaid in full cannot be earlier than client's transfer date to this office";
+                        action = "close";
+                        postfix = "cannot.be.undone.before.client.transfer.date";
+                    }
+                    case LOAN_CHARGE_PAYMENT -> {
+                        errorMessage = "The date on which a charge payment is made cannot be earlier than client's transfer date to this office";
+                        action = "charge.payment";
+                        postfix = "cannot.be.made.before.client.transfer.date";
+                    }
+                    case LOAN_REFUND -> {
+                        errorMessage = "The date on which a refund is made cannot be earlier than client's transfer date to this office";
+                        action = "refund";
+                        postfix = "cannot.be.made.before.client.transfer.date";
+                    }
+                    case LOAN_DISBURSAL_UNDO_LAST -> {
+                        errorMessage = "Cannot undo a last disbursal in another branch";
+                        action = "disbursal";
+                        postfix = "cannot.be.undone.before.client.transfer.date";
+                    }
+                    default -> {
+                    }
+                }
+                throw new InvalidLoanStateTransitionException(action, postfix, errorMessage, clientOfficeJoiningDate);
+            }
+        }
+    }
+
+    private static @NotNull BigDecimal collectTotalCollateral(Set<LoanCollateralManagement> loanCollateralManagements) {
+        BigDecimal totalCollateral = BigDecimal.ZERO;
+
+        for (LoanCollateralManagement loanCollateralManagement : loanCollateralManagements) {
+            BigDecimal quantity = loanCollateralManagement.getQuantity();
+            BigDecimal pctToBase = loanCollateralManagement.getClientCollateralManagement().getCollaterals().getPctToBase();
+            BigDecimal basePrice = loanCollateralManagement.getClientCollateralManagement().getCollaterals().getBasePrice();
+            totalCollateral = totalCollateral.add(quantity.multiply(basePrice).multiply(pctToBase).divide(BigDecimal.valueOf(100)));
+        }
+        return totalCollateral;
+    }
+
+    private static @NotNull Set<String> getDisbursementParameters(boolean isAccountTransfer) {
+        Set<String> disbursementParameters;
+
+        if (isAccountTransfer) {
+            disbursementParameters = new HashSet<>(Arrays.asList("actualDisbursementDate", "externalId", "note", "locale", "dateFormat",
+                    LoanApiConstants.principalDisbursedParameterName, LoanApiConstants.fixedEmiAmountParameterName,
+                    LoanApiConstants.disbursementNetDisbursalAmountParameterName));
+        } else {
+            disbursementParameters = new HashSet<>(Arrays.asList("actualDisbursementDate", "externalId", "note", "locale", "dateFormat",
+                    "paymentTypeId", "accountNumber", "checkNumber", "routingCode", "receiptNumber", "bankNumber", "adjustRepaymentDate",
+                    LoanApiConstants.principalDisbursedParameterName, LoanApiConstants.fixedEmiAmountParameterName,
+                    LoanApiConstants.postDatedChecks, LoanApiConstants.disbursementNetDisbursalAmountParameterName));
+        }
+        return disbursementParameters;
+    }
+
+    private void validatePaymentTransaction(String json) {
+        if (StringUtils.isBlank(json)) {
+            throw new InvalidJsonException();
+        }
+
+        final Set<String> transactionParameters = new HashSet<>(
+                Arrays.asList("transactionDate", "transactionAmount", "externalId", "note", "locale", "dateFormat", "paymentTypeId",
+                        "accountNumber", "checkNumber", "routingCode", "receiptNumber", "bankNumber", "loanId"));
+
+        final Type typeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
+        this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, json, transactionParameters);
+
+        final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+        final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("loan.transaction");
+
+        final JsonElement element = this.fromApiJsonHelper.parse(json);
+        final LocalDate transactionDate = this.fromApiJsonHelper.extractLocalDateNamed("transactionDate", element);
+        baseDataValidator.reset().parameter("transactionDate").value(transactionDate).notNull();
+
+        final BigDecimal transactionAmount = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed("transactionAmount", element);
+        baseDataValidator.reset().parameter("transactionAmount").value(transactionAmount).notNull().positiveAmount();
+
+        final String note = this.fromApiJsonHelper.extractStringNamed("note", element);
+        baseDataValidator.reset().parameter("note").value(note).notExceedingLengthOf(1000);
+
+        validatePaymentDetails(baseDataValidator, element);
+        throwExceptionIfValidationWarningsExist(dataValidationErrors);
+    }
+
+    private void validatePaymentDetails(final DataValidatorBuilder baseDataValidator, final JsonElement element) {
+        // Validate all string payment detail fields for max length
+        final Integer paymentTypeId = this.fromApiJsonHelper.extractIntegerWithLocaleNamed("paymentTypeId", element);
+
+        baseDataValidator.reset().parameter("paymentTypeId").value(paymentTypeId).ignoreIfNull().integerGreaterThanZero();
+
+        final Set<String> paymentDetailParameters = new HashSet<>(
+                Arrays.asList("accountNumber", "checkNumber", "routingCode", "receiptNumber", "bankNumber"));
+        for (final String paymentDetailParameterName : paymentDetailParameters) {
+            final String paymentDetailParameterValue = this.fromApiJsonHelper.extractStringNamed(paymentDetailParameterName, element);
+            baseDataValidator.reset().parameter(paymentDetailParameterName).value(paymentDetailParameterValue).ignoreIfNull()
+                    .notExceedingLengthOf(50);
+        }
     }
 
     private void checkClientOrGroupActive(final Loan loan) {
@@ -899,19 +978,6 @@ public final class LoanTransactionValidator {
                 String action = "repayment.or.waiver";
                 String postfix = "cannot.be.made.before.client.transfer.date";
                 throw new InvalidLoanStateTransitionException(action, postfix, errorMessage, clientOfficeJoiningDate);
-            }
-        }
-    }
-
-    public void validateRepaymentTypeTransactionNotBeforeAChargeRefund(final Loan loan, final LoanTransactionType loanTransactionType,
-            final LocalDate transactionDate) {
-        if (loanTransactionType.isRepaymentType() && !loanTransactionType.isChargeRefund()) {
-            for (LoanTransaction txn : loan.getLoanTransactions()) {
-                if (txn.isChargeRefund() && DateUtils.isBefore(transactionDate, txn.getTransactionDate())) {
-                    final String errorMessage = "loan.transaction.cant.be.created.because.later.charge.refund.exists";
-                    final String details = "Loan Transaction: " + loan.getId() + " Can't be created because a Later Charge Refund Exists.";
-                    throw new LoanChargeRefundException(errorMessage, details);
-                }
             }
         }
     }
@@ -945,6 +1011,28 @@ public final class LoanTransactionValidator {
             String errorMessage = "The date on which the " + humanReadable + " is made cannot be earlier than last transaction date";
             String postfix = "cannot.be.made.before.last.transaction.date";
             throw new InvalidLoanStateTransitionException(action, postfix, errorMessage, lastTransactionDate);
+        }
+    }
+
+    public void validateIfTransactionIsChargeback(final LoanTransaction chargebackTransaction) {
+        if (!chargebackTransaction.isChargeback()) {
+            final String errorMessage = "A transaction of type chargeback was expected but not received.";
+            throw new InvalidLoanTransactionTypeException("transaction", "is.not.a.chargeback.transaction", errorMessage);
+        }
+    }
+
+    public void validateLoanRescheduleDate(final Loan loan) {
+        if (DateUtils.isBefore(loan.getRescheduledOnDate(), loan.getDisbursementDate())) {
+            final String errorMessage = "The date on which a loan is rescheduled cannot be before the loan disbursement date: "
+                    + loan.getDisbursementDate().toString();
+            throw new InvalidLoanStateTransitionException("close.reschedule", "cannot.be.before.submittal.date", errorMessage,
+                    loan.getRescheduledOnDate(), loan.getDisbursementDate());
+        }
+
+        if (DateUtils.isDateInTheFuture(loan.getRescheduledOnDate())) {
+            final String errorMessage = "The date on which a loan is rescheduled cannot be in the future.";
+            throw new InvalidLoanStateTransitionException("close.reschedule", "cannot.be.a.future.date", errorMessage,
+                    loan.getRescheduledOnDate());
         }
     }
 }

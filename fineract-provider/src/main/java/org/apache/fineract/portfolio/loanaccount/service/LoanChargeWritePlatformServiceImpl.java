@@ -105,6 +105,7 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanInterestRecalcualtio
 import org.apache.fineract.portfolio.loanaccount.domain.LoanLifecycleStateMachine;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanOverdueInstallmentCharge;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleInstallment;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleProcessingWrapper;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleTransactionProcessorFactory;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepositoryWrapper;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTrancheDisbursementCharge;
@@ -127,6 +128,8 @@ import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.DefaultSche
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleType;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.ScheduledDateGenerator;
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanChargeApiJsonValidator;
+import org.apache.fineract.portfolio.loanaccount.serialization.LoanChargeValidator;
+import org.apache.fineract.portfolio.loanaccount.serialization.LoanDownPaymentTransactionValidator;
 import org.apache.fineract.portfolio.loanproduct.data.LoanOverdueDTO;
 import org.apache.fineract.portfolio.loanproduct.exception.LinkedAccountRequiredException;
 import org.apache.fineract.portfolio.note.domain.Note;
@@ -167,6 +170,9 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
     private final NoteRepository noteRepository;
     private final LoanAccrualTransactionBusinessEventService loanAccrualTransactionBusinessEventService;
     private final LoanAccrualsProcessingService loanAccrualsProcessingService;
+    private final LoanDownPaymentTransactionValidator loanDownPaymentTransactionValidator;
+    private final LoanChargeValidator loanChargeValidator;
+    private final LoanScheduleService loanScheduleService;
 
     private static boolean isPartOfThisInstallment(LoanCharge loanCharge, LoanRepaymentScheduleInstallment e) {
         return DateUtils.isAfter(loanCharge.getDueDate(), e.getFromDate()) && !DateUtils.isAfter(loanCharge.getDueDate(), e.getDueDate());
@@ -295,17 +301,18 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
             loan = loanAccountDomainService.saveAndFlushLoanWithDataIntegrityViolationChecks(loan);
         }
 
-        postJournalEntries(loan, existingTransactionIds, existingReversedTransactionIds);
-
         if (loan.repaymentScheduleDetail().isInterestRecalculationEnabled() && isAppliedOnBackDate
                 && loan.isFeeCompoundingEnabledForInterestRecalculation()) {
-            loanAccrualsProcessingService.processAccrualsForInterestRecalculation(loan,
-                    loan.repaymentScheduleDetail().isInterestRecalculationEnabled());
+            loanAccrualsProcessingService.processAccrualsOnInterestRecalculation(loan, true, false);
         }
         this.loanAccountDomainService.setLoanDelinquencyTag(loan, DateUtils.getBusinessLocalDate());
 
         businessEventNotifierService.notifyPostBusinessEvent(new LoanAddChargeBusinessEvent(loanCharge));
         businessEventNotifierService.notifyPostBusinessEvent(new LoanBalanceChangedBusinessEvent(loan));
+
+        postJournalEntries(loan, existingTransactionIds, existingReversedTransactionIds);
+        loanAccrualTransactionBusinessEventService.raiseBusinessEventForAccrualTransactions(loan, existingTransactionIds);
+
         return new CommandProcessingResultBuilder().withCommandId(command.commandId()) //
                 .withEntityId(loanCharge.getId()) //
                 .withEntityExternalId(loanCharge.getExternalId()) //
@@ -454,6 +461,7 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
         }
         businessEventNotifierService.notifyPreBusinessEvent(new LoanUpdateChargeBusinessEvent(loanCharge));
 
+        loanChargeValidator.validateLoanIsNotClosed(loan, loanCharge);
         final Map<String, Object> changes = loan.updateLoanCharge(loanCharge, command);
 
         this.loanRepositoryWrapper.save(loan);
@@ -538,7 +546,8 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
             }
         }
 
-        final LoanTransaction waiveTransaction = loan.waiveLoanCharge(loanCharge, defaultLoanLifecycleStateMachine, changes,
+        loanChargeValidator.validateLoanIsNotClosed(loan, loanCharge);
+        final LoanTransaction waiveTransaction = waiveLoanCharge(loan, loanCharge, defaultLoanLifecycleStateMachine, changes,
                 existingTransactionIds, existingReversedTransactionIds, loanInstallmentNumber, scheduleGeneratorDTO, accruedCharge,
                 externalId);
 
@@ -588,6 +597,8 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
         }
         businessEventNotifierService.notifyPreBusinessEvent(new LoanDeleteChargeBusinessEvent(loanCharge));
 
+        loanChargeValidator.validateLoanIsNotClosed(loan, loanCharge);
+        loanChargeValidator.validateLoanChargeIsNotWaived(loan, loanCharge);
         loan.removeLoanCharge(loanCharge);
         this.loanRepositoryWrapper.save(loan);
         businessEventNotifierService.notifyPostBusinessEvent(new LoanDeleteChargeBusinessEvent(loanCharge));
@@ -815,14 +826,14 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
                 loan = loanAccountDomainService.saveAndFlushLoanWithDataIntegrityViolationChecks(loan);
             }
 
-            postJournalEntries(loan, existingTransactionIds, existingReversedTransactionIds);
-
             if (loan.repaymentScheduleDetail().isInterestRecalculationEnabled() && runInterestRecalculation
                     && loan.isFeeCompoundingEnabledForInterestRecalculation()) {
-                loanAccrualsProcessingService.processAccrualsForInterestRecalculation(loan,
-                        loan.repaymentScheduleDetail().isInterestRecalculationEnabled());
+                loanAccrualsProcessingService.processAccrualsOnInterestRecalculation(loan, true, false);
             }
             this.loanAccountDomainService.setLoanDelinquencyTag(loan, DateUtils.getBusinessLocalDate());
+
+            postJournalEntries(loan, existingTransactionIds, existingReversedTransactionIds);
+            loanAccrualTransactionBusinessEventService.raiseBusinessEventForAccrualTransactions(loan, existingTransactionIds);
         }
     }
 
@@ -838,14 +849,11 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
                 LoanTransactionRelationTypeEnum.CHARGE_ADJUSTMENT);
         loanChargeAdjustmentTransaction.getLoanTransactionRelations().add(loanTransactionRelation);
 
-        defaultLoanLifecycleStateMachine.transition(LoanEvent.LOAN_REPAYMENT_OR_WAIVER, loan);
         final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor = loanRepaymentScheduleTransactionProcessorFactory
                 .determineProcessor(loan.transactionProcessingStrategy());
         loan.addLoanTransaction(loanChargeAdjustmentTransaction);
         if (loan.isInterestBearing() && loan.getLoanProductRelatedDetail().isInterestRecalculationEnabled()) {
-            loanRepaymentScheduleTransactionProcessor.reprocessLoanTransactions(loan.getDisbursementDate(),
-                    loan.retrieveListOfTransactionsForReprocessing(), loan.getCurrency(), loan.getRepaymentScheduleInstallments(),
-                    loan.getActiveCharges());
+            loan.reprocessTransactions();
         } else {
             loanRepaymentScheduleTransactionProcessor.processLatestTransaction(loanChargeAdjustmentTransaction,
                     new TransactionCtx(loan.getCurrency(), loan.getRepaymentScheduleInstallments(), loan.getActiveCharges(),
@@ -893,6 +901,8 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
                 throw new LoanChargeWaiveCannotBeReversedException(
                         LoanChargeWaiveCannotBeReversedException.LoanChargeWaiveCannotUndoReason.NOT_WAIVED, loanCharge.getId());
             }
+            loanChargeValidator.validateRepaymentTypeTransactionNotBeforeAChargeRefund(loanTransaction.getLoan(), loanTransaction,
+                    "reversed");
             // Reverse waived transaction
             loanTransaction.reverse();
             // Set manually adjusted value to `1`
@@ -939,6 +949,7 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
             throw new LoanChargeWaiveCannotBeReversedException(
                     LoanChargeWaiveCannotBeReversedException.LoanChargeWaiveCannotUndoReason.NOT_WAIVED, loanCharge.getId());
         }
+        loanChargeValidator.validateRepaymentTypeTransactionNotBeforeAChargeRefund(loanTransaction.getLoan(), loanTransaction, "reversed");
         loanTransaction.reverse();
         loanTransaction.setManuallyAdjustedOrReversed();
         loanCharge.setOutstandingAmount(loanCharge.amountOutstanding().add(amountWaived));
@@ -1028,6 +1039,8 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
             }
         }
 
+        loanChargeValidator.validateChargeAdditionForDisbursedLoan(loan, loanCharge);
+        loanChargeValidator.validateChargeHasValidSpecifiedDateIfApplicable(loan, loanCharge, loan.getDisbursementDate());
         loan.addLoanCharge(loanCharge);
         loanCharge = this.loanChargeRepository.saveAndFlush(loanCharge);
 
@@ -1038,9 +1051,11 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
                 || (configurationDomainService.isImmediateChargeAccrualPostMaturityEnabled()
                         && DateUtils.getBusinessLocalDate().isAfter(loan.getMaturityDate()))) {
             final LoanTransaction applyLoanChargeTransaction = loan.handleChargeAppliedTransaction(loanCharge, null);
-            this.loanTransactionRepository.saveAndFlush(applyLoanChargeTransaction);
-            businessEventNotifierService
-                    .notifyPostBusinessEvent(new LoanAccrualTransactionCreatedBusinessEvent(applyLoanChargeTransaction));
+            if (applyLoanChargeTransaction != null) {
+                this.loanTransactionRepository.saveAndFlush(applyLoanChargeTransaction);
+                businessEventNotifierService
+                        .notifyPostBusinessEvent(new LoanAccrualTransactionCreatedBusinessEvent(applyLoanChargeTransaction));
+            }
         }
         return DateUtils.isBeforeBusinessDate(loanCharge.getDueLocalDate());
     }
@@ -1142,8 +1157,8 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
         if (loan.repaymentScheduleDetail().isInterestRecalculationEnabled()) {
             final List<Long> existingTransactionIds = loan.findExistingTransactionIds();
             ScheduleGeneratorDTO generatorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
-            ChangedTransactionDetail changedTransactionDetail = loan
-                    .handleRegenerateRepaymentScheduleWithInterestRecalculation(generatorDTO);
+            ChangedTransactionDetail changedTransactionDetail = loanScheduleService
+                    .handleRegenerateRepaymentScheduleWithInterestRecalculation(loan, generatorDTO);
             loanAccrualsProcessingService.reprocessExistingAccruals(loan);
             loanAccrualsProcessingService.processIncomePostingAndAccruals(loan);
 
@@ -1316,7 +1331,7 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
                     "Transaction amount cannot be higher than the available charge amount for adjustment: " + availableAmountForAdjustment);
         }
         checkClientOrGroupActive(loan);
-        loan.validateAccountStatus(LoanEvent.LOAN_CHARGE_ADJUSTMENT);
+        loanDownPaymentTransactionValidator.validateAccountStatus(loan, LoanEvent.LOAN_CHARGE_ADJUSTMENT);
     }
 
     private BigDecimal calculateAvailableAmountForChargeAdjustment(final LoanCharge loanCharge) {
@@ -1358,5 +1373,96 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
                 throw new GroupNotActiveException(group.getId());
             }
         }
+    }
+
+    public LoanTransaction waiveLoanCharge(final Loan loan, final LoanCharge loanCharge,
+            final LoanLifecycleStateMachine loanLifecycleStateMachine, final Map<String, Object> changes,
+            final List<Long> existingTransactionIds, final List<Long> existingReversedTransactionIds, final Integer loanInstallmentNumber,
+            final ScheduleGeneratorDTO scheduleGeneratorDTO, final Money accruedCharge, final ExternalId externalId) {
+        final Money amountWaived = loanCharge.waive(loan.getCurrency(), loanInstallmentNumber);
+        changes.put("amount", amountWaived.getAmount());
+
+        Money unrecognizedIncome = amountWaived.zero();
+        Money chargeComponent = amountWaived;
+        if (loan.isPeriodicAccrualAccountingEnabledOnLoanProduct()) {
+            Money receivableCharge;
+            if (loanInstallmentNumber != null) {
+                receivableCharge = accruedCharge
+                        .minus(loanCharge.getInstallmentLoanCharge(loanInstallmentNumber).getAmountPaid(loan.getCurrency()));
+            } else {
+                receivableCharge = accruedCharge.minus(loanCharge.getAmountPaid(loan.getCurrency()));
+            }
+            if (receivableCharge.isLessThanZero()) {
+                receivableCharge = amountWaived.zero();
+            }
+            if (amountWaived.isGreaterThan(receivableCharge)) {
+                chargeComponent = receivableCharge;
+                unrecognizedIncome = amountWaived.minus(receivableCharge);
+            }
+        }
+        Money feeChargesWaived = chargeComponent;
+        Money penaltyChargesWaived = Money.zero(loan.getCurrency());
+        if (loanCharge.isPenaltyCharge()) {
+            penaltyChargesWaived = chargeComponent;
+            feeChargesWaived = Money.zero(loan.getCurrency());
+        }
+
+        LocalDate transactionDate = loan.getDisbursementDate();
+        final LocalDate businessDate = DateUtils.getBusinessLocalDate();
+        if (loanCharge.isDueDateCharge()) {
+            if (DateUtils.isAfter(loanCharge.getDueLocalDate(), businessDate)) {
+                transactionDate = businessDate;
+            } else {
+                transactionDate = loanCharge.getDueLocalDate();
+            }
+        } else if (loanCharge.isInstalmentFee()) {
+            LocalDate repaymentDueDate = loanCharge.getInstallmentLoanCharge(loanInstallmentNumber).getRepaymentInstallment().getDueDate();
+            if (DateUtils.isAfter(repaymentDueDate, businessDate)) {
+                transactionDate = businessDate;
+            } else {
+                transactionDate = repaymentDueDate;
+            }
+        }
+
+        scheduleGeneratorDTO.setRecalculateFrom(transactionDate);
+
+        loan.updateSummaryWithTotalFeeChargesDueAtDisbursement(loan.deriveSumTotalOfChargesDueAtDisbursement());
+
+        existingTransactionIds.addAll(loan.findExistingTransactionIds());
+        existingReversedTransactionIds.addAll(loan.findExistingReversedTransactionIds());
+
+        final LoanTransaction waiveLoanChargeTransaction = LoanTransaction.waiveLoanCharge(loan, loan.getOffice(), amountWaived,
+                transactionDate, feeChargesWaived, penaltyChargesWaived, unrecognizedIncome, externalId);
+        final LoanChargePaidBy loanChargePaidBy = new LoanChargePaidBy(waiveLoanChargeTransaction, loanCharge,
+                waiveLoanChargeTransaction.getAmount(loan.getCurrency()).getAmount(), loanInstallmentNumber);
+        waiveLoanChargeTransaction.getLoanChargesPaid().add(loanChargePaidBy);
+        loan.addLoanTransaction(waiveLoanChargeTransaction);
+        if (loan.repaymentScheduleDetail().isInterestRecalculationEnabled()
+                && DateUtils.isBefore(loanCharge.getDueLocalDate(), businessDate)) {
+            loanScheduleService.regenerateRepaymentScheduleWithInterestRecalculation(loan, scheduleGeneratorDTO);
+        }
+        // Waive of charges whose due date falls after latest 'repayment' transaction don't require entire loan schedule
+        // to be reprocessed.
+        if (!loanCharge.isDueAtDisbursement() && loanCharge.isPaidOrPartiallyPaid(loan.getCurrency())) {
+            /*
+             * TODO Vishwas Currently we do not allow waiving fully paid loan charge and waiving partially paid loan
+             * charges only waives the remaining amount.
+             *
+             * Consider removing this block of code or logically completing it for the future by getting the list of
+             * affected Transactions
+             */
+            loan.reprocessTransactions();
+        } else {
+            // reprocess loan schedule based on charge been waived.
+            final LoanRepaymentScheduleProcessingWrapper wrapper = new LoanRepaymentScheduleProcessingWrapper();
+            wrapper.reprocess(loan.getCurrency(), loan.getDisbursementDate(), loan.getRepaymentScheduleInstallments(),
+                    loan.getActiveCharges());
+        }
+
+        loan.updateLoanSummaryDerivedFields();
+
+        loan.doPostLoanTransactionChecks(waiveLoanChargeTransaction.getTransactionDate(), loanLifecycleStateMachine);
+
+        return waiveLoanChargeTransaction;
     }
 }

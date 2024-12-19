@@ -553,7 +553,7 @@ public abstract class BaseLoanIntegrationTest {
     protected void verifyTransactions(Long loanId, Transaction... transactions) {
         GetLoansLoanIdResponse loanDetails = loanTransactionHelper.getLoan(requestSpec, responseSpec, loanId.intValue());
         if (transactions == null || transactions.length == 0) {
-            Assertions.assertTrue(loanDetails.getTransactions().isEmpty(), "No transaction is expected");
+            Assertions.assertTrue(loanDetails.getTransactions().isEmpty(), "No transaction is expected on loan " + loanId);
         } else {
             Assertions.assertEquals(transactions.length, loanDetails.getTransactions().size());
             Arrays.stream(transactions).forEach(tr -> {
@@ -562,12 +562,13 @@ public abstract class BaseLoanIntegrationTest {
                                 && Objects.equals(item.getType().getValue(), tr.type) //
                                 && Objects.equals(item.getDate(), LocalDate.parse(tr.date, dateTimeFormatter)))
                         .findFirst();
-                Assertions.assertTrue(optTx.isPresent(), "Required transaction  not found: " + tr);
+                Assertions.assertTrue(optTx.isPresent(), "Required transaction  not found: " + tr + " on loan " + loanId);
 
                 GetLoansLoanIdTransactions tx = optTx.get();
 
                 if (tr.reversed != null) {
-                    Assertions.assertEquals(tr.reversed, tx.getManuallyReversed(), "Transaction is not reversed: " + tr);
+                    Assertions.assertEquals(tr.reversed, tx.getManuallyReversed(),
+                            "Transaction is not reversed: " + tr + " on loan " + loanId);
                 }
             });
         }
@@ -576,9 +577,9 @@ public abstract class BaseLoanIntegrationTest {
     protected void verifyTransactions(Long loanId, TransactionExt... transactions) {
         GetLoansLoanIdResponse loanDetails = loanTransactionHelper.getLoan(requestSpec, responseSpec, loanId.intValue());
         if (transactions == null || transactions.length == 0) {
-            assertNull(loanDetails.getTransactions(), "No transaction is expected");
+            assertNull(loanDetails.getTransactions(), "No transaction is expected on loan " + loanId);
         } else {
-            Assertions.assertEquals(transactions.length, loanDetails.getTransactions().size());
+            Assertions.assertEquals(transactions.length, loanDetails.getTransactions().size(), "Number of transactions on loan " + loanId);
             Arrays.stream(transactions).forEach(tr -> {
                 boolean found = loanDetails.getTransactions().stream().anyMatch(item -> Objects.equals(item.getAmount(), tr.amount) //
                         && Objects.equals(item.getType().getValue(), tr.type) //
@@ -591,7 +592,7 @@ public abstract class BaseLoanIntegrationTest {
                         && Objects.equals(item.getOverpaymentPortion(), tr.overpaymentPortion) //
                         && Objects.equals(item.getUnrecognizedIncomePortion(), tr.unrecognizedPortion) //
                 );
-                Assertions.assertTrue(found, "Required transaction not found: " + tr);
+                Assertions.assertTrue(found, "Required transaction not found: " + tr + " on loan " + loanId);
             });
         }
     }
@@ -1004,6 +1005,12 @@ public abstract class BaseLoanIntegrationTest {
         return ChargesHelper.createLoanCharge(requestSpec, responseSpec, payload);
     }
 
+    protected PostChargesResponse createCharge(Double amount, String currencyCode) {
+        String payload = ChargesHelper.getLoanSpecifiedDueDateJSON(ChargesHelper.CHARGE_CALCULATION_TYPE_FLAT, amount.toString(), false,
+                currencyCode);
+        return ChargesHelper.createLoanCharge(requestSpec, responseSpec, payload);
+    }
+
     protected PostLoansLoanIdChargesResponse addLoanCharge(Long loanId, Long chargeId, String date, Double amount) {
         String payload = LoanTransactionHelper.getSpecifiedDueDateChargesForLoanAsJSON(chargeId.toString(), date, amount.toString());
         return loanTransactionHelper.addChargeForLoan(loanId.intValue(), payload, responseSpec);
@@ -1276,6 +1283,7 @@ public abstract class BaseLoanIntegrationTest {
         public static final Long MONTHS_L = 2L;
         public static final String MONTHS_STRING = "MONTHS";
         public static final Integer DAYS = 0;
+        public static final Long DAYS_L = 0L;
         public static final String DAYS_STRING = "DAYS";
     }
 

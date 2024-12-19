@@ -18,6 +18,9 @@
  */
 package org.apache.fineract.portfolio.loanaccount.loanschedule.domain;
 
+import static org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleProcessingWrapper.findInPeriod;
+
+import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.time.LocalDate;
@@ -28,9 +31,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.service.MathUtil;
-import org.apache.fineract.organisation.monetary.domain.ApplicationCurrency;
+import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.portfolio.loanaccount.data.DisbursementData;
@@ -39,7 +41,6 @@ import org.apache.fineract.portfolio.loanaccount.data.OutstandingAmountsDTO;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCharge;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleInstallment;
-import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleProcessingWrapper;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.LoanRepaymentScheduleTransactionProcessor;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.impl.AdvancedPaymentScheduleTransactionProcessor;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.data.LoanScheduleDTO;
@@ -53,7 +54,6 @@ import org.apache.fineract.portfolio.loanproduct.calc.EMICalculator;
 import org.apache.fineract.portfolio.loanproduct.domain.RepaymentStartDateType;
 import org.springframework.stereotype.Component;
 
-@Slf4j
 @Component
 @RequiredArgsConstructor
 public class ProgressiveLoanScheduleGenerator implements LoanScheduleGenerator {
@@ -70,11 +70,10 @@ public class ProgressiveLoanScheduleGenerator implements LoanScheduleGenerator {
     public LoanScheduleModel generate(final MathContext mc, final LoanApplicationTerms loanApplicationTerms,
             final Set<LoanCharge> loanCharges, final HolidayDetailDTO holidayDetailDTO) {
 
-        final ApplicationCurrency applicationCurrency = loanApplicationTerms.getApplicationCurrency();
         // determine the total charges due at time of disbursement
         final BigDecimal chargesDueAtTimeOfDisbursement = deriveTotalChargesDueAtTimeOfDisbursement(loanCharges);
 
-        final MonetaryCurrency currency = loanApplicationTerms.getCurrency();
+        final CurrencyData currency = loanApplicationTerms.getCurrency();
         LocalDate periodStartDate = RepaymentStartDateType.DISBURSEMENT_DATE.equals(loanApplicationTerms.getRepaymentStartDateType())
                 ? loanApplicationTerms.getExpectedDisbursementDate()
                 : loanApplicationTerms.getSubmittedOnDate();
@@ -89,8 +88,8 @@ public class ProgressiveLoanScheduleGenerator implements LoanScheduleGenerator {
         // generate list of proposed schedule due dates
         final List<LoanScheduleModelRepaymentPeriod> expectedRepaymentPeriods = scheduledDateGenerator.generateRepaymentPeriods(mc,
                 periodStartDate, loanApplicationTerms, holidayDetailDTO);
-        final ProgressiveLoanInterestScheduleModel interestScheduleModel = emiCalculator.generateInterestScheduleModel(
-                expectedRepaymentPeriods, loanApplicationTerms.toLoanProductRelatedDetail(),
+        final ProgressiveLoanInterestScheduleModel interestScheduleModel = emiCalculator.generatePeriodInterestScheduleModel(
+                expectedRepaymentPeriods, loanApplicationTerms.toLoanProductRelatedDetailMinimumData(),
                 loanApplicationTerms.getInstallmentAmountInMultiplesOf(), mc);
         final List<LoanScheduleModelPeriod> periods = new ArrayList<>(expectedRepaymentPeriods.size());
 
@@ -139,13 +138,68 @@ public class ProgressiveLoanScheduleGenerator implements LoanScheduleGenerator {
         final BigDecimal totalPrincipalPaid = BigDecimal.ZERO;
         final BigDecimal totalOutstanding = BigDecimal.ZERO;
 
-        return LoanScheduleModel.from(periods, applicationCurrency, interestScheduleModel.getLoanTermInDays(),
+        return LoanScheduleModel.from(periods, currency, interestScheduleModel.getLoanTermInDays(),
                 scheduleParams.getPrincipalToBeScheduled().plus(loanApplicationTerms.getDownPaymentAmount(), mc),
                 scheduleParams.getTotalCumulativePrincipal().plus(loanApplicationTerms.getDownPaymentAmount(), mc).getAmount(),
                 totalPrincipalPaid, scheduleParams.getTotalCumulativeInterest().getAmount(),
                 scheduleParams.getTotalFeeChargesCharged().getAmount(), scheduleParams.getTotalPenaltyChargesCharged().getAmount(),
                 scheduleParams.getTotalRepaymentExpected().getAmount(), totalOutstanding);
     }
+
+    @Override
+    public LoanScheduleDTO rescheduleNextInstallments(MathContext mc, LoanApplicationTerms loanApplicationTerms, Loan loan,
+            HolidayDetailDTO holidayDetailDTO, LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor,
+            LocalDate rescheduleFrom) {
+        LoanScheduleModel model = generate(mc, loanApplicationTerms, loan.getActiveCharges(), holidayDetailDTO);
+        return LoanScheduleDTO.from(null, model);
+    }
+
+    @Override
+    public OutstandingAmountsDTO calculatePrepaymentAmount(MonetaryCurrency currency, LocalDate onDate,
+            LoanApplicationTerms loanApplicationTerms, MathContext mc, Loan loan, HolidayDetailDTO holidayDetailDTO,
+            LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor) {
+        if (!(loanRepaymentScheduleTransactionProcessor instanceof AdvancedPaymentScheduleTransactionProcessor processor)) {
+            throw new IllegalStateException("Expected an AdvancedPaymentScheduleTransactionProcessor");
+        }
+
+        List<LoanRepaymentScheduleInstallment> installments = loan.getRepaymentScheduleInstallments();
+        LoanRepaymentScheduleInstallment actualInstallment = findInPeriod(onDate, installments).orElse(installments.get(0));
+
+        LocalDate transactionDate = switch (loanApplicationTerms.getPreClosureInterestCalculationStrategy()) {
+            case TILL_PRE_CLOSURE_DATE -> onDate;
+            case TILL_REST_FREQUENCY_DATE -> actualInstallment.getDueDate(); // due date of current installment
+            case NONE -> throw new IllegalStateException("Unexpected PreClosureInterestCalculationStrategy: NONE");
+        };
+
+        ProgressiveLoanInterestScheduleModel model = processor.calculateInterestScheduleModel(loan.getId(), onDate);
+        OutstandingDetails outstandingAmounts = emiCalculator.getOutstandingAmountsTillDate(model, transactionDate);
+        // TODO: We should add all the past due outstanding amounts as well
+        OutstandingAmountsDTO result = new OutstandingAmountsDTO(currency) //
+                .principal(outstandingAmounts.getOutstandingPrincipal()) //
+                .interest(outstandingAmounts.getOutstandingInterest());//
+
+        installments.forEach(installment -> result //
+                .plusFeeCharges(installment.getFeeChargesOutstanding(currency))
+                .plusPenaltyCharges(installment.getPenaltyChargesOutstanding(currency)));
+
+        return result;
+    }
+
+    @Override
+    public Money getPeriodInterestTillDate(@NotNull LoanRepaymentScheduleInstallment installment, @NotNull LocalDate targetDate) {
+        Loan loan = installment.getLoan();
+        LoanRepaymentScheduleTransactionProcessor transactionProcessor = loan.getTransactionProcessor();
+        if (!(transactionProcessor instanceof AdvancedPaymentScheduleTransactionProcessor processor)) {
+            throw new IllegalStateException("Expected an AdvancedPaymentScheduleTransactionProcessor");
+        }
+        if (installment.isAdditional() || installment.isDownPayment() || installment.isReAged()) {
+            return Money.zero(loan.getCurrency());
+        }
+        ProgressiveLoanInterestScheduleModel model = processor.calculateInterestScheduleModel(loan.getId(), targetDate);
+        return emiCalculator.getPeriodInterestTillDate(model, installment.getDueDate(), targetDate);
+    }
+
+    // Private, internal methods
 
     private List<DisbursementData> getSortedDisbursementList(LoanApplicationTerms loanApplicationTerms) {
         final List<DisbursementData> disbursementDataList = new ArrayList<>(loanApplicationTerms.getDisbursementDatas());
@@ -238,49 +292,6 @@ public class ProgressiveLoanScheduleGenerator implements LoanScheduleGenerator {
         }
     }
 
-    @Override
-    public LoanScheduleDTO rescheduleNextInstallments(MathContext mc, LoanApplicationTerms loanApplicationTerms, Loan loan,
-            HolidayDetailDTO holidayDetailDTO, LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor,
-            LocalDate rescheduleFrom) {
-        LoanScheduleModel model = generate(mc, loanApplicationTerms, loan.getActiveCharges(), holidayDetailDTO);
-        return LoanScheduleDTO.from(null, model);
-    }
-
-    @Override
-    public OutstandingAmountsDTO calculatePrepaymentAmount(MonetaryCurrency currency, LocalDate onDate,
-            LoanApplicationTerms loanApplicationTerms, MathContext mc, Loan loan, HolidayDetailDTO holidayDetailDTO,
-            LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor) {
-        if (!(loanRepaymentScheduleTransactionProcessor instanceof AdvancedPaymentScheduleTransactionProcessor processor)) {
-            throw new IllegalStateException("Expected an AdvancedPaymentScheduleTransactionProcessor");
-        }
-
-        List<LoanRepaymentScheduleInstallment> installments = loan.getRepaymentScheduleInstallments();
-        LoanRepaymentScheduleInstallment actualInstallment = LoanRepaymentScheduleProcessingWrapper.findInPeriod(onDate, installments)
-                .orElse(installments.get(0));
-
-        LocalDate transactionDate = switch (loanApplicationTerms.getPreClosureInterestCalculationStrategy()) {
-            case TILL_PRE_CLOSURE_DATE -> onDate;
-            case TILL_REST_FREQUENCY_DATE -> actualInstallment.getDueDate(); // due date of current installment
-            case NONE -> throw new IllegalStateException("Unexpected PreClosureInterestCalculationStrategy: NONE");
-        };
-
-        ProgressiveLoanInterestScheduleModel model = processor.reprocessProgressiveLoanTransactions(loan.getDisbursementDate(), onDate,
-                loan.retrieveListOfTransactionsForReprocessing(), currency, installments, loan.getActiveCharges()).getRight();
-
-        OutstandingDetails result = emiCalculator.getOutstandingAmountsTillDate(model, transactionDate);
-        // TODO: We should add all the past due outstanding amounts as well
-        OutstandingAmountsDTO amounts = new OutstandingAmountsDTO(currency) //
-                .principal(result.getOutstandingPrincipal()) //
-                .interest(result.getOutstandingInterest());//
-
-        installments.forEach(installment -> amounts //
-                .plusFeeCharges(installment.getFeeChargesOutstanding(currency))
-                .plusPenaltyCharges(installment.getPenaltyChargesOutstanding(currency)));
-
-        return amounts;
-    }
-
-    // Private, internal methods
     private BigDecimal deriveTotalChargesDueAtTimeOfDisbursement(final Set<LoanCharge> loanCharges) {
         BigDecimal chargesDueAtTimeOfDisbursement = BigDecimal.ZERO;
         if (loanCharges != null) {
@@ -294,7 +305,7 @@ public class ProgressiveLoanScheduleGenerator implements LoanScheduleGenerator {
     }
 
     private void applyChargesForCurrentPeriod(final LoanScheduleModelRepaymentPeriod repaymentPeriod, final Set<LoanCharge> loanCharges,
-            final LoanScheduleParams scheduleParams, final MonetaryCurrency currency, final MathContext mc) {
+            final LoanScheduleParams scheduleParams, final CurrencyData currency, final MathContext mc) {
         final PrincipalInterest principalInterest = new PrincipalInterest(repaymentPeriod.getPrincipalDue(),
                 repaymentPeriod.getInterestDue(), null);
 
@@ -311,10 +322,10 @@ public class ProgressiveLoanScheduleGenerator implements LoanScheduleGenerator {
     }
 
     private Money cumulativeFeeChargesDueWithin(final LocalDate periodStart, final LocalDate periodEnd, final Set<LoanCharge> loanCharges,
-            final MonetaryCurrency monetaryCurrency, final PrincipalInterest principalInterestForThisPeriod, final Money principalDisbursed,
+            final CurrencyData currency, final PrincipalInterest principalInterestForThisPeriod, final Money principalDisbursed,
             final Money totalInterestChargedForFullLoanTerm, boolean isInstallmentChargeApplicable, final boolean isFirstPeriod,
             final MathContext mc) {
-        Money cumulative = Money.zero(monetaryCurrency, mc);
+        Money cumulative = Money.zero(currency, mc);
         if (loanCharges != null) {
             for (final LoanCharge loanCharge : loanCharges) {
                 if (!loanCharge.isDueAtDisbursement() && loanCharge.isFeeCharge()) {
@@ -344,11 +355,10 @@ public class ProgressiveLoanScheduleGenerator implements LoanScheduleGenerator {
     }
 
     private Money cumulativePenaltyChargesDueWithin(final LocalDate periodStart, final LocalDate periodEnd,
-            final Set<LoanCharge> loanCharges, final MonetaryCurrency monetaryCurrency,
-            final PrincipalInterest principalInterestForThisPeriod, final Money principalDisbursed,
-            final Money totalInterestChargedForFullLoanTerm, boolean isInstallmentChargeApplicable, final boolean isFirstPeriod,
-            final MathContext mc) {
-        Money cumulative = Money.zero(monetaryCurrency, mc);
+            final Set<LoanCharge> loanCharges, final CurrencyData currency, final PrincipalInterest principalInterestForThisPeriod,
+            final Money principalDisbursed, final Money totalInterestChargedForFullLoanTerm, boolean isInstallmentChargeApplicable,
+            final boolean isFirstPeriod, final MathContext mc) {
+        Money cumulative = Money.zero(currency, mc);
         if (loanCharges != null) {
             for (final LoanCharge loanCharge : loanCharges) {
                 if (loanCharge.isPenaltyCharge()) {
@@ -395,7 +405,7 @@ public class ProgressiveLoanScheduleGenerator implements LoanScheduleGenerator {
         return cumulative;
     }
 
-    private void updatePeriodsWithCharges(final MonetaryCurrency currency, LoanScheduleParams scheduleParams,
+    private void updatePeriodsWithCharges(final CurrencyData currency, LoanScheduleParams scheduleParams,
             final Collection<LoanScheduleModelPeriod> periods, final Set<LoanCharge> nonCompoundingCharges, MathContext mc) {
         for (LoanScheduleModelPeriod loanScheduleModelPeriod : periods) {
             if (loanScheduleModelPeriod.isRepaymentPeriod()) {
@@ -430,5 +440,4 @@ public class ProgressiveLoanScheduleGenerator implements LoanScheduleGenerator {
         }
         return interestCharges;
     }
-
 }

@@ -61,7 +61,7 @@ import org.apache.fineract.portfolio.loanproduct.domain.AmortizationMethod;
 import org.apache.fineract.portfolio.loanproduct.domain.InterestCalculationPeriodMethod;
 import org.apache.fineract.portfolio.loanproduct.domain.InterestMethod;
 import org.apache.fineract.portfolio.loanproduct.domain.InterestRecalculationCompoundingMethod;
-import org.apache.fineract.portfolio.loanproduct.domain.LoanPreClosureInterestCalculationStrategy;
+import org.apache.fineract.portfolio.loanproduct.domain.LoanPreCloseInterestCalculationStrategy;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProduct;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProductPaymentAllocationRule;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProductValueConditionType;
@@ -144,7 +144,7 @@ public final class LoanProductDataValidator {
             LoanProductAccountingParams.INCOME_FROM_GOODWILL_CREDIT_INTEREST.getValue(),
             LoanProductAccountingParams.INCOME_FROM_GOODWILL_CREDIT_FEES.getValue(),
             LoanProductAccountingParams.INCOME_FROM_GOODWILL_CREDIT_PENALTY.getValue(),
-            LoanProductAccountingParams.CHARGE_OFF_REASONS_TO_EXPENSE.getValue(),
+            LoanProductAccountingParams.CHARGE_OFF_REASON_TO_EXPENSE_ACCOUNT_MAPPINGS.getValue(),
             LoanProductAccountingParams.EXPENSE_GL_ACCOUNT_ID.getValue(),
             LoanProductAccountingParams.CHARGE_OFF_REASON_CODE_VALUE_ID.getValue(), LoanProductConstants.USE_BORROWER_CYCLE_PARAMETER_NAME,
             LoanProductConstants.PRINCIPAL_VARIATIONS_FOR_BORROWER_CYCLE_PARAMETER_NAME,
@@ -174,7 +174,8 @@ public final class LoanProductDataValidator {
             LoanProductConstants.recalculationRestFrequencyWeekdayParamName, LoanProductConstants.recalculationRestFrequencyNthDayParamName,
             LoanProductConstants.recalculationRestFrequencyOnDayParamName,
             LoanProductConstants.isCompoundingToBePostedAsTransactionParamName, LoanProductConstants.allowCompoundingOnEodParamName,
-            LoanProductConstants.CAN_USE_FOR_TOPUP, LoanProductConstants.IS_EQUAL_AMORTIZATION_PARAM, LoanProductConstants.RATES_PARAM_NAME,
+            LoanProductConstants.disallowInterestCalculationOnPastDueParamName, LoanProductConstants.CAN_USE_FOR_TOPUP,
+            LoanProductConstants.IS_EQUAL_AMORTIZATION_PARAM, LoanProductConstants.RATES_PARAM_NAME,
             LoanProductConstants.fixedPrincipalPercentagePerInstallmentParamName, LoanProductConstants.DISALLOW_EXPECTED_DISBURSEMENTS,
             LoanProductConstants.ALLOW_APPROVED_DISBURSED_AMOUNTS_OVER_APPLIED, LoanProductConstants.OVER_APPLIED_CALCULATION_TYPE,
             LoanProductConstants.OVER_APPLIED_NUMBER, LoanProductConstants.DELINQUENCY_BUCKET_PARAM_NAME,
@@ -1071,6 +1072,12 @@ public final class LoanProductDataValidator {
                 loanScheduleType = fromApiJsonHelper.extractStringNamed(LoanProductConstants.LOAN_SCHEDULE_TYPE, element);
             }
             if (LoanScheduleType.CUMULATIVE.equals(LoanScheduleType.valueOf(loanScheduleType))
+                    && fromApiJsonHelper.parameterExists(LoanProductConstants.disallowInterestCalculationOnPastDueParamName, element)) {
+                baseDataValidator.reset().parameter(LoanProductConstants.disallowInterestCalculationOnPastDueParamName).failWithCode(
+                        "disallow.interest.calculation.on.past.due.not.supported.for.loan.schedule.type.cumulative",
+                        "Do not calculate interest on past due principal balances is only supported for Progressive loan schedule type");
+            }
+            if (LoanScheduleType.CUMULATIVE.equals(LoanScheduleType.valueOf(loanScheduleType))
                     && LoanRescheduleStrategyMethod.ADJUST_LAST_UNPAID_PERIOD.equals(loanRescheduleStrategyMethod)) {
                 baseDataValidator.reset().parameter(LoanProductConstants.rescheduleStrategyMethodParameterName).failWithCode(
                         "reschedule.strategy.method.not.supported.for.loan.schedule.type.cumulative",
@@ -1217,7 +1224,7 @@ public final class LoanProductDataValidator {
                 .extractIntegerWithLocaleNamed(LoanProductConstants.preClosureInterestCalculationStrategyParamName, element);
         baseDataValidator.reset().parameter(LoanProductConstants.preClosureInterestCalculationStrategyParamName)
                 .value(preCloseInterestCalculationStrategy).ignoreIfNull().inMinMaxRange(
-                        LoanPreClosureInterestCalculationStrategy.getMinValue(), LoanPreClosureInterestCalculationStrategy.getMaxValue());
+                        LoanPreCloseInterestCalculationStrategy.getMinValue(), LoanPreCloseInterestCalculationStrategy.getMaxValue());
     }
 
     public void validateForUpdate(final JsonCommand command, final LoanProduct loanProduct) {
@@ -1985,7 +1992,7 @@ public final class LoanProductDataValidator {
     }
 
     private void validateChargeOffToExpenseMappings(final DataValidatorBuilder baseDataValidator, final JsonElement element) {
-        String parameterName = LoanProductAccountingParams.CHARGE_OFF_REASONS_TO_EXPENSE.getValue();
+        String parameterName = LoanProductAccountingParams.CHARGE_OFF_REASON_TO_EXPENSE_ACCOUNT_MAPPINGS.getValue();
 
         if (this.fromApiJsonHelper.parameterExists(parameterName, element)) {
             final JsonArray chargeOffToExpenseMappingArray = this.fromApiJsonHelper.extractJsonArrayNamed(parameterName, element);

@@ -34,8 +34,10 @@ import org.apache.fineract.accounting.journalentry.data.ChargePaymentDTO;
 import org.apache.fineract.accounting.journalentry.data.GLAccountBalanceHolder;
 import org.apache.fineract.accounting.journalentry.data.LoanDTO;
 import org.apache.fineract.accounting.journalentry.data.LoanTransactionDTO;
+import org.apache.fineract.accounting.producttoaccountmapping.domain.ProductToGLAccountMapping;
 import org.apache.fineract.infrastructure.core.service.MathUtil;
 import org.apache.fineract.organisation.office.domain.Office;
+import org.apache.fineract.portfolio.loanaccount.data.LoanTransactionEnumData;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -51,69 +53,66 @@ public class AccrualBasedAccountingProcessorForLoan implements AccountingProcess
         for (final LoanTransactionDTO loanTransactionDTO : loanDTO.getNewLoanTransactions()) {
             final LocalDate transactionDate = loanTransactionDTO.getTransactionDate();
             this.helper.checkForBranchClosures(latestGLClosure, transactionDate);
+            final LoanTransactionEnumData transactionType = loanTransactionDTO.getTransactionType();
 
-            /** Handle Disbursements **/
-            if (loanTransactionDTO.getTransactionType().isDisbursement()) {
+            // Handle Disbursements
+            if (transactionType.isDisbursement()) {
                 createJournalEntriesForDisbursements(loanDTO, loanTransactionDTO, office);
             }
 
-            /*** Handle Accruals ***/
-            if (loanTransactionDTO.getTransactionType().isAccrual()) {
+            // Handle Accruals
+            if (transactionType.isAccrual() || transactionType.isAccrualAdjustment()) {
                 createJournalEntriesForAccruals(loanDTO, loanTransactionDTO, office);
             }
 
-            /***
+            /*
              * Handle repayments, loan refunds, repayments at disbursement and reversal of Repayments and Repayments at
              * disbursement (except charge adjustment)
-             ***/
-            else if ((loanTransactionDTO.getTransactionType().isRepaymentType()
-                    && !loanTransactionDTO.getTransactionType().isChargeAdjustment())
-                    || loanTransactionDTO.getTransactionType().isRepaymentAtDisbursement()
-                    || loanTransactionDTO.getTransactionType().isChargePayment()) {
+             */
+            else if ((transactionType.isRepaymentType() && !transactionType.isChargeAdjustment())
+                    || transactionType.isRepaymentAtDisbursement() || transactionType.isChargePayment()) {
                 createJournalEntriesForRepaymentsAndWriteOffs(loanDTO, loanTransactionDTO, office, false,
-                        loanTransactionDTO.getTransactionType().isRepaymentAtDisbursement());
+                        transactionType.isRepaymentAtDisbursement());
             }
 
-            /** Logic for handling recovery payments **/
-            else if (loanTransactionDTO.getTransactionType().isRecoveryRepayment()) {
+            // Logic for handling recovery payments
+            else if (transactionType.isRecoveryRepayment()) {
                 createJournalEntriesForRecoveryRepayments(loanDTO, loanTransactionDTO, office);
             }
 
-            /** Logic for Refunds of Overpayments **/
-            else if (loanTransactionDTO.getTransactionType().isRefund()) {
+            // Logic for Refunds of Overpayments
+            else if (transactionType.isRefund()) {
                 createJournalEntriesForRefund(loanDTO, loanTransactionDTO, office);
             }
 
-            /** Logic for Credit Balance Refunds **/
-            else if (loanTransactionDTO.getTransactionType().isCreditBalanceRefund()) {
+            // Logic for Credit Balance Refunds
+            else if (transactionType.isCreditBalanceRefund()) {
                 createJournalEntriesForCreditBalanceRefund(loanDTO, loanTransactionDTO, office);
             }
 
-            /** Handle Write Offs, waivers and their reversals **/
-            else if ((loanTransactionDTO.getTransactionType().isWriteOff() || loanTransactionDTO.getTransactionType().isWaiveInterest()
-                    || loanTransactionDTO.getTransactionType().isWaiveCharges())) {
+            // Handle Write Offs, waivers and their reversals
+            else if ((transactionType.isWriteOff() || transactionType.isWaiveInterest() || transactionType.isWaiveCharges())) {
                 createJournalEntriesForRepaymentsAndWriteOffs(loanDTO, loanTransactionDTO, office, true, false);
             }
 
-            /** Logic for Refunds of Active Loans **/
-            else if (loanTransactionDTO.getTransactionType().isRefundForActiveLoans()) {
+            // Logic for Refunds of Active Loans
+            else if (transactionType.isRefundForActiveLoans()) {
                 createJournalEntriesForRefundForActiveLoan(loanDTO, loanTransactionDTO, office);
             }
             // Logic for Chargebacks
-            else if (loanTransactionDTO.getTransactionType().isChargeback()) {
+            else if (transactionType.isChargeback()) {
                 createJournalEntriesForChargeback(loanDTO, loanTransactionDTO, office);
             }
             // Logic for Charge Adjustment
-            else if (loanTransactionDTO.getTransactionType().isChargeAdjustment()) {
+            else if (transactionType.isChargeAdjustment()) {
                 createJournalEntriesForChargeAdjustment(loanDTO, loanTransactionDTO, office);
             }
             // Logic for Charge-Off
-            else if (loanTransactionDTO.getTransactionType().isChargeoff()) {
+            else if (transactionType.isChargeoff()) {
                 createJournalEntriesForChargeOff(loanDTO, loanTransactionDTO, office);
             }
             // Logic for Interest Payment Waiver
-            else if (loanTransactionDTO.getTransactionType().isInterestPaymentWaiver()
-                    || loanTransactionDTO.getTransactionType().isInterestRefund()) {
+            else if (transactionType.isInterestPaymentWaiver() || transactionType.isInterestRefund()) {
                 createJournalEntriesForInterestPaymentWaiverOrInterestRefund(loanDTO, loanTransactionDTO, office);
             }
         }
@@ -229,14 +228,28 @@ public class AccrualBasedAccountingProcessorForLoan implements AccountingProcess
         final Long paymentTypeId = loanTransactionDTO.getPaymentTypeId();
         final boolean isReversal = loanTransactionDTO.isReversed();
         GLAccountBalanceHolder glAccountBalanceHolder = new GLAccountBalanceHolder();
-        // principal payment
-        if (principalAmount != null && principalAmount.compareTo(BigDecimal.ZERO) > 0) {
-            if (isMarkedFraud) {
-                populateCreditDebitMaps(loanProductId, principalAmount, paymentTypeId, AccrualAccountsForLoan.LOAN_PORTFOLIO.getValue(),
-                        AccrualAccountsForLoan.CHARGE_OFF_FRAUD_EXPENSE.getValue(), glAccountBalanceHolder);
-            } else {
-                populateCreditDebitMaps(loanProductId, principalAmount, paymentTypeId, AccrualAccountsForLoan.LOAN_PORTFOLIO.getValue(),
-                        AccrualAccountsForLoan.CHARGE_OFF_EXPENSE.getValue(), glAccountBalanceHolder);
+
+        // need to fetch if there are account mappings (always one)
+        Integer chargeOffReasonCodeValue = loanDTO.getChargeOffReasonCodeValue();
+
+        ProductToGLAccountMapping mapping = chargeOffReasonCodeValue != null
+                ? helper.getChargeOffMappingByCodeValue(chargeOffReasonCodeValue)
+                : null;
+        if (mapping != null) {
+            GLAccount accountCredit = this.helper.getLinkedGLAccountForLoanProduct(loanProductId,
+                    AccrualAccountsForLoan.LOAN_PORTFOLIO.getValue(), paymentTypeId);
+            glAccountBalanceHolder.addToCredit(accountCredit, principalAmount);
+            glAccountBalanceHolder.addToDebit(mapping.getGlAccount(), principalAmount);
+        } else {
+            // principal payment
+            if (principalAmount != null && principalAmount.compareTo(BigDecimal.ZERO) > 0) {
+                if (isMarkedFraud) {
+                    populateCreditDebitMaps(loanProductId, principalAmount, paymentTypeId, AccrualAccountsForLoan.LOAN_PORTFOLIO.getValue(),
+                            AccrualAccountsForLoan.CHARGE_OFF_FRAUD_EXPENSE.getValue(), glAccountBalanceHolder);
+                } else {
+                    populateCreditDebitMaps(loanProductId, principalAmount, paymentTypeId, AccrualAccountsForLoan.LOAN_PORTFOLIO.getValue(),
+                            AccrualAccountsForLoan.CHARGE_OFF_EXPENSE.getValue(), glAccountBalanceHolder);
+                }
             }
         }
         // interest payment
@@ -1144,7 +1157,6 @@ public class AccrualBasedAccountingProcessorForLoan implements AccountingProcess
      * @param office
      */
     private void createJournalEntriesForAccruals(final LoanDTO loanDTO, final LoanTransactionDTO loanTransactionDTO, final Office office) {
-
         // loan properties
         final Long loanProductId = loanDTO.getLoanProductId();
         final Long loanId = loanDTO.getLoanId();
@@ -1153,10 +1165,11 @@ public class AccrualBasedAccountingProcessorForLoan implements AccountingProcess
         // transaction properties
         final String transactionId = loanTransactionDTO.getTransactionId();
         final LocalDate transactionDate = loanTransactionDTO.getTransactionDate();
+        final LoanTransactionEnumData transactionType = loanTransactionDTO.getTransactionType();
         final BigDecimal interestAmount = loanTransactionDTO.getInterest();
         final BigDecimal feesAmount = loanTransactionDTO.getFees();
         final BigDecimal penaltiesAmount = loanTransactionDTO.getPenalties();
-        final boolean isReversed = loanTransactionDTO.isReversed();
+        final boolean isReversed = transactionType.isAccrualAdjustment() != loanTransactionDTO.isReversed();
         final Long paymentTypeId = loanTransactionDTO.getPaymentTypeId();
 
         // create journal entries for recognizing interest (or reversal)

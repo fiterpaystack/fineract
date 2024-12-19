@@ -46,6 +46,7 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanStatus;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanChargeApiJsonValidator;
+import org.apache.fineract.portfolio.loanaccount.serialization.LoanChargeValidator;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProductRelatedDetail;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -123,6 +124,12 @@ class LoanChargeWritePlatformServiceImplTest {
 
     @Mock
     private JournalEntryWritePlatformService journalEntryWritePlatformService;
+
+    @Mock
+    private LoanChargeValidator loanChargeValidator;
+
+    @Mock
+    private LoanAccrualTransactionBusinessEventService loanAccrualTransactionBusinessEventService;
 
     @BeforeEach
     void setUp() {

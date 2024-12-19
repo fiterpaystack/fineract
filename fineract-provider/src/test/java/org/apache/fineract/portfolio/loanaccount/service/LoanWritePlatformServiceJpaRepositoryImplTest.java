@@ -66,7 +66,6 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleIns
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleTransactionProcessorFactory;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepositoryWrapper;
-import org.apache.fineract.portfolio.loanaccount.domain.LoanSummaryWrapper;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRelation;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRelationRepository;
@@ -76,6 +75,7 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType;
 import org.apache.fineract.portfolio.loanaccount.guarantor.service.GuarantorDomainService;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.service.LoanScheduleHistoryWritePlatformService;
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanApplicationValidator;
+import org.apache.fineract.portfolio.loanaccount.serialization.LoanChargeValidator;
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanTransactionValidator;
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanUpdateCommandFromApiJsonDeserializer;
 import org.apache.fineract.portfolio.note.domain.NoteRepository;
@@ -154,8 +154,6 @@ class LoanWritePlatformServiceJpaRepositoryImplTest {
     @Mock
     private LoanUtilService loanUtilService;
     @Mock
-    private LoanSummaryWrapper loanSummaryWrapper;
-    @Mock
     private EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService;
     @Mock
     private LoanRepaymentScheduleTransactionProcessorFactory transactionProcessingStrategy;
@@ -193,6 +191,8 @@ class LoanWritePlatformServiceJpaRepositoryImplTest {
     private LoanTransactionAssembler loanTransactionAssembler;
     @Mock
     private LoanAccrualsProcessingService loanAccrualsProcessingService;
+    @Mock
+    private LoanChargeValidator loanChargeValidator;
 
     @Test
     void givenMerchantIssuedRefundTransactionWithRelatedTransactions_whenAdjustExistingTransaction_thenRelatedTransactionsAreReversedAndEventsTriggered() {
@@ -235,10 +235,8 @@ class LoanWritePlatformServiceJpaRepositoryImplTest {
         // Mock methods called inside adjustExistingTransaction
         when(loan.findExistingTransactionIds()).thenReturn(Collections.emptyList());
         when(loan.findExistingReversedTransactionIds()).thenReturn(Collections.emptyList());
-        doNothing().when(loan).validateActivityNotBeforeClientOrGroupTransferDate(any(), any());
+        doNothing().when(loanTransactionValidator).validateActivityNotBeforeClientOrGroupTransferDate(any(), any(), any());
         when(loan.isClosedWrittenOff()).thenReturn(false);
-        when(loan.isClosedObligationsMet()).thenReturn(false);
-        when(loan.isClosedWithOutstandingAmountMarkedForReschedule()).thenReturn(false);
         when(newTransactionDetail.isRepaymentLikeType()).thenReturn(true);
 
         // Act
@@ -282,10 +280,8 @@ class LoanWritePlatformServiceJpaRepositoryImplTest {
         // Mock methods called inside adjustExistingTransaction
         when(loan.findExistingTransactionIds()).thenReturn(Collections.emptyList());
         when(loan.findExistingReversedTransactionIds()).thenReturn(Collections.emptyList());
-        doNothing().when(loan).validateActivityNotBeforeClientOrGroupTransferDate(any(), any());
+        doNothing().when(loanTransactionValidator).validateActivityNotBeforeClientOrGroupTransferDate(any(), any(), any());
         when(loan.isClosedWrittenOff()).thenReturn(false);
-        when(loan.isClosedObligationsMet()).thenReturn(false);
-        when(loan.isClosedWithOutstandingAmountMarkedForReschedule()).thenReturn(false);
         when(newTransactionDetail.isRepaymentLikeType()).thenReturn(true);
 
         // Act

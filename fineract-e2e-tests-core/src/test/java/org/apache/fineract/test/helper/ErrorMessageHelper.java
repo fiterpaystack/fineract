@@ -348,9 +348,12 @@ public final class ErrorMessageHelper {
     }
 
     public static String wrongLoanStatus(Integer actual, Integer expected) {
-        String actualToStr = actual.toString();
-        String expectedToStr = expected.toString();
-        return String.format("Wrong Loan status ID. Actual ID is: %s - But expected ID is: %s", actualToStr, expectedToStr);
+        return wrongLoanStatus(null, actual, expected);
+    }
+
+    public static String wrongLoanStatus(String resourceId, Integer actual, Integer expected) {
+        return String.format("Wrong Loan status ID of resource %s. Actual ID is: %s - But expected ID is: %s", resourceId, actual,
+                expected);
     }
 
     public static String wrongFraudFlag(Boolean actualFraudStatus, Boolean expectedFraudStatus) {
@@ -446,81 +449,54 @@ public final class ErrorMessageHelper {
         return String.format("Idempotency key is not matching:  Actual value is: %s - But expected value is: %s", actual, expected);
     }
 
-    public static String wrongNumberOfLinesInRepaymentSchedule(int actual, int expected) {
-        String actualStr = String.valueOf(actual);
-        String expectedStr = String.valueOf(expected);
-        return String.format("Number of lines in Repayment schedule is not correct. Actual value is: %s - Expected value is: %s", actualStr,
-                expectedStr);
+    public static String wrongNumberOfLinesInRepaymentSchedule(String resourceId, int actual, int expected) {
+        return String.format("Number of lines in Repayment schedule of resource %s is not correct. " //
+                + "Actual value is: %s - But expected value is: %s", resourceId, actual, expected);
     }
 
-    public static String wrongValueInLineInRepaymentSchedule(int line, List<List<String>> actual, List<String> expected) {
-        String lineStr = String.valueOf(line);
-        String expectedStr = expected.toString();
-        StringBuilder sb = new StringBuilder();
-        for (List<String> innerList : actual) {
-            sb.append(innerList.toString());
-            sb.append(System.lineSeparator());
-        }
-
-        return String.format(
-                "%nWrong value in Repayment schedule tab line %s. %nActual values in line (with the same due date) are: %n%s %nExpected values in line: %n%s",
-                lineStr, sb.toString(), expectedStr);
+    public static String wrongValueInLineInRepaymentSchedule(String resourceId, int line, List<List<String>> actualList,
+            List<String> expected) {
+        String actual = actualList.stream().map(Object::toString).collect(Collectors.joining(System.lineSeparator()));
+        return String.format("%nWrong value in Repayment schedule of resource %s tab line %s." //
+                + "%nActual values in line (with the same due date) are: %n%s - But expected values in line: %n%s", resourceId, line,
+                actual, expected);
     }
 
-    public static String wrongValueInLineInTransactionsTab(int line, List<List<String>> actual, List<String> expected) {
-        String lineStr = String.valueOf(line);
-        String expectedStr = expected.toString();
-        StringBuilder sb = new StringBuilder();
-        for (List<String> innerList : actual) {
-            sb.append(innerList.toString());
-            sb.append(System.lineSeparator());
-        }
-
-        return String.format(
-                "%nWrong value in Transactions tab line %s. %nActual values in line (with the same date) are: %n%s %nExpected values in line: %n%s",
-                lineStr, sb.toString(), expectedStr);
+    public static String wrongValueInLineInTransactionsTab(String resourceId, int line, List<List<String>> actualList,
+            List<String> expected) {
+        String actual = actualList.stream().map(Object::toString).collect(Collectors.joining(System.lineSeparator()));
+        return String.format("%nWrong value in Transactions tab of resource %s line %s." //
+                + "%nActual values in line (with the same date) are: %n%s %nExpected values in line: %n%s", resourceId, line, actual,
+                expected);
     }
 
-    public static String nrOfLinesWrongInTransactionsTab(int actual, int expected) {
-        String actualStr = String.valueOf(actual);
-        String expectedStr = String.valueOf(expected);
-
-        return String.format(
-                "%nNumber of lines does not match in Transactions tab and expected datatable. %nNumber of transaction tab lines: %s %nNumber of expected datatable lines: %s%n",
-                actualStr, expectedStr);
+    public static String nrOfLinesWrongInTransactionsTab(String resourceId, int actual, int expected) {
+        return String.format("%nNumber of lines does not match in Transactions tab and expected datatable of resource %s." //
+                + "%nNumber of transaction tab lines: %s %nNumber of expected datatable lines: %s%n", resourceId, actual, expected);
     }
 
-    public static String wrongValueInLineInChargesTab(int line, List<List<String>> actual, List<String> expected) {
-        String lineStr = String.valueOf(line);
-        String expectedStr = expected.toString();
-        StringBuilder sb = new StringBuilder();
-        for (List<String> innerList : actual) {
-            sb.append(innerList.toString());
-            sb.append(System.lineSeparator());
-        }
-
-        return String.format(
-                "%nWrong value in Charges tab line %s. %nActual values in line (with the same date) are: %n%s %nExpected values in line: %n%s",
-                lineStr, sb.toString(), expectedStr);
+    public static String wrongValueInLineInChargesTab(String resourceId, int line, List<List<String>> actualList, List<String> expected) {
+        String actual = actualList.stream().map(Object::toString).collect(Collectors.joining(System.lineSeparator()));
+        return String.format("%nWrong value in Charges tab of resource %s line %s." //
+                + "%nActual values in line (with the same date) are: %n%s %nExpected values in line: %n%s", resourceId, line, actual,
+                expected);
     }
 
     public static String wrongValueInLineInJournalEntries(int line, List<List<List<String>>> actual, List<String> expected) {
-        String lineStr = String.valueOf(line);
-        String expectedStr = expected.toString();
-        StringBuilder sb = new StringBuilder();
-        for (List<List<String>> innerList : actual) {
-            sb.append(innerList.toString());
-            sb.append(System.lineSeparator());
-        }
+        return wrongValueInLineInJournalEntries(null, line, actual, expected);
+    }
 
-        return String.format(
-                "%nWrong value in Journal entries line %s. %nActual values for the possible transactions in line (with the same date) are: %n%s %nExpected values in line: %n%s",
-                lineStr, sb.toString(), expectedStr);
+    public static String wrongValueInLineInJournalEntries(String resourceId, int line, List<List<List<String>>> actualList,
+            List<String> expected) {
+        String actual = actualList.stream().map(Object::toString).collect(Collectors.joining(System.lineSeparator()));
+        return String.format("%nWrong value in Journal entries of resource %s line %s." //
+                + "%nActual values for the possible transactions in line (with the same date) are: %n%s %nExpected values in line: %n%s",
+                resourceId, line, actual, expected);
     }
 
     public static String wrongDataInJournalEntriesGlAccountType(int line, String actual, String expected) {
-        return String.format("Wrong data in Journal entries, line %s / GL account type. Actual value is: %s - But expected value is: %s",
-                line, actual, expected);
+        return String.format("Wrong data in Journal entries, line %s / GL account type. " //
+                + "Actual value is: %s - But expected value is: %s", line, actual, expected);
     }
 
     public static String wrongDataInJournalEntriesGlAccountCode(int line, String actual, String expected) {

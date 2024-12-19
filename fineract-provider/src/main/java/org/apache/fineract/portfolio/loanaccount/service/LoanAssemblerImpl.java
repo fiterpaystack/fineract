@@ -80,7 +80,6 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanPaymentAllocationRul
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleTransactionProcessorFactory;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepositoryWrapper;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanStatus;
-import org.apache.fineract.portfolio.loanaccount.domain.LoanSummaryWrapper;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTopupDetails;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.LoanRepaymentScheduleTransactionProcessor;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.impl.AdvancedPaymentScheduleTransactionProcessor;
@@ -104,7 +103,7 @@ import org.apache.fineract.portfolio.rate.service.RateAssembler;
 import org.apache.fineract.useradministration.domain.AppUser;
 
 @RequiredArgsConstructor
-public class LoanAssembler {
+public class LoanAssemblerImpl implements LoanAssembler {
 
     private final FromJsonHelper fromApiJsonHelper;
     private final LoanRepositoryWrapper loanRepository;
@@ -117,7 +116,6 @@ public class LoanAssembler {
     private final LoanScheduleAssembler loanScheduleAssembler;
     private final LoanChargeAssembler loanChargeAssembler;
     private final LoanCollateralAssembler collateralAssembler;
-    private final LoanSummaryWrapper loanSummaryWrapper;
     private final LoanRepaymentScheduleTransactionProcessorFactory loanRepaymentScheduleTransactionProcessorFactory;
     private final HolidayRepository holidayRepository;
     private final ConfigurationDomainService configurationDomainService;
@@ -135,20 +133,24 @@ public class LoanAssembler {
     private final LoanChargeMapper loanChargeMapper;
     private final LoanCollateralManagementMapper loanCollateralManagementMapper;
     private final LoanAccrualsProcessingService loanAccrualsProcessingService;
+    private final LoanDisbursementService loanDisbursementService;
+    private final LoanChargeService loanChargeService;
+    private final LoanOfficerService loanOfficerService;
 
+    @Override
     public Loan assembleFrom(final Long accountId) {
         final Loan loanAccount = this.loanRepository.findOneWithNotFoundDetection(accountId, true);
-        loanAccount.setHelpers(defaultLoanLifecycleStateMachine, this.loanSummaryWrapper,
-                this.loanRepaymentScheduleTransactionProcessorFactory);
+        loanAccount.setHelpers(defaultLoanLifecycleStateMachine, this.loanRepaymentScheduleTransactionProcessorFactory);
 
         return loanAccount;
     }
 
+    @Override
     public void setHelpers(final Loan loanAccount) {
-        loanAccount.setHelpers(defaultLoanLifecycleStateMachine, this.loanSummaryWrapper,
-                this.loanRepaymentScheduleTransactionProcessorFactory);
+        loanAccount.setHelpers(defaultLoanLifecycleStateMachine, this.loanRepaymentScheduleTransactionProcessorFactory);
     }
 
+    @Override
     public Loan assembleFrom(final JsonCommand command) {
         final JsonElement element = command.parsedJson();
 
@@ -270,10 +272,9 @@ public class LoanAssembler {
         }
 
         copyAdvancedPaymentRulesIfApplicable(transactionProcessingStrategyCode, loanProduct, loanApplication);
-        loanApplication.setHelpers(defaultLoanLifecycleStateMachine, this.loanSummaryWrapper,
-                this.loanRepaymentScheduleTransactionProcessorFactory);
+        loanApplication.setHelpers(defaultLoanLifecycleStateMachine, this.loanRepaymentScheduleTransactionProcessorFactory);
         // TODO: review
-        loanApplication.recalculateAllCharges();
+        loanChargeService.recalculateAllCharges(loanApplication);
         topUpLoanConfiguration(element, loanApplication);
         loanAccrualsProcessingService.reprocessExistingAccruals(loanApplication);
         return loanApplication;
@@ -281,6 +282,7 @@ public class LoanAssembler {
 
     // TODO: Review... it might be better somewhere else and rethink due to the account number generation logic is
     // intertwined with GLIM logic
+    @Override
     public void accountNumberGeneration(JsonCommand command, Loan loan) {
         if (loan.isAccountNumberRequiresAutoGeneration()) {
             JsonElement element = command.parsedJson();
@@ -371,6 +373,7 @@ public class LoanAssembler {
         }
     }
 
+    @Override
     public CodeValue findCodeValueByIdIfProvided(final Long codeValueId) {
         CodeValue codeValue = null;
         if (codeValueId != null) {
@@ -379,6 +382,7 @@ public class LoanAssembler {
         return codeValue;
     }
 
+    @Override
     public Fund findFundByIdIfProvided(final Long fundId) {
         Fund fund = null;
         if (fundId != null) {
@@ -387,6 +391,7 @@ public class LoanAssembler {
         return fund;
     }
 
+    @Override
     public Staff findLoanOfficerByIdIfProvided(final Long loanOfficerId) {
         Staff staff = null;
         if (loanOfficerId != null) {
@@ -419,6 +424,7 @@ public class LoanAssembler {
         }
     }
 
+    @Override
     public Map<String, Object> updateFrom(JsonCommand command, Loan loan) {
         final Map<String, Object> changes = new HashMap<>();
         LoanProduct loanProduct;
@@ -600,7 +606,7 @@ public class LoanAssembler {
             final Long newValue = command.longValueOfParameterNamed(LoanApiConstants.loanOfficerIdParameterName);
             changes.put(LoanApiConstants.loanOfficerIdParameterName, newValue);
             final Staff newOfficer = findLoanOfficerByIdIfProvided(newValue);
-            loan.updateLoanOfficerOnLoanApplication(newOfficer);
+            loanOfficerService.updateLoanOfficerOnLoanApplication(loan, newOfficer);
         }
 
         Long existingLoanPurposeId = null;
@@ -710,7 +716,7 @@ public class LoanAssembler {
         }
 
         if (loanProduct.isMultiDisburseLoan()) {
-            loan.updateDisbursementDetails(command, changes);
+            loanDisbursementService.updateDisbursementDetails(loan, command, changes);
             if (command.isChangeInBigDecimalParameterNamed(LoanApiConstants.maxOutstandingBalanceParameterName,
                     loan.getMaxOutstandingLoanBalance())) {
                 loan.setMaxOutstandingLoanBalance(
@@ -833,7 +839,7 @@ public class LoanAssembler {
             final LoanScheduleModel loanSchedule = this.calculationPlatformService.calculateLoanSchedule(query, false);
             loan.updateLoanSchedule(loanSchedule);
             loanAccrualsProcessingService.reprocessExistingAccruals(loan);
-            loan.recalculateAllCharges();
+            loanChargeService.recalculateAllCharges(loan);
         }
 
         // Changes to modify loan rates.
@@ -844,6 +850,7 @@ public class LoanAssembler {
         return changes;
     }
 
+    @Override
     public Map<String, Object> updateLoanApplicationAttributesForWithdrawal(Loan loan, JsonCommand command, AppUser currentUser) {
         final Map<String, Object> actualChanges = new LinkedHashMap<>();
 
@@ -868,6 +875,7 @@ public class LoanAssembler {
         return actualChanges;
     }
 
+    @Override
     public Map<String, Object> updateLoanApplicationAttributesForRejection(Loan loan, JsonCommand command, AppUser currentUser) {
         final Map<String, Object> actualChanges = new LinkedHashMap<>();
 
