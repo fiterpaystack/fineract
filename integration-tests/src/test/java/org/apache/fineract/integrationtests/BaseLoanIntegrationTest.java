@@ -159,6 +159,7 @@ public abstract class BaseLoanIntegrationTest {
     protected BusinessDateHelper businessDateHelper = new BusinessDateHelper();
     protected DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(DATETIME_PATTERN);
     protected GlobalConfigurationHelper globalConfigurationHelper = new GlobalConfigurationHelper();
+    protected final CodeHelper codeHelper = new CodeHelper();
 
     protected static void validateRepaymentPeriod(GetLoansLoanIdResponse loanDetails, Integer index, LocalDate dueDate, double principalDue,
             double principalPaid, double principalOutstanding, double paidInAdvance, double paidLate) {
@@ -1072,6 +1073,10 @@ public abstract class BaseLoanIntegrationTest {
     protected Installment installment(double principalAmount, double interestAmount, double totalOutstandingAmount, Boolean completed,
             String dueDate) {
         return new Installment(principalAmount, interestAmount, null, null, totalOutstandingAmount, completed, dueDate, null, null);
+    }
+
+    protected Installment fullyRepaidInstallment(double principalAmount, double interestAmount, String dueDate) {
+        return new Installment(principalAmount, interestAmount, null, null, 0.0, true, dueDate, null, null);
     }
 
     protected Installment installment(double principalAmount, double interestAmount, double feeAmount, double totalOutstandingAmount,
