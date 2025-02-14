@@ -26,18 +26,23 @@ import java.math.MathContext;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.TreeSet;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.organisation.monetary.domain.Money;
-import org.apache.fineract.portfolio.loanaccount.data.LoanTermVariationsDataWrapper;
+import org.apache.fineract.portfolio.loanaccount.data.LoanTermVariationsData;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanTermVariationType;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProductMinimumRepaymentScheduleRelatedDetail;
 
 @Data
@@ -47,18 +52,18 @@ public class ProgressiveLoanInterestScheduleModel {
     private final List<RepaymentPeriod> repaymentPeriods;
     private final TreeSet<InterestRate> interestRates;
     private final LoanProductMinimumRepaymentScheduleRelatedDetail loanProductRelatedDetail;
-    private final LoanTermVariationsDataWrapper loanTermVariations;
+    private final Map<LoanTermVariationType, List<LoanTermVariationsData>> loanTermVariations;
     private final Integer installmentAmountInMultiplesOf;
     private final MathContext mc;
     private final Money zero;
 
     public ProgressiveLoanInterestScheduleModel(final List<RepaymentPeriod> repaymentPeriods,
             final LoanProductMinimumRepaymentScheduleRelatedDetail loanProductRelatedDetail,
-            final LoanTermVariationsDataWrapper loanTermVariations, final Integer installmentAmountInMultiplesOf, final MathContext mc) {
-        this.repaymentPeriods = repaymentPeriods;
+            final List<LoanTermVariationsData> loanTermVariations, final Integer installmentAmountInMultiplesOf, final MathContext mc) {
+        this.repaymentPeriods = new ArrayList<>(repaymentPeriods);
         this.interestRates = new TreeSet<>(Collections.reverseOrder());
         this.loanProductRelatedDetail = loanProductRelatedDetail;
-        this.loanTermVariations = loanTermVariations;
+        this.loanTermVariations = buildLoanTermVariationMap(loanTermVariations);
         this.installmentAmountInMultiplesOf = installmentAmountInMultiplesOf;
         this.mc = mc;
         this.zero = Money.zero(loanProductRelatedDetail.getCurrencyData(), mc);
@@ -66,7 +71,8 @@ public class ProgressiveLoanInterestScheduleModel {
 
     private ProgressiveLoanInterestScheduleModel(final List<RepaymentPeriod> repaymentPeriods, final TreeSet<InterestRate> interestRates,
             final LoanProductMinimumRepaymentScheduleRelatedDetail loanProductRelatedDetail,
-            final LoanTermVariationsDataWrapper loanTermVariations, final Integer installmentAmountInMultiplesOf, final MathContext mc) {
+            final Map<LoanTermVariationType, List<LoanTermVariationsData>> loanTermVariations, final Integer installmentAmountInMultiplesOf,
+            final MathContext mc) {
         this.mc = mc;
         this.repaymentPeriods = copyRepaymentPeriods(repaymentPeriods,
                 (previousPeriod, repaymentPeriod) -> new RepaymentPeriod(previousPeriod, repaymentPeriod, mc));
@@ -166,16 +172,11 @@ public class ProgressiveLoanInterestScheduleModel {
         }
 
         final List<RepaymentPeriod> affectedPeriods = repaymentPeriods.stream()//
-                .filter(period -> isPeriodInRange(period, fromDate, endDate))//
+                .filter(period -> period.getFromDate().isBefore(endDate) && !period.getDueDate().isBefore(fromDate))//
                 .toList();
         affectedPeriods.forEach(period -> insertInterestPausePeriods(period, fromDate, endDate));
 
         return affectedPeriods.stream().findFirst();
-    }
-
-    private boolean isPeriodInRange(final RepaymentPeriod repaymentPeriod, final LocalDate fromDate, final LocalDate endDate) {
-        return DateUtils.isDateInRangeFromExclusiveToInclusive(fromDate, repaymentPeriod.getFromDate(), repaymentPeriod.getDueDate())
-                || DateUtils.isDateInRangeFromExclusiveToInclusive(endDate, repaymentPeriod.getFromDate(), repaymentPeriod.getDueDate());
     }
 
     Optional<RepaymentPeriod> findRepaymentPeriodForBalanceChange(final LocalDate balanceChangeDate) {
@@ -235,38 +236,41 @@ public class ProgressiveLoanInterestScheduleModel {
         repaymentPeriod.getInterestPeriods().add(interestPeriod);
     }
 
-    private void insertInterestPausePeriods(final RepaymentPeriod repaymentPeriod, final LocalDate fromDate, final LocalDate endDate) {
-        final InterestPeriod previousInterestPeriod = findPreviousInterestPeriod(repaymentPeriod, fromDate);
-        final LocalDate originalFromDate = previousInterestPeriod.getFromDate();
-        final LocalDate originalDueDate = previousInterestPeriod.getDueDate();
-        final LocalDate newDueDate = calculateNewDueDate(previousInterestPeriod, fromDate.minusDays(1));
+    private void insertInterestPausePeriods(final RepaymentPeriod repaymentPeriod, final LocalDate pauseStart, final LocalDate pauseEnd) {
+        final LocalDate effectivePauseStart = pauseStart.minusDays(1);
+        final LocalDate finalPauseStart = effectivePauseStart.isBefore(repaymentPeriod.getFromDate()) ? repaymentPeriod.getFromDate()
+                : effectivePauseStart;
+        final LocalDate finalPauseEnd = pauseEnd.isAfter(repaymentPeriod.getDueDate()) ? repaymentPeriod.getDueDate() : pauseEnd;
 
-        if (fromDate.isAfter(originalFromDate) && endDate.isBefore(originalDueDate)) {
-            previousInterestPeriod.setDueDate(newDueDate);
-            final InterestPeriod interestPausePeriod = new InterestPeriod(repaymentPeriod, newDueDate, endDate, BigDecimal.ZERO,
-                    BigDecimal.ZERO, zero, zero, zero, mc, true);
-            repaymentPeriod.getInterestPeriods().add(interestPausePeriod);
-            final InterestPeriod interestAfterPausePeriod = new InterestPeriod(repaymentPeriod, endDate, originalDueDate, BigDecimal.ZERO,
-                    BigDecimal.ZERO, zero, zero, zero, mc, false);
-            repaymentPeriod.getInterestPeriods().add(interestAfterPausePeriod);
+        final List<InterestPeriod> newInterestPeriods = new ArrayList<>();
+        for (final InterestPeriod interestPeriod : repaymentPeriod.getInterestPeriods()) {
+            if (interestPeriod.getDueDate().isBefore(finalPauseStart) || !interestPeriod.getFromDate().isBefore(finalPauseEnd)) {
+                newInterestPeriods.add(interestPeriod);
+            } else {
+                if (interestPeriod.getFromDate().isBefore(finalPauseStart)) {
+                    final InterestPeriod leftSlice = new InterestPeriod(repaymentPeriod, interestPeriod.getFromDate(), finalPauseStart,
+                            interestPeriod.getRateFactor(), interestPeriod.getRateFactorTillPeriodDueDate(),
+                            interestPeriod.getDisbursementAmount(), interestPeriod.getBalanceCorrectionAmount(),
+                            interestPeriod.getOutstandingLoanBalance(), interestPeriod.getMc(), false);
+                    newInterestPeriods.add(leftSlice);
+                }
+                if (interestPeriod.getDueDate().isAfter(finalPauseEnd)) {
+                    final InterestPeriod rightSlice = new InterestPeriod(repaymentPeriod, finalPauseEnd, interestPeriod.getDueDate(),
+                            interestPeriod.getRateFactor(), interestPeriod.getRateFactorTillPeriodDueDate(),
+                            interestPeriod.getDisbursementAmount(), interestPeriod.getBalanceCorrectionAmount(),
+                            interestPeriod.getOutstandingLoanBalance(), interestPeriod.getMc(), false);
+                    newInterestPeriods.add(rightSlice);
+                }
+            }
         }
 
-        if (fromDate.isAfter(originalFromDate) && endDate.isAfter(originalDueDate)) {
-            previousInterestPeriod.setDueDate(newDueDate);
-            final InterestPeriod interestPausePeriod = new InterestPeriod(repaymentPeriod, newDueDate, originalDueDate, BigDecimal.ZERO,
-                    BigDecimal.ZERO, zero, zero, zero, mc, true);
-            repaymentPeriod.getInterestPeriods().add(interestPausePeriod);
-        }
+        final InterestPeriod pausedSlice = new InterestPeriod(repaymentPeriod, finalPauseStart, finalPauseEnd, BigDecimal.ZERO,
+                BigDecimal.ZERO, zero, zero, zero, mc, true);
+        newInterestPeriods.add(pausedSlice);
 
-        if (fromDate.isBefore(originalFromDate) && endDate.isBefore(originalDueDate)) {
-            repaymentPeriod.getInterestPeriods().clear();
-            final InterestPeriod interestPausePeriod = new InterestPeriod(repaymentPeriod, newDueDate, originalDueDate, BigDecimal.ZERO,
-                    BigDecimal.ZERO, zero, zero, zero, mc, true);
-            repaymentPeriod.getInterestPeriods().add(interestPausePeriod);
-            InterestPeriod interestAfterPausePeriod = new InterestPeriod(repaymentPeriod, endDate, originalDueDate, BigDecimal.ZERO,
-                    BigDecimal.ZERO, zero, zero, zero, mc, false);
-            repaymentPeriod.getInterestPeriods().add(interestAfterPausePeriod);
-        }
+        newInterestPeriods.sort(Comparator.comparing(InterestPeriod::getFromDate));
+
+        repaymentPeriod.setInterestPeriods(newInterestPeriods);
     }
 
     private InterestPeriod findPreviousInterestPeriod(final RepaymentPeriod repaymentPeriod, final LocalDate date) {
@@ -344,4 +348,12 @@ public class ProgressiveLoanInterestScheduleModel {
                 : date.isAfter(previousInterestPeriod.getDueDate()) ? previousInterestPeriod.getDueDate() : date;
     }
 
+    private Map<LoanTermVariationType, List<LoanTermVariationsData>> buildLoanTermVariationMap(
+            final List<LoanTermVariationsData> loanTermVariationsData) {
+        if (loanTermVariationsData == null) {
+            return new HashMap<>();
+        }
+        return loanTermVariationsData.stream()
+                .collect(Collectors.groupingBy(ltvd -> LoanTermVariationType.fromInt(ltvd.getTermType().getId().intValue())));
+    }
 }

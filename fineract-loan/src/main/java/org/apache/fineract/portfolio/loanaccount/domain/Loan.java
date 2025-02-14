@@ -2658,6 +2658,10 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         return BigDecimal.ZERO.compareTo(getLoanRepaymentScheduleDetail().getAnnualNominalInterestRate()) < 0;
     }
 
+    public boolean isInterestBearingAndInterestRecalculationEnabled() {
+        return isInterestBearing() && isInterestRecalculationEnabled();
+    }
+
     public boolean isInterestRecalculationEnabled() {
         return this.loanRepaymentScheduleDetail.isInterestRecalculationEnabled();
     }
@@ -2705,8 +2709,7 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     }
 
     public LoanScheduleDTO getRecalculatedSchedule(final ScheduleGeneratorDTO generatorDTO) {
-        if (!this.repaymentScheduleDetail().isEnableDownPayment()
-                && (!this.repaymentScheduleDetail().isInterestRecalculationEnabled() || isNpa || isChargedOff())) {
+        if (!isInterestBearingAndInterestRecalculationEnabled() || isNpa || isChargedOff()) {
             return null;
         }
         final InterestMethod interestMethod = this.loanRepaymentScheduleDetail.getInterestMethod();
@@ -2726,7 +2729,7 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     public OutstandingAmountsDTO fetchPrepaymentDetail(final ScheduleGeneratorDTO scheduleGeneratorDTO, final LocalDate onDate) {
         OutstandingAmountsDTO outstandingAmounts;
 
-        if (this.loanRepaymentScheduleDetail.isInterestRecalculationEnabled() && !isChargeOffOnDate(onDate)) {
+        if (isInterestBearingAndInterestRecalculationEnabled() && !isChargeOffOnDate(onDate)) {
             final MathContext mc = MoneyHelper.getMathContext();
 
             final InterestMethod interestMethod = this.loanRepaymentScheduleDetail.getInterestMethod();
@@ -3581,4 +3584,17 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         return (chargeOffTransaction == null) ? false : (chargeOffTransaction.getDateOf().compareTo(onDate) <= 0);
     }
 
+    public boolean hasMonetaryActivityAfter(final LocalDate transactionDate) {
+        for (LoanTransaction transaction : this.getLoanTransactions()) {
+            if (transaction.getTransactionDate().isAfter(transactionDate) && !transaction.isNonMonetaryTransaction()) {
+                return true;
+            }
+        }
+        for (LoanCharge loanCharge : this.getLoanCharges()) {
+            if (!loanCharge.determineIfFullyPaid() && loanCharge.getSubmittedOnDate().isAfter(transactionDate)) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
