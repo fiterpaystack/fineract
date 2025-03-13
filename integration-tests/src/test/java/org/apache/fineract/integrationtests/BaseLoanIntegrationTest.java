@@ -61,14 +61,18 @@ import org.apache.fineract.client.models.AdvancedPaymentData;
 import org.apache.fineract.client.models.AllowAttributeOverrides;
 import org.apache.fineract.client.models.BusinessDateRequest;
 import org.apache.fineract.client.models.GetJournalEntriesTransactionIdResponse;
+import org.apache.fineract.client.models.GetLoansLoanIdChargesChargeIdResponse;
 import org.apache.fineract.client.models.GetLoansLoanIdRepaymentPeriod;
 import org.apache.fineract.client.models.GetLoansLoanIdResponse;
 import org.apache.fineract.client.models.GetLoansLoanIdStatus;
 import org.apache.fineract.client.models.GetLoansLoanIdTransactions;
+import org.apache.fineract.client.models.GetLoansLoanIdTransactionsTemplateResponse;
 import org.apache.fineract.client.models.JournalEntryTransactionItem;
+import org.apache.fineract.client.models.LoanPointInTimeData;
 import org.apache.fineract.client.models.PaymentAllocationOrder;
 import org.apache.fineract.client.models.PostChargesResponse;
 import org.apache.fineract.client.models.PostLoanProductsRequest;
+import org.apache.fineract.client.models.PostLoansLoanIdChargesRequest;
 import org.apache.fineract.client.models.PostLoansLoanIdChargesResponse;
 import org.apache.fineract.client.models.PostLoansLoanIdRequest;
 import org.apache.fineract.client.models.PostLoansLoanIdResponse;
@@ -79,7 +83,9 @@ import org.apache.fineract.client.models.PostLoansRequest;
 import org.apache.fineract.client.models.PostLoansResponse;
 import org.apache.fineract.client.models.PutGlobalConfigurationsRequest;
 import org.apache.fineract.client.models.PutLoansLoanIdResponse;
+import org.apache.fineract.client.models.RetrieveLoansPointInTimeRequest;
 import org.apache.fineract.client.util.CallFailedRuntimeException;
+import org.apache.fineract.client.util.Calls;
 import org.apache.fineract.infrastructure.configuration.api.GlobalConfigurationConstants;
 import org.apache.fineract.integrationtests.client.IntegrationTest;
 import org.apache.fineract.integrationtests.common.BatchHelper;
@@ -266,6 +272,25 @@ public abstract class BaseLoanIntegrationTest extends IntegrationTest {
         Boolean actualValue = extractor.apply(loanDetails.getStatus());
         Assertions.assertNotNull(actualValue);
         Assertions.assertTrue(actualValue);
+    }
+
+    protected GetLoansLoanIdTransactionsTemplateResponse getPrepayAmount(Long loanId, String date) {
+        return ok(fineractClient().loanTransactions.retrieveTransactionTemplate(loanId, "prepayLoan", DATETIME_PATTERN, date, "en"));
+    }
+
+    protected Long verifyPrepayAmountByRepayment(Long loanId, String date) {
+        GetLoansLoanIdTransactionsTemplateResponse prepayAmount = getPrepayAmount(loanId, date);
+        Double amountToPrepayLoan = prepayAmount.getAmount();
+        Long repaymentId = null;
+        if (amountToPrepayLoan != null && amountToPrepayLoan > 0) {
+            PostLoansLoanIdTransactionsResponse repayment = loanTransactionHelper.makeLoanRepayment(loanId, "repayment", date,
+                    amountToPrepayLoan);
+            Assertions.assertNotNull(repayment);
+            Assertions.assertNotNull(repayment.getResourceId());
+            repaymentId = repayment.getResourceId();
+        }
+        verifyLoanStatus(loanId, LoanStatus.CLOSED_OBLIGATIONS_MET);
+        return repaymentId;
     }
 
     private String getNonByPassUserAuthKey(RequestSpecification requestSpec, ResponseSpecification responseSpec) {
@@ -673,6 +698,7 @@ public abstract class BaseLoanIntegrationTest extends IntegrationTest {
     }
 
     protected void disburseLoan(Long loanId, BigDecimal amount, String date) {
+        log.info("Disbursing loan with id {} with amount {}", loanId, amount);
         loanTransactionHelper.disburseLoan(loanId, new PostLoansLoanIdRequest().actualDisbursementDate(date).dateFormat(DATETIME_PATTERN)
                 .transactionAmount(amount).locale("en"));
     }
@@ -683,6 +709,26 @@ public abstract class BaseLoanIntegrationTest extends IntegrationTest {
 
     protected void undoLastDisbursement(Long loanId) {
         loanTransactionHelper.undoLastDisbursalLoan(loanId, new PostLoansLoanIdRequest());
+    }
+
+    protected LoanPointInTimeData getPointInTimeData(Long loanId, String date) {
+        return Calls.ok(fineractClient().loansPointInTimeApi.retrieveLoanPointInTime(loanId, date, DATETIME_PATTERN, "en"));
+    }
+
+    protected List<LoanPointInTimeData> getPointInTimeData(List<Long> loanIds, String date) {
+        RetrieveLoansPointInTimeRequest request = new RetrieveLoansPointInTimeRequest().loanIds(loanIds).date(date)
+                .dateFormat(DATETIME_PATTERN).locale("en");
+        return Calls.ok(fineractClient().loansPointInTimeApi.retrieveLoansPointInTime(request));
+    }
+
+    protected void verifyOutstanding(LoanPointInTimeData loan, OutstandingAmounts outstanding) {
+        assertThat(BigDecimal.valueOf(outstanding.principalOutstanding))
+                .isEqualByComparingTo(loan.getPrincipal().getPrincipalOutstanding());
+        assertThat(BigDecimal.valueOf(outstanding.interestOutstanding)).isEqualByComparingTo(loan.getInterest().getInterestOutstanding());
+        assertThat(BigDecimal.valueOf(outstanding.feeOutstanding)).isEqualByComparingTo(loan.getFee().getFeeChargesOutstanding());
+        assertThat(BigDecimal.valueOf(outstanding.penaltyOutstanding))
+                .isEqualByComparingTo(loan.getPenalty().getPenaltyChargesOutstanding());
+        assertThat(BigDecimal.valueOf(outstanding.totalOutstanding)).isEqualByComparingTo(loan.getTotal().getTotalOutstanding());
     }
 
     // Note: this is buggy because if multiple journal entries are for the same account, amount and type, the
@@ -723,6 +769,7 @@ public abstract class BaseLoanIntegrationTest extends IntegrationTest {
     }
 
     protected void verifyTRJournalEntries(Long transactionId, Journal... entries) {
+        Assertions.assertNotNull(transactionId, "transactionId is null");
         GetJournalEntriesTransactionIdResponse journalEntriesForLoan = journalEntryHelper.getJournalEntries("L" + transactionId.toString());
         Assertions.assertEquals(entries.length, journalEntriesForLoan.getPageItems().size());
         Arrays.stream(entries).forEach(journalEntry -> {
@@ -747,6 +794,14 @@ public abstract class BaseLoanIntegrationTest extends IntegrationTest {
     protected Long createDisbursementPercentageCharge(double percentageAmount) {
         Integer chargeId = ChargesHelper.createCharges(requestSpec, responseSpec, ChargesHelper
                 .getLoanDisbursementJSON(ChargesHelper.CHARGE_CALCULATION_TYPE_PERCENTAGE_AMOUNT, String.valueOf(percentageAmount)));
+        assertNotNull(chargeId);
+        return chargeId.longValue();
+    }
+
+    protected Long createOverduePenaltyPercentageCharge(double percentageAmount, Integer feeFrequency, int feeInterval) {
+        Integer chargeId = ChargesHelper.createCharges(requestSpec, responseSpec,
+                ChargesHelper.getLoanOverdueFeeJSONWithCalculationTypePercentageWithFeeInterval(String.valueOf(percentageAmount),
+                        feeFrequency, feeInterval));
         assertNotNull(chargeId);
         return chargeId.longValue();
     }
@@ -886,6 +941,18 @@ public abstract class BaseLoanIntegrationTest extends IntegrationTest {
             }
             Assertions.assertEquals(installments[i].completed, period.getComplete());
             Assertions.assertEquals(LocalDate.parse(installments[i].dueDate, dateTimeFormatter), period.getDueDate());
+        }
+    }
+
+    protected void runFromToInclusive(String fromDate, String toDate, Runnable runnable) {
+        DateTimeFormatter format = DateTimeFormatter.ofPattern(DATETIME_PATTERN);
+        LocalDate startDate = LocalDate.parse(fromDate, format);
+        LocalDate endDate = LocalDate.parse(toDate, format);
+
+        LocalDate currentDate = startDate;
+        while (currentDate.isBefore(endDate) || currentDate.isEqual(endDate)) {
+            runAt(format.format(currentDate), runnable);
+            currentDate = currentDate.plusDays(1);
         }
     }
 
@@ -1047,6 +1114,17 @@ public abstract class BaseLoanIntegrationTest extends IntegrationTest {
         return loanTransactionHelper.addChargeForLoan(loanId.intValue(), payload, responseSpec);
     }
 
+    protected List<GetLoansLoanIdChargesChargeIdResponse> getOverdueInstallmentLoanCharges(Long loanId) {
+        return ok(fineractClient().loanCharges.retrieveAllLoanCharges(loanId)).stream() //
+                .filter(ch -> ch.getChargeTimeType().getId().intValue() == ChargesHelper.CHARGE_OVERDUE_INSTALLMENT_FEE) //
+                .toList(); //
+    }
+
+    protected void deactivateOverdueLoanCharges(Long loanId, String fromDueDate) {
+        ok(fineractClient().loanCharges.executeLoanCharge(loanId,
+                new PostLoansLoanIdChargesRequest().dueDate(fromDueDate).dateFormat(DATETIME_PATTERN).locale("en"), "deactivateOverdue"));
+    }
+
     protected void waiveLoanCharge(Long loanId, Long chargeId, Integer installmentNumber) {
         String payload = LoanTransactionHelper.getWaiveChargeJSON(installmentNumber.toString());
         loanTransactionHelper.waiveChargesForLoan(loanId.intValue(), chargeId.intValue(), payload);
@@ -1075,8 +1153,8 @@ public abstract class BaseLoanIntegrationTest extends IntegrationTest {
         return new Journal(amount, account, "CREDIT");
     }
 
-    protected Transaction transaction(double principalAmount, String type, String date) {
-        return new Transaction(principalAmount, type, date, null);
+    protected Transaction transaction(double amount, String type, String date) {
+        return new Transaction(amount, type, date, null);
     }
 
     protected Transaction reversedTransaction(double principalAmount, String type, String date) {
@@ -1110,7 +1188,7 @@ public abstract class BaseLoanIntegrationTest extends IntegrationTest {
     }
 
     protected Installment unpaidInstallment(double principalAmount, double interestAmount, String dueDate) {
-        Double amount = principalAmount + interestAmount;
+        Double amount = BigDecimal.valueOf(principalAmount).add(BigDecimal.valueOf(interestAmount)).doubleValue();
         return new Installment(principalAmount, interestAmount, null, null, amount, false, dueDate, null, null);
     }
 
@@ -1137,8 +1215,8 @@ public abstract class BaseLoanIntegrationTest extends IntegrationTest {
                 loanBalance);
     }
 
-    protected OutstandingAmounts outstanding(double principal, double fee, double penalty, double total) {
-        return new OutstandingAmounts(principal, fee, penalty, total);
+    protected OutstandingAmounts outstanding(double principal, double interestOutstanding, double fee, double penalty, double total) {
+        return new OutstandingAmounts(principal, interestOutstanding, fee, penalty, total);
     }
 
     protected BatchRequestBuilder batchRequest() {
@@ -1159,6 +1237,10 @@ public abstract class BaseLoanIntegrationTest extends IntegrationTest {
 
         assertEquals(expectedMaturityDate, loanDetails.getTimeline().getExpectedMaturityDate());
         assertEquals(actualMaturityDate, loanDetails.getTimeline().getActualMaturityDate());
+    }
+
+    protected void verifyLoanStatus(GetLoansLoanIdResponse loanDetails, LoanStatus loanStatus) {
+        assertEquals(loanStatus.getCode(), loanDetails.getStatus().getCode());
     }
 
     protected void verifyLoanStatus(long loanId, LoanStatus loanStatus) {
@@ -1296,6 +1378,7 @@ public abstract class BaseLoanIntegrationTest extends IntegrationTest {
     public static class OutstandingAmounts {
 
         Double principalOutstanding;
+        Double interestOutstanding;
         Double feeOutstanding;
         Double penaltyOutstanding;
         Double totalOutstanding;
@@ -1376,6 +1459,9 @@ public abstract class BaseLoanIntegrationTest extends IntegrationTest {
     public static class FuturePaymentAllocationRule {
 
         public static final String LAST_INSTALLMENT = "LAST_INSTALLMENT";
+        public static final String NEXT_INSTALLMENT = "NEXT_INSTALLMENT";
+        public static final String NEXT_LAST_INSTALLMENT = "NEXT_LAST_INSTALLMENT";
+
     }
 
     public static class SupportedInterestRefundTypesItem {

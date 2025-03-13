@@ -129,6 +129,9 @@ public class LoanAccrualsProcessingServiceImpl implements LoanAccrualsProcessing
     @Override
     @Transactional
     public void addPeriodicAccruals(@NotNull LocalDate tillDate, @NotNull Loan loan) {
+        if (loan.isClosed() || loan.getStatus().isOverpaid()) {
+            return;
+        }
         addAccruals(loan, tillDate, true, false, true);
     }
 
@@ -291,6 +294,7 @@ public class LoanAccrualsProcessingServiceImpl implements LoanAccrualsProcessing
                 || !loan.isPeriodicAccrualAccountingEnabledOnLoanProduct()) {
             return;
         }
+
         LoanInterestRecalculationDetails recalculationDetails = loan.getLoanInterestRecalculationDetails();
         if (recalculationDetails != null && recalculationDetails.isCompoundingToBePostedAsTransaction()) {
             return;
@@ -520,7 +524,9 @@ public class LoanAccrualsProcessingServiceImpl implements LoanAccrualsProcessing
         loanCharges = loan.getLoanCharges(lc -> !lc.isDueAtDisbursement() && (lc.isInstalmentFee() ? !DateUtils.isBefore(tillDate, dueDate)
                 : isChargeDue(lc, tillDate, chargeOnDueDate, installment, period.isFirstPeriod())));
         for (LoanCharge loanCharge : loanCharges) {
-            addChargeAccrual(loanCharge, tillDate, chargeOnDueDate, installment, accrualPeriods);
+            if (loanCharge.isActive()) {
+                addChargeAccrual(loanCharge, tillDate, chargeOnDueDate, installment, accrualPeriods);
+            }
         }
     }
 
