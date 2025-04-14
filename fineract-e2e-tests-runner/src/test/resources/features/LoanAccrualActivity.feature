@@ -4556,6 +4556,7 @@ Feature: LoanAccrualActivity
     When Admin creates a fully customized loan with the following data:
       | LoanProduct                                                                       | submitted on date | with Principal | ANNUAL interest rate % | interest type     | interest calculation period | amortization type  | loanTermFrequency | loanTermFrequencyType | repaymentEvery | repaymentFrequencyType | numberOfRepayments | graceOnPrincipalPayment | graceOnInterestPayment | interest free period | Payment strategy            |
       | LP2_ADV_PYMNT_INTEREST_RECOGNITION_DISBURSEMENT_DAILY_EMI_360_30_ACCRUAL_ACTIVITY | 31 January 2024   | 2000           | 7                      | DECLINING_BALANCE | DAILY                       | EQUAL_INSTALLMENTS | 6                 | MONTHS                | 1              | MONTHS                 | 6                  | 0                       | 0                      | 0                    | ADVANCED_PAYMENT_ALLOCATION |
+    Then Loan Product response contains interestRecognitionOnDisbursementDate flag with value "true"
     And Admin successfully approves the loan on "31 January 2024" with "2000" amount and expected disbursement date on "31 January 2024"
     When Admin successfully disburse the loan on "31 January 2024" with "2000" EUR transaction amount
     Then Loan Repayment schedule has 6 periods, with the following data for periods:
@@ -4809,6 +4810,7 @@ Feature: LoanAccrualActivity
       | Transaction date | Transaction Type | Amount | Principal | Interest | Fees | Penalties | Loan Balance | Reverted | Replayed |
       | 01 January 2025  | Disbursement     | 800.0  | 0.0       | 0.0      | 0.0  | 0.0       | 800.0        | false    | false    |
       | 16 January 2025  | Repayment        | 820.0  | 800.0     | 0.0      | 0.0  | 20.0      | 0.0          | false    | false    |
+      | 16 January 2025  | Accrual Activity | 20.0   | 0.0       | 0.0      | 0.0  | 20.0      | 0.0          | false    | false    |
       | 20 January 2025  | Accrual          | 20.0   | 0.0       | 0.0      | 0.0  | 20.0      | 0.0          | false    | false    |
     Then Loan Charges tab has a given charge with the following data:
       | Name    | isPenalty | Payment due at     | Due as of       | Calculation type | Due  | Paid | Waived | Outstanding |
@@ -4870,6 +4872,7 @@ Feature: LoanAccrualActivity
       | Transaction date | Transaction Type | Amount | Principal | Interest | Fees | Penalties | Loan Balance | Reverted | Replayed |
       | 01 January 2025  | Disbursement     | 800.0  | 0.0       | 0.0      | 0.0  | 0.0       | 800.0        | false    | false    |
       | 16 January 2025  | Repayment        | 820.0  | 800.0     | 0.0      | 0.0  | 20.0      | 0.0          | false    | false    |
+      | 16 January 2025  | Accrual Activity | 20.0   | 0.0       | 0.0      | 0.0  | 20.0      | 0.0          | false    | false    |
       | 17 February 2025 | Accrual          | 20.0   | 0.0       | 0.0      | 0.0  | 20.0      | 0.0          | false    | false    |
     Then Loan Charges tab has a given charge with the following data:
       | Name    | isPenalty | Payment due at     | Due as of       | Calculation type | Due  | Paid | Waived | Outstanding |
@@ -4931,6 +4934,7 @@ Feature: LoanAccrualActivity
       | Transaction date | Transaction Type | Amount | Principal | Interest | Fees | Penalties | Loan Balance | Reverted | Replayed |
       | 01 January 2025  | Disbursement     | 800.0  | 0.0       | 0.0      | 0.0  | 0.0       | 800.0        | false    | false    |
       | 16 January 2025  | Repayment        | 820.0  | 800.0     | 0.0      | 0.0  | 20.0      | 0.0          | false    | false    |
+      | 16 January 2025  | Accrual Activity | 20.0   | 0.0       | 0.0      | 0.0  | 20.0      | 0.0          | false    | false    |
       | 20 January 2025  | Accrual          | 20.0   | 0.0       | 0.0      | 0.0  | 20.0      | 0.0          | false    | false    |
     Then Loan Charges tab has a given charge with the following data:
       | Name    | isPenalty | Payment due at     | Due as of       | Calculation type | Due  | Paid | Waived | Outstanding |
@@ -4992,6 +4996,7 @@ Feature: LoanAccrualActivity
       | Transaction date | Transaction Type | Amount | Principal | Interest | Fees | Penalties | Loan Balance | Reverted | Replayed |
       | 01 January 2025  | Disbursement     | 800.0  | 0.0       | 0.0      | 0.0  | 0.0       | 800.0        | false    | false    |
       | 16 January 2025  | Repayment        | 820.0  | 800.0     | 0.0      | 0.0  | 20.0      | 0.0          | false    | false    |
+      | 16 January 2025  | Accrual Activity | 20.0   | 0.0       | 0.0      | 0.0  | 20.0      | 0.0          | false    | false    |
       | 17 February 2025 | Accrual          | 20.0   | 0.0       | 0.0      | 0.0  | 20.0      | 0.0          | false    | false    |
     Then Loan Charges tab has a given charge with the following data:
       | Name    | isPenalty | Payment due at     | Due as of       | Calculation type | Due  | Paid | Waived | Outstanding |
@@ -5048,6 +5053,7 @@ Feature: LoanAccrualActivity
     When Admin creates a fully customized loan with the following data:
       | LoanProduct                                                                       | submitted on date | with Principal | ANNUAL interest rate % | interest type     | interest calculation period | amortization type  | loanTermFrequency | loanTermFrequencyType | repaymentEvery | repaymentFrequencyType | numberOfRepayments | graceOnPrincipalPayment | graceOnInterestPayment | interest free period | Payment strategy            |
       | LP2_ADV_PYMNT_INTEREST_RECOGNITION_DISBURSEMENT_DAILY_EMI_360_30_ACCRUAL_ACTIVITY | 01 January 2024   | 200            | 7                      | DECLINING_BALANCE | DAILY                       | EQUAL_INSTALLMENTS | 6                 | MONTHS                | 1              | MONTHS                 | 6                  | 0                       | 0                      | 0                    | ADVANCED_PAYMENT_ALLOCATION |
+    Then Loan Product response contains interestRecognitionOnDisbursementDate flag with value "true"
     And Admin successfully approves the loan on "01 January 2024" with "200" amount and expected disbursement date on "01 January 2024"
     When Admin successfully disburse the loan on "01 January 2024" with "200" EUR transaction amount
     Then Loan Repayment schedule has 6 periods, with the following data for periods:
@@ -5389,6 +5395,7 @@ Feature: LoanAccrualActivity
     When Admin creates a fully customized loan with the following data:
       | LoanProduct                                                                       | submitted on date | with Principal | ANNUAL interest rate % | interest type     | interest calculation period | amortization type  | loanTermFrequency | loanTermFrequencyType | repaymentEvery | repaymentFrequencyType | numberOfRepayments | graceOnPrincipalPayment | graceOnInterestPayment | interest free period | Payment strategy            |
       | LP2_ADV_PYMNT_INTEREST_RECOGNITION_DISBURSEMENT_DAILY_EMI_360_30_ACCRUAL_ACTIVITY | 01 January 2024   | 2000           | 7                      | DECLINING_BALANCE | DAILY                       | EQUAL_INSTALLMENTS | 6                 | MONTHS                | 1              | MONTHS                 | 6                  | 0                       | 0                      | 0                    | ADVANCED_PAYMENT_ALLOCATION |
+    Then Loan Product response contains interestRecognitionOnDisbursementDate flag with value "true"
     And Admin successfully approves the loan on "01 January 2024" with "2000" amount and expected disbursement date on "01 January 2024"
     When Admin successfully disburse the loan on "01 January 2024" with "2000" EUR transaction amount
     #run COB for 01st of Jan 2024
@@ -5725,6 +5732,7 @@ Feature: LoanAccrualActivity
     When Admin creates a fully customized loan with the following data:
       | LoanProduct                                                                       | submitted on date | with Principal | ANNUAL interest rate % | interest type     | interest calculation period | amortization type  | loanTermFrequency | loanTermFrequencyType | repaymentEvery | repaymentFrequencyType | numberOfRepayments | graceOnPrincipalPayment | graceOnInterestPayment | interest free period | Payment strategy            |
       | LP2_ADV_PYMNT_INTEREST_RECOGNITION_DISBURSEMENT_DAILY_EMI_360_30_ACCRUAL_ACTIVITY | 01 January 2024   | 2000           | 7                      | DECLINING_BALANCE | DAILY                       | EQUAL_INSTALLMENTS | 6                 | MONTHS                | 1              | MONTHS                 | 6                  | 0                       | 0                      | 0                    | ADVANCED_PAYMENT_ALLOCATION |
+    Then Loan Product response contains interestRecognitionOnDisbursementDate flag with value "true"
     And Admin successfully approves the loan on "01 January 2024" with "2000" amount and expected disbursement date on "01 January 2024"
     When Admin successfully disburse the loan on "01 January 2024" with "2000" EUR transaction amount
     #run COB for 01st of Jan 2024
@@ -6037,6 +6045,7 @@ Feature: LoanAccrualActivity
       | 30 June 2024     | Accrual          | 0.06   | 0.0       | 0.06     | 0.0  | 0.0       | 0.0          | false    | false    |
       | 01 July 2024     | Repayment        | 340.17 | 336.11    | 1.96     | 0.0  | 0.0       | 0.0          | false    | false    |
       | 01 July 2024     | Accrual Activity | 1.96   | 0.0       | 1.96     | 0.0  | 0.0       | 0.0          | false    | false    |
+
 
   @TestRailId:C3525
   Scenario: Verify accrual activity behavior in case of backdated repayment - UC1
@@ -6399,3 +6408,52 @@ Feature: LoanAccrualActivity
       | 01 February 2025 | Accrual Activity | 4.67   | 0.0       | 4.67     | 0.0  | 0.0       | 0.0          | false    | true     |
     And "Accrual Activity" transaction on "01 February 2025" got reverse-replayed on "02 February 2025"
     And External ID of replayed "Accrual Activity" on "01 February 2025" is matching with "saved-external-id"
+
+  @TestRailId:C3533
+  Scenario: Logging out transaction list, excluded given transaction types
+    When Admin sets the business date to "01 January 2025"
+    When Admin creates a client with random data
+    When Admin creates a fully customized loan with the following data:
+      | LoanProduct                                                                       | submitted on date | with Principal | ANNUAL interest rate % | interest type     | interest calculation period | amortization type  | loanTermFrequency | loanTermFrequencyType | repaymentEvery | repaymentFrequencyType | numberOfRepayments | graceOnPrincipalPayment | graceOnInterestPayment | interest free period | Payment strategy            |
+      | LP2_ADV_PYMNT_INTEREST_RECOGNITION_DISBURSEMENT_DAILY_EMI_360_30_ACCRUAL_ACTIVITY | 01 January 2025   | 2000           | 7                      | DECLINING_BALANCE | DAILY                       | EQUAL_INSTALLMENTS | 6                 | MONTHS                | 1              | MONTHS                 | 6                  | 0                       | 0                      | 0                    | ADVANCED_PAYMENT_ALLOCATION |
+    And Admin successfully approves the loan on "01 January 2025" with "2000" amount and expected disbursement date on "01 January 2025"
+    When Admin successfully disburse the loan on "01 January 2025" with "2000" EUR transaction amount
+    And Admin runs inline COB job for Loan
+    When Admin sets the business date to "05 January 2025"
+    And Customer makes "AUTOPAY" repayment on "05 January 2025" with 200 EUR transaction amount
+    And Admin runs inline COB job for Loan
+    And Loan Transactions tab has the following data:
+      | Transaction date | Transaction Type | Amount | Principal | Interest | Fees | Penalties | Loan Balance | Reverted | Replayed |
+      | 01 January 2025  | Disbursement     | 2000.0 | 0.0       | 0.0      | 0.0  | 0.0       | 2000.0       | false    | false    |
+      | 01 January 2025  | Accrual          | 0.38   | 0.0       | 0.38     | 0.0  | 0.0       | 0.0          | false    | false    |
+      | 02 January 2025  | Accrual          | 0.37   | 0.0       | 0.37     | 0.0  | 0.0       | 0.0          | false    | false    |
+      | 03 January 2025  | Accrual          | 0.38   | 0.0       | 0.38     | 0.0  | 0.0       | 0.0          | false    | false    |
+      | 04 January 2025  | Accrual          | 0.38   | 0.0       | 0.38     | 0.0  | 0.0       | 0.0          | false    | false    |
+      | 05 January 2025  | Repayment        | 200.0  | 200.0     | 0.0      | 0.0  | 0.0       | 1800.0       | false    | false    |
+    Then Log out transaction list by loanId, filtered out the following transaction types: "disbursement, accrual"
+    Then Log out transaction list by loanExternalId, filtered out the following transaction types: "accrual"
+    Then Filtered out transactions list contains the the following entries when filtered out by loanId for transaction types: "accrual"
+      | Transaction date | Transaction Type | Amount | Principal | Interest | Fees | Penalties | Loan Balance |
+      | 01 January 2025  | disbursement     | 2000.0 |           |          |      |           | 2000.0       |
+      | 05 January 2025  | repayment        | 200.0  | 200.0     |          |      |           | 1800.0       |
+    Then Filtered out transactions list contains the the following entries when filtered out by loanExternalId for transaction types: "accrual"
+      | Transaction date | Transaction Type | Amount | Principal | Interest | Fees | Penalties | Loan Balance |
+      | 01 January 2025  | disbursement     | 2000.0 |           |          |      |           | 2000.0       |
+      | 05 January 2025  | repayment        | 200.0  | 200.0     |          |      |           | 1800.0       |
+    Then Filtered out transactions list contains the the following entries when filtered out by loanId for transaction types: ""
+      | Transaction date | Transaction Type | Amount | Principal | Interest | Fees | Penalties | Loan Balance |
+      | 01 January 2025  | disbursement     | 2000.0 |           |          |      |           | 2000.0       |
+      | 01 January 2025  | accrual          | 0.38   |           | 0.38     |      |           |              |
+      | 02 January 2025  | accrual          | 0.37   |           | 0.37     |      |           |              |
+      | 03 January 2025  | accrual          | 0.38   |           | 0.38     |      |           |              |
+      | 04 January 2025  | accrual          | 0.38   |           | 0.38     |      |           |              |
+      | 05 January 2025  | repayment        | 200.0  | 200.0     |          |      |           | 1800.0       |
+    Then Filtered out transactions list contains the the following entries when filtered out by loanId for transaction types: "merchant_issued_refund"
+      | Transaction date | Transaction Type | Amount | Principal | Interest | Fees | Penalties | Loan Balance |
+      | 01 January 2025  | disbursement     | 2000.0 |           |          |      |           | 2000.0       |
+      | 01 January 2025  | accrual          | 0.38   |           | 0.38     |      |           |              |
+      | 02 January 2025  | accrual          | 0.37   |           | 0.37     |      |           |              |
+      | 03 January 2025  | accrual          | 0.38   |           | 0.38     |      |           |              |
+      | 04 January 2025  | accrual          | 0.38   |           | 0.38     |      |           |              |
+      | 05 January 2025  | repayment        | 200.0  | 200.0     |          |      |           | 1800.0       |
+    Then Filtered out transactions list has 4 pages in case of size set to 1 and transactions are filtered out for transaction types: "disbursement, repayment"

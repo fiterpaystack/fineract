@@ -28,6 +28,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -83,11 +84,14 @@ import org.apache.fineract.portfolio.collateralmanagement.domain.ClientCollatera
 import org.apache.fineract.portfolio.collateralmanagement.domain.ClientCollateralManagementRepositoryWrapper;
 import org.apache.fineract.portfolio.collateralmanagement.domain.CollateralManagementDomain;
 import org.apache.fineract.portfolio.collateralmanagement.service.LoanCollateralAssembler;
+import org.apache.fineract.portfolio.common.domain.DaysInYearCustomStrategyType;
+import org.apache.fineract.portfolio.common.domain.DaysInYearType;
 import org.apache.fineract.portfolio.group.domain.Group;
 import org.apache.fineract.portfolio.group.domain.GroupRepositoryWrapper;
 import org.apache.fineract.portfolio.group.exception.ClientNotInGroupException;
 import org.apache.fineract.portfolio.group.exception.GroupNotActiveException;
 import org.apache.fineract.portfolio.loanaccount.api.LoanApiConstants;
+import org.apache.fineract.portfolio.loanaccount.data.DisbursementData;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCollateralManagement;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanEvent;
@@ -107,6 +111,7 @@ import org.apache.fineract.portfolio.loanaccount.exception.MultiDisbursementData
 import org.apache.fineract.portfolio.loanaccount.exception.MultiDisbursementDataRequiredException;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleProcessingType;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleType;
+import org.apache.fineract.portfolio.loanaccount.mapper.LoanMapper;
 import org.apache.fineract.portfolio.loanaccount.service.LoanReadPlatformService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanUtilService;
 import org.apache.fineract.portfolio.loanproduct.LoanProductConstants;
@@ -170,7 +175,7 @@ public final class LoanApplicationValidator {
             LoanProductConstants.LOAN_SCHEDULE_PROCESSING_TYPE, LoanProductConstants.FIXED_LENGTH,
             LoanProductConstants.ENABLE_INSTALLMENT_LEVEL_DELINQUENCY, LoanProductConstants.ENABLE_DOWN_PAYMENT,
             LoanProductConstants.ENABLE_AUTO_REPAYMENT_DOWN_PAYMENT, LoanProductConstants.DISBURSED_AMOUNT_PERCENTAGE_DOWN_PAYMENT,
-            LoanApiConstants.INTEREST_RECOGNITION_ON_DISBURSEMENT_DATE));
+            LoanApiConstants.INTEREST_RECOGNITION_ON_DISBURSEMENT_DATE, LoanApiConstants.daysInYearCustomStrategyParameterName));
     public static final String LOANAPPLICATION_UNDO = "loanapplication.undo";
 
     private final FromJsonHelper fromApiJsonHelper;
@@ -198,6 +203,7 @@ public final class LoanApplicationValidator {
     private final CalendarInstanceRepository calendarInstanceRepository;
     private final LoanUtilService loanUtilService;
     private final EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService;
+    private final LoanMapper loanMapper;
 
     public void validateForCreate(final Loan loan) {
         final LocalDate expectedFirstRepaymentOnDate = loan.getExpectedFirstRepaymentOnDate();
@@ -208,7 +214,7 @@ public final class LoanApplicationValidator {
                     expectedFirstRepaymentOnDate);
         }
 
-        validateLoanTermAndRepaidEveryValues(loan.getTermFrequency(), loan.getTermPeriodFrequencyType(),
+        validateLoanTermAndRepaidEveryValues(loan.getTermFrequency(), loan.getTermPeriodFrequencyType().getValue(),
                 loan.repaymentScheduleDetail().getNumberOfRepayments(), loan.repaymentScheduleDetail().getRepayEvery(),
                 loan.repaymentScheduleDetail().getRepaymentPeriodFrequencyType().getValue(), loan);
     }
@@ -222,7 +228,7 @@ public final class LoanApplicationValidator {
                     expectedFirstRepaymentOnDate);
         }
 
-        validateLoanTermAndRepaidEveryValues(loan.getTermFrequency(), loan.getTermPeriodFrequencyType(),
+        validateLoanTermAndRepaidEveryValues(loan.getTermFrequency(), loan.getTermPeriodFrequencyType().getValue(),
                 loan.repaymentScheduleDetail().getNumberOfRepayments(), loan.repaymentScheduleDetail().getRepayEvery(),
                 loan.repaymentScheduleDetail().getRepaymentPeriodFrequencyType().getValue(), loan);
     }
@@ -752,6 +758,26 @@ public final class LoanApplicationValidator {
                 loanProductDataValidator.validateRepaymentPeriodWithGraceSettings(numberOfRepayments, graceOnPrincipalPayment,
                         graceOnInterestPayment, graceOnInterestCharged, recurringMoratoriumOnPrincipalPeriods, baseDataValidator);
             }
+
+            if (fromApiJsonHelper.parameterExists(LoanApiConstants.daysInYearCustomStrategyParameterName, element)) {
+                DaysInYearCustomStrategyType daysInYearCustomStrategy = fromApiJsonHelper
+                        .enumValueOfParameterNamed("daysInYearCustomStrategyParameterName", element, DaysInYearCustomStrategyType.class);
+                if (daysInYearCustomStrategy != null) {
+                    if (!LoanScheduleType.PROGRESSIVE.equals(loanProduct.getLoanProductRelatedDetail().getLoanScheduleType())) {
+                        baseDataValidator.reset().parameter(LoanApiConstants.daysInYearCustomStrategyParameterName).failWithCode(
+                                "days.in.year.custom.strategy.is.only.supported.for.progressive.loan.schedule.type",
+                                "daysInYearCustomStrategy is only supported for progressive loan schedule type");
+                    }
+
+                    if (!DaysInYearType.ACTUAL.getValue().equals(loanProduct.getLoanProductRelatedDetail().getDaysInYearType())) {
+                        baseDataValidator.reset().parameter(LoanApiConstants.daysInYearCustomStrategyParameterName).failWithCode(
+                                "days.in.year.custom.strategy.is.only.applicable.for.actual.days.in.year.type",
+                                "daysInYearCustomStrategy is only applicable for ACTUAL days in year type");
+                    }
+
+                }
+            }
+
         });
 
         validateSubmittedOnDate(element, null, null, loanProduct);
@@ -1382,12 +1408,11 @@ public final class LoanApplicationValidator {
                     BigDecimal loanOutstanding = this.loanReadPlatformService
                             .retrieveLoanPrePaymentTemplate(LoanTransactionType.REPAYMENT, loanIdToClose, expectedDisbursementDate)
                             .getAmount();
-                    final BigDecimal firstDisbursalAmount = loan.getFirstDisbursalAmount();
+                    final BigDecimal firstDisbursalAmount = getFirstDisbursalAmount(loan);
                     if (loanOutstanding.compareTo(firstDisbursalAmount) > 0) {
                         throw new GeneralPlatformDomainRuleException("error.msg.loan.amount.less.than.outstanding.of.loan.to.be.closed",
                                 "Topup loan amount should be greater than outstanding amount of loan to be closed.");
                     }
-
                 }
             }
 
@@ -1828,11 +1853,9 @@ public final class LoanApplicationValidator {
         final Long clientId = this.fromApiJsonHelper.extractLongNamed(LoanApiConstants.clientIdParameterName, element);
 
         if (groupId != null) {
-            activeLoansLoanProductIds = this.loanRepositoryWrapper.findActiveLoansLoanProductIdsByGroup(groupId,
-                    LoanStatus.ACTIVE.getValue());
+            activeLoansLoanProductIds = this.loanRepositoryWrapper.findActiveLoansLoanProductIdsByGroup(groupId, LoanStatus.ACTIVE);
         } else {
-            activeLoansLoanProductIds = this.loanRepositoryWrapper.findActiveLoansLoanProductIdsByClient(clientId,
-                    LoanStatus.ACTIVE.getValue());
+            activeLoansLoanProductIds = this.loanRepositoryWrapper.findActiveLoansLoanProductIdsByClient(clientId, LoanStatus.ACTIVE);
         }
         checkForProductMixRestrictions(activeLoansLoanProductIds, productId);
     }
@@ -1933,7 +1956,7 @@ public final class LoanApplicationValidator {
         this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, json, SUPPORTED_PARAMETERS);
     }
 
-    public void validateTopupLoan(Loan loan, LocalDate expectedDisbursementDate) {
+    public BigDecimal validateTopupLoan(final Loan loan, final LocalDate disbursementDate) {
         final Long loanIdToClose = loan.getTopupLoanDetails().getLoanIdToClose();
         final Loan loanToClose = loanRepositoryWrapper.findNonClosedLoanThatBelongsToClient(loanIdToClose, loan.getClientId());
         if (loanToClose == null) {
@@ -1949,16 +1972,15 @@ public final class LoanApplicationValidator {
                             + " should be after last transaction date of loan to be closed " + lastUserTransactionOnLoanToClose);
         }
 
-        BigDecimal loanOutstanding = loanReadPlatformService
-                .retrieveLoanPrePaymentTemplate(LoanTransactionType.REPAYMENT, loanIdToClose, expectedDisbursementDate).getAmount();
-        final BigDecimal firstDisbursalAmount = loan.getFirstDisbursalAmount();
+        final BigDecimal loanOutstanding = loanReadPlatformService
+                .retrieveLoanPrePaymentTemplate(LoanTransactionType.REPAYMENT, loanIdToClose, disbursementDate).getAmount();
+        final BigDecimal firstDisbursalAmount = getFirstDisbursalAmount(loan);
         if (loanOutstanding.compareTo(firstDisbursalAmount) > 0) {
             throw new GeneralPlatformDomainRuleException("error.msg.loan.amount.less.than.outstanding.of.loan.to.be.closed",
                     "Topup loan amount should be greater than outstanding amount of loan to be closed.");
         }
 
-        BigDecimal netDisbursalAmount = loan.getApprovedPrincipal().subtract(loanOutstanding);
-        loan.adjustNetDisbursalAmount(netDisbursalAmount);
+        return loanOutstanding;
     }
 
     public void validateApproval(JsonCommand command, Long loanId) {
@@ -2002,7 +2024,7 @@ public final class LoanApplicationValidator {
             baseDataValidator.reset().parameter(LoanApiConstants.noteParameterName).value(note).notExceedingLengthOf(1000);
 
             final Loan loan = this.loanRepositoryWrapper.findOneWithNotFoundDetection(loanId, true);
-            loan.setHelpers(defaultLoanLifecycleStateMachine, this.loanRepaymentScheduleTransactionProcessorFactory);
+            loan.setHelpers(defaultLoanLifecycleStateMachine);
 
             final Client client = loan.client();
             if (client != null && client.isNotActive()) {
@@ -2054,7 +2076,9 @@ public final class LoanApplicationValidator {
                     StatusEnum.APPROVE.getValue(), EntityTables.LOAN.getForeignKeyColumnNameOnDatatable(), loan.productId());
 
             if (loan.isTopup() && loan.getClientId() != null) {
-                validateTopupLoan(loan, expectedDisbursementDate);
+                final BigDecimal loanOutstanding = validateTopupLoan(loan, expectedDisbursementDate);
+                final BigDecimal netDisbursalAmountAdjusted = loan.getApprovedPrincipal().subtract(loanOutstanding);
+                loan.adjustNetDisbursalAmount(netDisbursalAmountAdjusted);
             }
 
             if (!loan.getStatus().isSubmittedAndPendingApproval()) {
@@ -2182,4 +2206,18 @@ public final class LoanApplicationValidator {
         throw new PlatformApiDataValidationException("validation.msg.validation.errors.exist", "Validation errors exist.",
                 dataValidationErrors);
     }
+
+    private BigDecimal getFirstDisbursalAmount(final Loan loan) {
+        BigDecimal firstDisbursalAmount;
+
+        if (loan.isMultiDisburmentLoan()) {
+            List<DisbursementData> disbursementData = loanMapper.getDisbursementData(loan);
+            Collections.sort(disbursementData);
+            firstDisbursalAmount = disbursementData.get(disbursementData.size() - 1).getPrincipal();
+        } else {
+            firstDisbursalAmount = loan.getLoanRepaymentScheduleDetail().getPrincipal().getAmount();
+        }
+        return firstDisbursalAmount;
+    }
+
 }

@@ -23,17 +23,36 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
-import org.apache.fineract.accounting.producttoaccountmapping.data.ChargeToGLAccountMapper;
+import org.apache.fineract.accounting.glaccount.data.GLAccountData;
 import org.apache.fineract.infrastructure.core.data.EnumOptionData;
 import org.apache.fineract.infrastructure.core.data.StringEnumOptionData;
-import org.apache.fineract.portfolio.delinquency.api.DelinquencyApiResourceSwagger.GetDelinquencyBucketsResponse;
+import org.apache.fineract.portfolio.delinquency.data.DelinquencyBucketData;
 
 /**
  * Created by Chirag Gupta on 12/27/17.
  */
-final class LoanProductsApiResourceSwagger {
+public final class LoanProductsApiResourceSwagger {
 
     private LoanProductsApiResourceSwagger() {}
+
+    @Schema(description = "LoanProductChargeData")
+    public static final class LoanProductChargeData {
+
+        private LoanProductChargeData() {}
+
+        @Schema(example = "1")
+        public Long id;
+    }
+
+    @Schema(description = "LoanProductChargeToGLAccountMapper")
+    public static final class LoanProductChargeToGLAccountMapper {
+
+        private LoanProductChargeToGLAccountMapper() {}
+
+        public LoanProductChargeData charge;
+        public GLAccountData incomeAccount;
+
+    }
 
     @Schema(description = "PostLoanProductsRequest")
     public static final class PostLoanProductsRequest {
@@ -134,6 +153,8 @@ final class LoanProductsApiResourceSwagger {
         public Integer daysInMonthType;
         @Schema(example = "1")
         public Integer daysInYearType;
+        @Schema(example = "FULL_LEAP_YEAR")
+        public String daysInYearCustomStrategy;
         @Schema(example = "true")
         public Boolean allowPartialPeriodInterestCalcualtion;
         @Schema(example = "179")
@@ -249,9 +270,9 @@ final class LoanProductsApiResourceSwagger {
         @Schema(example = "11")
         public Long incomeFromGoodwillCreditPenaltyAccountId;
         public List<GetLoanProductsProductIdResponse.GetLoanPaymentChannelToFundSourceMappings> paymentChannelToFundSourceMappings;
-        public List<GetLoanProductsProductIdResponse.GetLoanFeeToIncomeAccountMappings> feeToIncomeAccountMappings;
+        public List<LoanProductChargeToGLAccountMapper> feeToIncomeAccountMappings;
         public List<PostChargeOffReasonToExpenseAccountMappings> chargeOffReasonToExpenseAccountMappings;
-        public List<ChargeToGLAccountMapper> penaltyToIncomeAccountMappings;
+        public List<LoanProductChargeToGLAccountMapper> penaltyToIncomeAccountMappings;
 
         // Multi Disburse
         @Schema(example = "true")
@@ -265,7 +286,7 @@ final class LoanProductsApiResourceSwagger {
         @Schema(example = "36000.00")
         public Double outstandingLoanBalance;
 
-        public List<ChargeData> charges;
+        public List<LoanProductChargeData> charges;
         @Schema(example = "en_GB")
         public String locale;
         @Schema(example = "dd MMMM yyyy")
@@ -298,14 +319,6 @@ final class LoanProductsApiResourceSwagger {
             public boolean graceOnPrincipalAndInterestPayment;
             @Schema(example = "true")
             public boolean graceOnArrearsAgeing;
-        }
-
-        static final class ChargeData {
-
-            private ChargeData() {}
-
-            @Schema(example = "1")
-            public Long id;
         }
 
         static final class RateData {
@@ -346,6 +359,30 @@ final class LoanProductsApiResourceSwagger {
 
         @Schema(example = "3")
         public Long resourceId;
+    }
+
+    public static final class GetLoanProductsDaysInMonthType {
+
+        private GetLoanProductsDaysInMonthType() {}
+
+        @Schema(example = "1")
+        public Long id;
+        @Schema(example = "DaysInMonthType.actual")
+        public String code;
+        @Schema(example = "Actual")
+        public String description;
+    }
+
+    public static final class GetLoanProductsDaysInYearType {
+
+        private GetLoanProductsDaysInYearType() {}
+
+        @Schema(example = "1")
+        public Long id;
+        @Schema(example = "DaysInYearType.actual")
+        public String code;
+        @Schema(example = "Actual")
+        public String description;
     }
 
     @Schema(description = "GetLoanProductsResponse")
@@ -433,27 +470,15 @@ final class LoanProductsApiResourceSwagger {
             public String description;
         }
 
-        static final class GetLoansProductsDaysInMonthType {
+        static final class GetLoanProductsDaysInYearCustomStrategy {
 
-            private GetLoansProductsDaysInMonthType() {}
+            private GetLoanProductsDaysInYearCustomStrategy() {}
 
-            @Schema(example = "30")
-            public Long id;
-            @Schema(example = "DaysInMonthType.days360")
+            @Schema(example = "FULL_LEAP_YEAR")
+            public String id;
+            @Schema(example = "DaysInYearCustomStrategyType.fullLeapYear")
             public String code;
-            @Schema(example = "30 Days")
-            public String description;
-        }
-
-        static final class GetLoansProductsDaysInYearType {
-
-            private GetLoansProductsDaysInYearType() {}
-
-            @Schema(example = "360")
-            public Long id;
-            @Schema(example = "DaysInYearType.days360")
-            public String code;
-            @Schema(example = "360 Days")
+            @Schema(example = "Full Leap Year")
             public String description;
         }
 
@@ -612,8 +637,9 @@ final class LoanProductsApiResourceSwagger {
         public List<Integer> interestRateVariationsForBorrowerCycle;
         @Schema(example = "[]")
         public List<Integer> numberOfRepaymentVariationsForBorrowerCycle;
-        public GetLoansProductsDaysInMonthType daysInMonthType;
-        public GetLoansProductsDaysInYearType daysInYearType;
+        public GetLoanProductsDaysInMonthType daysInMonthType;
+        public GetLoanProductsDaysInYearType daysInYearType;
+        public GetLoanProductsDaysInYearCustomStrategy daysInYearCustomStrategy;
         @Schema(example = "true")
         public Boolean isInterestRecalculationEnabled;
         public GetLoanProductsInterestRecalculationData interestRecalculationData;
@@ -623,6 +649,8 @@ final class LoanProductsApiResourceSwagger {
         public GetLoanProductsResponse.GetLoanProductsRepaymentStartDateType repaymentStartDateType;
         public List<StringEnumOptionData> supportedInterestRefundTypes;
         public StringEnumOptionData chargeOffBehaviour;
+        @Schema(example = "false")
+        public Boolean interestRecognitionOnDisbursementDate;
     }
 
     @Schema(description = "GetLoanProductsTemplateResponse")
@@ -695,30 +723,6 @@ final class LoanProductsApiResourceSwagger {
             @Schema(example = "accountingRuleType.none")
             public String code;
             @Schema(example = "NONE")
-            public String description;
-        }
-
-        static final class GetLoansProductsDaysInMonthTemplateType {
-
-            private GetLoansProductsDaysInMonthTemplateType() {}
-
-            @Schema(example = "1")
-            public Long id;
-            @Schema(example = "DaysInMonthType.actual")
-            public String code;
-            @Schema(example = "Actual")
-            public String description;
-        }
-
-        static final class GetLoanProductsDaysInYearTemplateType {
-
-            private GetLoanProductsDaysInYearTemplateType() {}
-
-            @Schema(example = "1")
-            public Long id;
-            @Schema(example = "DaysInYearType.actual")
-            public String code;
-            @Schema(example = "Actual")
             public String description;
         }
 
@@ -1036,24 +1040,6 @@ final class LoanProductsApiResourceSwagger {
             public String description;
         }
 
-        static final class GetLoanProductsChargeOffReasonOptions {
-
-            private GetLoanProductsChargeOffReasonOptions() {}
-
-            @Schema(example = "2")
-            public Long id;
-            @Schema(example = "debit_card")
-            public String name;
-            @Schema(example = "2")
-            public Integer position;
-            @Schema(example = "Charge-Off reason description")
-            public String description;
-            @Schema(example = "true")
-            public Boolean active;
-            @Schema(example = "false")
-            public Boolean mandatory;
-        }
-
         @Schema(example = "false")
         public Boolean includeInBorrowerCycle;
         @Schema(example = "false")
@@ -1071,8 +1057,9 @@ final class LoanProductsApiResourceSwagger {
         @Schema(example = "[]")
         public List<Integer> numberOfRepaymentVariationsForBorrowerCycle;
         public GetLoanProductsTemplateResponse.GetLoanProductsAccountingRule accountingRule;
-        public GetLoansProductsDaysInMonthTemplateType daysInMonthType;
-        public GetLoanProductsDaysInYearTemplateType daysInYearType;
+        public GetLoanProductsDaysInMonthType daysInMonthType;
+        public GetLoanProductsDaysInYearType daysInYearType;
+        public StringEnumOptionData daysInYearCustomStrategy;
         @Schema(example = "false")
         public Boolean isInterestRecalculationEnabled;
         public GetLoanProductsInterestRecalculationTemplateData interestRecalculationData;
@@ -1089,8 +1076,9 @@ final class LoanProductsApiResourceSwagger {
         public Set<GetLoanProductsResponse.GetLoanProductsAccountingRule> accountingRuleOptions;
         public GetLoanProductsAccountingMappingOptions accountingMappingOptions;
         public Set<GetLoanProductsValueConditionTypeOptions> valueConditionTypeOptions;
-        public Set<GetLoansProductsDaysInMonthTemplateType> daysInMonthTypeOptions;
+        public Set<StringEnumOptionData> daysInMonthTypeOptions;
         public Set<GetLoanProductsInterestTemplateType> daysInYearTypeOptions;
+        public Set<StringEnumOptionData> daysInYearTypeCustomStrategyOptions;
         public Set<GetLoanProductsResponse.GetLoanProductsInterestRecalculationData.GetLoanProductsInterestRecalculationCompoundingType> interestRecalculationCompoundingTypeOptions;
         public Set<GetLoanProductsResponse.GetLoanProductsInterestRecalculationData.GetLoanProductsRescheduleStrategyType> rescheduleStrategyTypeOptions;
         public Set<GetLoanProductsResponse.GetLoanProductsInterestRecalculationData.GetLoanProductsInterestRecalculationCompoundingFrequencyType> interestRecalculationFrequencyTypeOptions;
@@ -1373,6 +1361,9 @@ final class LoanProductsApiResourceSwagger {
         @Schema(example = "[]")
         public List<Integer> numberOfRepaymentVariationsForBorrowerCycle;
         public GetLoanProductsResponse.GetLoanProductsAccountingRule accountingRule;
+        public GetLoanProductsDaysInMonthType daysInMonthType;
+        public GetLoanProductsDaysInYearType daysInYearType;
+        public StringEnumOptionData daysInYearCustomStrategy;
         @Schema(example = "false")
         public Boolean canUseForTopup;
         public GetLoanAccountingMappings accountingMappings;
@@ -1397,8 +1388,8 @@ final class LoanProductsApiResourceSwagger {
         public Integer overdueDaysForNPA;
         @Schema(example = "50")
         public Integer principalThresholdForLastInstalment;
-        public GetDelinquencyBucketsResponse delinquencyBucket;
-        public List<GetDelinquencyBucketsResponse> delinquencyBucketOptions;
+        public DelinquencyBucketData delinquencyBucket;
+        public List<DelinquencyBucketData> delinquencyBucketOptions;
         @Schema(example = "false")
         public Boolean enableInstallmentLevelDelinquency;
         @Schema(example = "3")
@@ -1421,7 +1412,7 @@ final class LoanProductsApiResourceSwagger {
         @Schema(example = "false")
         public Boolean enableAccrualActivityPosting;
         public List<StringEnumOptionData> supportedInterestRefundTypes;
-        public List<GetLoanProductsTemplateResponse.GetLoanProductsChargeOffReasonOptions> chargeOffReasonOptions;
+        public List<GetLoanProductsChargeOffReasonOptions> chargeOffReasonOptions;
         public StringEnumOptionData chargeOffBehaviour;
         @Schema(example = "false")
         public Boolean interestRecognitionOnDisbursementDate;
@@ -1526,6 +1517,8 @@ final class LoanProductsApiResourceSwagger {
         public Long daysInMonthType;
         @Schema(example = "1")
         public Long daysInYearType;
+        @Schema(example = "FULL_LEAP_YEAR")
+        public String daysInYearCustomStrategy;
         @Schema(example = "true")
         public Boolean allowPartialPeriodInterestCalcualtion;
         @Schema(example = "179")
@@ -1641,9 +1634,9 @@ final class LoanProductsApiResourceSwagger {
         @Schema(example = "11")
         public Long incomeFromChargeOffPenaltyAccountId;
         public List<GetLoanProductsProductIdResponse.GetLoanPaymentChannelToFundSourceMappings> paymentChannelToFundSourceMappings;
-        public List<GetLoanProductsProductIdResponse.GetLoanFeeToIncomeAccountMappings> feeToIncomeAccountMappings;
+        public List<LoanProductChargeToGLAccountMapper> feeToIncomeAccountMappings;
         public List<PostLoanProductsRequest.PostChargeOffReasonToExpenseAccountMappings> chargeOffReasonToExpenseAccountMappings;
-        public List<ChargeToGLAccountMapper> penaltyToIncomeAccountMappings;
+        public List<LoanProductChargeToGLAccountMapper> penaltyToIncomeAccountMappings;
         @Schema(example = "false")
         public Boolean enableAccrualActivityPosting;
 
@@ -1659,7 +1652,7 @@ final class LoanProductsApiResourceSwagger {
         @Schema(example = "36000.00")
         public Double outstandingLoanBalance;
 
-        public List<PostLoanProductsRequest.ChargeData> charges;
+        public List<LoanProductChargeData> charges;
         @Schema(example = "en_GB")
         public String locale;
         @Schema(example = "dd MMMM yyyy")
@@ -1672,52 +1665,6 @@ final class LoanProductsApiResourceSwagger {
 
         public PostLoanProductsRequest.AllowAttributeOverrides allowAttributeOverrides;
         public List<PostLoanProductsRequest.RateData> rates;
-
-        static final class AllowAttributeOverrides {
-
-            private AllowAttributeOverrides() {}
-
-            @Schema(example = "true")
-            public boolean amortizationType;
-            @Schema(example = "true")
-            public boolean interestType;
-            @Schema(example = "true")
-            public boolean transactionProcessingStrategyCode;
-            @Schema(example = "true")
-            public boolean interestCalculationPeriodType;
-            @Schema(example = "true")
-            public boolean inArrearsTolerance;
-            @Schema(example = "true")
-            public boolean repaymentEvery;
-            @Schema(example = "true")
-            public boolean graceOnPrincipalAndInterestPayment;
-            @Schema(example = "true")
-            public boolean graceOnArrearsAgeing;
-        }
-
-        static final class ChargeData {
-
-            private ChargeData() {}
-
-            @Schema(example = "1")
-            public Long id;
-        }
-
-        static final class RateData {
-
-            private RateData() {}
-
-            @Schema(example = "1")
-            public Long id;
-            @Schema(example = "some name")
-            public String name;
-            @Schema(example = "20")
-            public BigDecimal percentage;
-            @Schema(description = "Apply specific product using its id, code, and value.")
-            public EnumOptionData productApply;
-            @Schema(example = "false")
-            public boolean active;
-        }
 
         public List<String> supportedInterestRefundTypes;
         @Schema(example = "REGULAR")
@@ -1779,5 +1726,24 @@ final class LoanProductsApiResourceSwagger {
         @Schema(example = "1")
         public Long resourceId;
         public PutLoanChanges changes;
+    }
+
+    @Schema(description = "GetLoanProductsChargeOffReasonOptions")
+    public static final class GetLoanProductsChargeOffReasonOptions {
+
+        private GetLoanProductsChargeOffReasonOptions() {}
+
+        @Schema(example = "2")
+        public Long id;
+        @Schema(example = "debit_card")
+        public String name;
+        @Schema(example = "2")
+        public Integer position;
+        @Schema(example = "Charge-Off reason description")
+        public String description;
+        @Schema(example = "true")
+        public Boolean active;
+        @Schema(example = "false")
+        public Boolean mandatory;
     }
 }

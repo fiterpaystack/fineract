@@ -30,7 +30,6 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.service.MathUtil;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
@@ -49,18 +48,31 @@ import org.apache.fineract.portfolio.loanaccount.loanschedule.data.LoanScheduleM
 import org.apache.fineract.portfolio.loanaccount.loanschedule.data.LoanScheduleParams;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.data.LoanSchedulePlan;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.exception.MultiDisbursementOutstandingAmoutException;
+import org.apache.fineract.portfolio.loanaccount.service.LoanTransactionProcessingService;
 import org.apache.fineract.portfolio.loanproduct.calc.EMICalculator;
 import org.apache.fineract.portfolio.loanproduct.calc.data.OutstandingDetails;
 import org.apache.fineract.portfolio.loanproduct.calc.data.ProgressiveLoanInterestScheduleModel;
 import org.apache.fineract.portfolio.loanproduct.domain.RepaymentStartDateType;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
-@RequiredArgsConstructor
 public class ProgressiveLoanScheduleGenerator implements LoanScheduleGenerator {
 
     private final ScheduledDateGenerator scheduledDateGenerator;
     private final EMICalculator emiCalculator;
+
+    private LoanTransactionProcessingService loanTransactionProcessingService;
+
+    public ProgressiveLoanScheduleGenerator(ScheduledDateGenerator scheduledDateGenerator, EMICalculator emiCalculator) {
+        this.scheduledDateGenerator = scheduledDateGenerator;
+        this.emiCalculator = emiCalculator;
+    }
+
+    @Autowired(required = false)
+    public void setLoanTransactionProcessingService(LoanTransactionProcessingService loanTransactionProcessingService) {
+        this.loanTransactionProcessingService = loanTransactionProcessingService;
+    }
 
     public LoanSchedulePlan generate(final MathContext mc, final LoanRepaymentScheduleModelData modelData) {
         LoanApplicationTerms loanApplicationTerms = LoanApplicationTerms.assembleFrom(modelData, mc);
@@ -182,6 +194,16 @@ public class ProgressiveLoanScheduleGenerator implements LoanScheduleGenerator {
                 .principal(outstandingAmounts.getOutstandingPrincipal()) //
                 .interest(outstandingAmounts.getOutstandingInterest());//
 
+        // We need to deduct any paid amount if there is no interest recalculation
+        if (!loan.isInterestRecalculationEnabled()) {
+            BigDecimal paidInterest = installments.stream().map(LoanRepaymentScheduleInstallment::getInterestPaid).reduce(BigDecimal.ZERO,
+                    BigDecimal::add);
+            BigDecimal paidPrincipal = installments.stream().map(LoanRepaymentScheduleInstallment::getPrincipal).reduce(BigDecimal.ZERO,
+                    BigDecimal::add);
+            result.principal().minus(paidPrincipal);
+            result.interest().minus(paidInterest);
+        }
+
         installments.forEach(installment -> {
             if (installment.isAdditional()) {
                 result.plusPrincipal(installment.getPrincipalOutstanding(currency))
@@ -198,7 +220,8 @@ public class ProgressiveLoanScheduleGenerator implements LoanScheduleGenerator {
     @Override
     public Money getPeriodInterestTillDate(@NotNull LoanRepaymentScheduleInstallment installment, @NotNull LocalDate targetDate) {
         Loan loan = installment.getLoan();
-        LoanRepaymentScheduleTransactionProcessor transactionProcessor = loan.getTransactionProcessor();
+        LoanRepaymentScheduleTransactionProcessor transactionProcessor = loanTransactionProcessingService
+                .getTransactionProcessor(loan.getTransactionProcessingStrategyCode());
         if (!(transactionProcessor instanceof AdvancedPaymentScheduleTransactionProcessor processor)) {
             throw new IllegalStateException("Expected an AdvancedPaymentScheduleTransactionProcessor");
         }
@@ -265,8 +288,7 @@ public class ProgressiveLoanScheduleGenerator implements LoanScheduleGenerator {
                 continue;
             }
 
-            Money outstandingBalance = emiCalculator.getOutstandingLoanBalanceOfPeriod(interestScheduleModel, periodDueDate,
-                    disbursementDate);
+            Money outstandingBalance = emiCalculator.getOutstandingLoanBalanceOfPeriod(interestScheduleModel, disbursementDate);
 
             final Money disbursedAmount = Money.of(loanApplicationTerms.getCurrency(), disbursementData.getPrincipal(), mc);
             final LoanScheduleModelDisbursementPeriod disbursementPeriod = LoanScheduleModelDisbursementPeriod
