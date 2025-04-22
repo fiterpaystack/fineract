@@ -24,12 +24,9 @@ import org.apache.fineract.infrastructure.core.api.ApiFacingEnum;
 
 @Getter
 @RequiredArgsConstructor
-public enum LoanChargeOffBehaviour implements ApiFacingEnum<LoanChargeOffBehaviour> {
+public enum LoanCapitalizedIncomeStrategy implements ApiFacingEnum<LoanCapitalizedIncomeStrategy> {
 
-    REGULAR("chargeOffBehaviour.regular", "Regular"), //
-    ZERO_INTEREST("chargeOffBehaviour.zeroInterest", "Zero interest after charge-off"), //
-    ACCELERATE_MATURITY("chargeOffBehaviour.accelerateMaturity", "Accelerate maturity to charge-off date"), //
-    ;
+    EQUAL_AMORTIZATION("capitalizedIncome.strategy.equalAmortization", "Equal amortization");
 
     private final String code;
     private final String humanReadableName;

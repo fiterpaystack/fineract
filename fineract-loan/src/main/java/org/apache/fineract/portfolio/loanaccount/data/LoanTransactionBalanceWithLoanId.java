@@ -16,22 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.loanaccount.domain;
+package org.apache.fineract.portfolio.loanaccount.data;
 
+import java.math.BigDecimal;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import org.apache.fineract.infrastructure.core.api.ApiFacingEnum;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType;
 
 @Getter
-@RequiredArgsConstructor
-public enum LoanChargeOffBehaviour implements ApiFacingEnum<LoanChargeOffBehaviour> {
+public class LoanTransactionBalanceWithLoanId extends LoanTransactionBalance {
 
-    REGULAR("chargeOffBehaviour.regular", "Regular"), //
-    ZERO_INTEREST("chargeOffBehaviour.zeroInterest", "Zero interest after charge-off"), //
-    ACCELERATE_MATURITY("chargeOffBehaviour.accelerateMaturity", "Accelerate maturity to charge-off date"), //
-    ;
+    private final Long loanId;
 
-    private final String code;
-    private final String humanReadableName;
-
+    public LoanTransactionBalanceWithLoanId(LoanTransactionType transactionType, boolean reversed, boolean manuallyAdjustedOrReversed,
+            BigDecimal amount, Long loanId) {
+        super(transactionType, reversed, manuallyAdjustedOrReversed, amount);
+        this.loanId = loanId;
+    }
 }
