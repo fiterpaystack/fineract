@@ -201,6 +201,8 @@ public final class LoanProductsApiResourceSwagger {
         public String capitalizedIncomeCalculationType;
         @Schema(example = "EQUAL_AMORTIZATION", allowableValues = "EQUAL_AMORTIZATION")
         public String capitalizedIncomeStrategy;
+        @Schema(example = "FEE", allowableValues = { "FEE", "INTEREST" })
+        public String capitalizedIncomeType;
 
         // Interest Recalculation
         @Schema(example = "false")
@@ -275,6 +277,10 @@ public final class LoanProductsApiResourceSwagger {
         public Long incomeFromGoodwillCreditFeesAccountId;
         @Schema(example = "11")
         public Long incomeFromGoodwillCreditPenaltyAccountId;
+        @Schema(example = "25")
+        public Long deferredIncomeLiabilityAccountId;
+        @Schema(example = "37")
+        public Long incomeFromCapitalizationAccountId;
         public List<GetLoanProductsProductIdResponse.GetLoanPaymentChannelToFundSourceMappings> paymentChannelToFundSourceMappings;
         public List<LoanProductChargeToGLAccountMapper> feeToIncomeAccountMappings;
         public List<PostChargeOffReasonToExpenseAccountMappings> chargeOffReasonToExpenseAccountMappings;
@@ -663,6 +669,8 @@ public final class LoanProductsApiResourceSwagger {
         public StringEnumOptionData capitalizedIncomeCalculationType;
         @Schema(example = "EQUAL_AMORTIZATION")
         public StringEnumOptionData capitalizedIncomeStrategy;
+        @Schema(example = "FEE")
+        public StringEnumOptionData capitalizedIncomeType;
     }
 
     @Schema(description = "GetLoanProductsTemplateResponse")
@@ -1115,8 +1123,11 @@ public final class LoanProductsApiResourceSwagger {
         public StringEnumOptionData capitalizedIncomeCalculationType;
         @Schema(example = "EQUAL_AMORTIZATION")
         public StringEnumOptionData capitalizedIncomeStrategy;
+        @Schema(example = "FEE")
+        public StringEnumOptionData capitalizedIncomeType;
         public List<StringEnumOptionData> capitalizedIncomeCalculationTypeOptions;
         public List<StringEnumOptionData> capitalizedIncomeStrategyOptions;
+        public List<StringEnumOptionData> capitalizedIncomeTypeOptions;
     }
 
     @Schema(description = "GetLoanProductsProductIdResponse")
@@ -1227,6 +1238,8 @@ public final class LoanProductsApiResourceSwagger {
             public GetGlAccountMapping chargeOffExpenseAccount;
             public GetGlAccountMapping chargeOffFraudExpenseAccount;
             public GetGlAccountMapping overpaymentLiabilityAccount;
+            public GetGlAccountMapping deferredIncomeLiabilityAccount;
+            public GetGlAccountMapping incomeFromCapitalizationAccount;
         }
 
         static final class GetLoanPaymentChannelToFundSourceMappings {
@@ -1442,8 +1455,11 @@ public final class LoanProductsApiResourceSwagger {
         public StringEnumOptionData capitalizedIncomeCalculationType;
         @Schema(example = "EQUAL_AMORTIZATION")
         public StringEnumOptionData capitalizedIncomeStrategy;
+        @Schema(example = "FEE")
+        public StringEnumOptionData capitalizedIncomeType;
         public List<StringEnumOptionData> capitalizedIncomeCalculationTypeOptions;
         public List<StringEnumOptionData> capitalizedIncomeStrategyOptions;
+        public List<StringEnumOptionData> capitalizedIncomeTypeOptions;
     }
 
     @Schema(description = "PutLoanProductsProductIdRequest")
@@ -1611,6 +1627,8 @@ public final class LoanProductsApiResourceSwagger {
         public Boolean isCompoundingToBePostedAsTransaction;
         @Schema(example = "false")
         public Boolean allowCompoundingOnEod;
+        @Schema(example = "false")
+        public Boolean disallowInterestCalculationOnPastDue;
 
         // Accounting
         @Schema(example = "3")
@@ -1661,6 +1679,10 @@ public final class LoanProductsApiResourceSwagger {
 
         @Schema(example = "11")
         public Long incomeFromChargeOffPenaltyAccountId;
+        @Schema(example = "25")
+        public Long deferredIncomeLiabilityAccountId;
+        @Schema(example = "37")
+        public Long incomeFromCapitalizationAccountId;
         public List<GetLoanProductsProductIdResponse.GetLoanPaymentChannelToFundSourceMappings> paymentChannelToFundSourceMappings;
         public List<LoanProductChargeToGLAccountMapper> feeToIncomeAccountMappings;
         public List<PostLoanProductsRequest.PostChargeOffReasonToExpenseAccountMappings> chargeOffReasonToExpenseAccountMappings;
@@ -1703,6 +1725,8 @@ public final class LoanProductsApiResourceSwagger {
         public String capitalizedIncomeCalculationType;
         @Schema(example = "EQUAL_AMORTIZATION", allowableValues = "EQUAL_AMORTIZATION")
         public String capitalizedIncomeStrategy;
+        @Schema(example = "FEE", allowableValues = { "FEE", "INTEREST" })
+        public String capitalizedIncomeType;
     }
 
     public static final class AdvancedPaymentData {

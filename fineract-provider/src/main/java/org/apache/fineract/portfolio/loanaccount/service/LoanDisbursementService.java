@@ -62,6 +62,7 @@ public class LoanDisbursementService {
     private final LoanChargeValidator loanChargeValidator;
     private final LoanDisbursementValidator loanDisbursementValidator;
     private final ReprocessLoanTransactionsService reprocessLoanTransactionsService;
+    private final LoanChargeService loanChargeService;
 
     public void updateDisbursementDetails(final Loan loan, final JsonCommand jsonCommand, final Map<String, Object> actualChanges) {
         final List<Long> disbursementList = loan.fetchDisbursementIds();
@@ -203,7 +204,7 @@ public class LoanDisbursementService {
                 }
             } else if (disbursedOn.equals(loan.getActualDisbursementDate())
                     && loan.isNoneOrCashOrUpfrontAccrualAccountingEnabledOnLoanProduct()) {
-                loan.handleChargeAppliedTransaction(charge, disbursedOn);
+                loanChargeService.handleChargeAppliedTransaction(loan, charge, disbursedOn);
             }
         }
 
@@ -243,15 +244,15 @@ public class LoanDisbursementService {
                 if (TemporaryConfigurationServiceContainer.isExternalIdAutoGenerationEnabled()) {
                     externalId = ExternalId.generate();
                 }
-                final LoanCharge loanCharge = new LoanCharge(loan, chargeDefinition, principal, null, null, null, expectedDisbursementDate,
-                        null, null, BigDecimal.ZERO, externalId);
+                final LoanCharge loanCharge = loanChargeService.create(loan, chargeDefinition, principal, null, null, null,
+                        expectedDisbursementDate, null, null, BigDecimal.ZERO, externalId);
                 LoanTrancheDisbursementCharge loanTrancheDisbursementCharge = new LoanTrancheDisbursementCharge(loanCharge,
                         disbursementDetails);
                 loanCharge.updateLoanTrancheDisbursementCharge(loanTrancheDisbursementCharge);
 
                 loanChargeValidator.validateChargeAdditionForDisbursedLoan(loan, loanCharge);
                 loanChargeValidator.validateChargeHasValidSpecifiedDateIfApplicable(loan, loanCharge, loan.getDisbursementDate());
-                loan.addLoanCharge(loanCharge);
+                loanChargeService.addLoanCharge(loan, loanCharge);
             }
             actualChanges.put(LoanApiConstants.disbursementDataParameterName, expectedDisbursementDate + "-" + principal);
             actualChanges.put(RECALCULATE_LOAN_SCHEDULE, true);
@@ -272,7 +273,7 @@ public class LoanDisbursementService {
         } else {
             if (!loanChargeIds.isEmpty() && loanChargeIds.size() != chargeIdLength) {
                 for (Long chargeId : loanChargeIds) {
-                    final LoanCharge deleteCharge = loan.fetchLoanChargesById(chargeId);
+                    final LoanCharge deleteCharge = loanChargeService.fetchLoanChargesById(loan, chargeId);
                     if (loan.getCharges().contains(deleteCharge)) {
                         loanChargeValidator.validateLoanIsNotClosed(loan, deleteCharge);
                         loanChargeValidator.validateLoanChargeIsNotWaived(loan, deleteCharge);

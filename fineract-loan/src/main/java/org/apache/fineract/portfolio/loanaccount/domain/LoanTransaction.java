@@ -306,6 +306,22 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
         return newTransaction;
     }
 
+    public static LoanTransaction capitalizedIncome(final Loan loan, final Money amount, final PaymentDetail paymentDetail,
+            final LocalDate transactionDate, final ExternalId externalId) {
+        return new LoanTransaction(loan, loan.getOffice(), LoanTransactionType.CAPITALIZED_INCOME, transactionDate, amount.getAmount(),
+                amount.getAmount(), null, null, null, null, false, paymentDetail, externalId);
+    }
+
+    public static LoanTransaction capitalizedIncomeAmortization(final Loan loan, final Office office, final LocalDate dateOf,
+            final BigDecimal amount, final ExternalId externalId) {
+        return switch (loan.getLoanProductRelatedDetail().getCapitalizedIncomeType()) {
+            case FEE -> new LoanTransaction(loan, office, LoanTransactionType.CAPITALIZED_INCOME_AMORTIZATION, dateOf, amount, null, null,
+                    amount, null, null, false, null, externalId);
+            case INTEREST -> new LoanTransaction(loan, office, LoanTransactionType.CAPITALIZED_INCOME_AMORTIZATION, dateOf, amount, null,
+                    amount, null, null, null, false, null, externalId);
+        };
+    }
+
     public LoanTransaction copyTransactionPropertiesAndMappings() {
         LoanTransaction newTransaction = copyTransactionProperties(this);
         newTransaction.updateLoanTransactionToRepaymentScheduleMappings(loanTransactionToRepaymentScheduleMappings);
@@ -626,6 +642,18 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
         return LoanTransactionType.WAIVE_CHARGES.equals(getTypeOf()) && isNotReversed();
     }
 
+    public boolean isCapitalizedIncome() {
+        return LoanTransactionType.CAPITALIZED_INCOME.equals(getTypeOf()) && isNotReversed();
+    }
+
+    public boolean isCapitalizedIncomeAmortization() {
+        return LoanTransactionType.CAPITALIZED_INCOME_AMORTIZATION.equals(getTypeOf()) && isNotReversed();
+    }
+
+    public boolean isCapitalizedIncomeAdjustment() {
+        return LoanTransactionType.CAPITALIZED_INCOME_ADJUSTMENT.equals(getTypeOf()) && isNotReversed();
+    }
+
     public boolean isWaiver() {
         return isInterestWaiver() || isChargesWaiver();
     }
@@ -736,7 +764,8 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
                 || type == LoanTransactionType.ACCRUAL_ACTIVITY || type == LoanTransactionType.APPROVE_TRANSFER
                 || type == LoanTransactionType.INITIATE_TRANSFER || type == LoanTransactionType.REJECT_TRANSFER
                 || type == LoanTransactionType.WITHDRAW_TRANSFER || type == LoanTransactionType.CHARGE_OFF
-                || type == LoanTransactionType.REAMORTIZE || type == LoanTransactionType.REAGE);
+                || type == LoanTransactionType.REAMORTIZE || type == LoanTransactionType.REAGE
+                || type == LoanTransactionType.CAPITALIZED_INCOME_AMORTIZATION);
     }
 
     public void updateOutstandingLoanBalance(BigDecimal outstandingLoanBalance) {
@@ -900,4 +929,5 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
     public void updateTransactionDate(final LocalDate transactionDate) {
         this.dateOf = transactionDate;
     }
+
 }

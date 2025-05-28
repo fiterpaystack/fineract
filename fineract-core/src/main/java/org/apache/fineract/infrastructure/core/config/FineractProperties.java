@@ -491,6 +491,7 @@ public class FineractProperties {
         private FineractSecurityBasicAuth basicauth;
         private FineractSecurityTwoFactorAuth twoFactor;
         private FineractSecurityOAuth oauth;
+        private FineractSecurityHsts hsts;
 
         public void set2fa(FineractSecurityTwoFactorAuth twoFactor) {
             this.twoFactor = twoFactor;
@@ -520,6 +521,13 @@ public class FineractProperties {
 
     @Getter
     @Setter
+    public static class FineractSecurityHsts {
+
+        private boolean enabled;
+    }
+
+    @Getter
+    @Setter
     public static class FineractTransactionProcessorItemProperties {
 
         private boolean enabled;
@@ -540,11 +548,18 @@ public class FineractProperties {
     public static class FineractModulesProperties {
 
         private FineractInvestorModuleProperties investor;
+        private FineractSelfServiceModuleProperties selfService;
     }
 
     @Getter
     @Setter
     public static class FineractInvestorModuleProperties extends AbstractFineractModuleProperties {
+
+    }
+
+    @Getter
+    @Setter
+    public static class FineractSelfServiceModuleProperties extends AbstractFineractModuleProperties {
 
     }
 

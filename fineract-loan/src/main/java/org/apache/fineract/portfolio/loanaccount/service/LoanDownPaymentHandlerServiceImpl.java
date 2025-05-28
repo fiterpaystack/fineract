@@ -61,6 +61,9 @@ public class LoanDownPaymentHandlerServiceImpl implements LoanDownPaymentHandler
     private final LoanRefundValidator loanRefundValidator;
     private final ReprocessLoanTransactionsService reprocessLoanTransactionsService;
     private final LoanTransactionProcessingService loanTransactionProcessingService;
+    private final LoanLifecycleStateMachine loanLifecycleStateMachine;
+    private final LoanBalanceService loanBalanceService;
+    private final LoanTransactionService loanTransactionService;
 
     @Override
     public LoanTransaction handleDownPayment(ScheduleGeneratorDTO scheduleGeneratorDTO, JsonCommand command,
@@ -77,8 +80,7 @@ public class LoanDownPaymentHandlerServiceImpl implements LoanDownPaymentHandler
 
     @Override
     public void handleRepaymentOrRecoveryOrWaiverTransaction(final Loan loan, final LoanTransaction loanTransaction,
-            final LoanLifecycleStateMachine loanLifecycleStateMachine, final LoanTransaction adjustedTransaction,
-            final ScheduleGeneratorDTO scheduleGeneratorDTO) {
+            final LoanTransaction adjustedTransaction, final ScheduleGeneratorDTO scheduleGeneratorDTO) {
         if (loanTransaction.isRecoveryRepayment()) {
             loanLifecycleStateMachine.transition(LoanEvent.LOAN_RECOVERY_PAYMENT, loan);
         }
@@ -91,7 +93,8 @@ public class LoanDownPaymentHandlerServiceImpl implements LoanDownPaymentHandler
 
         loanTransaction.updateLoan(loan);
 
-        final boolean isTransactionChronologicallyLatest = loan.isChronologicallyLatestRepaymentOrWaiver(loanTransaction);
+        final boolean isTransactionChronologicallyLatest = loanTransactionService.isChronologicallyLatestRepaymentOrWaiver(loan,
+                loanTransaction);
 
         if (loanTransaction.isNotZero()) {
             loan.addLoanTransaction(loanTransaction);
@@ -127,29 +130,29 @@ public class LoanDownPaymentHandlerServiceImpl implements LoanDownPaymentHandler
         final LoanRepaymentScheduleInstallment currentInstallment = loan
                 .fetchLoanRepaymentScheduleInstallmentByDueDate(loanTransaction.getTransactionDate());
 
-        boolean reprocess = loan.isForeclosure() || !isTransactionChronologicallyLatest || adjustedTransaction != null
-                || !DateUtils.isEqualBusinessDate(loanTransaction.getTransactionDate()) || currentInstallment == null
-                || !currentInstallment.getTotalOutstanding(loan.getCurrency()).isEqualTo(loanTransaction.getAmount(loan.getCurrency()));
+        boolean reprocessOnPostConditions = false;
 
-        if (isTransactionChronologicallyLatest && adjustedTransaction == null
-                && (!reprocess || !loan.isInterestBearingAndInterestRecalculationEnabled()) && !loan.isForeclosure()) {
+        boolean processLatest = isTransactionChronologicallyLatest //
+                && adjustedTransaction == null // covers reversals
+                && !loan.isForeclosure() //
+                && loanTransactionProcessingService.canProcessLatestTransactionOnly(loan, loanTransaction, currentInstallment); //
+        if (processLatest) {
             loanTransactionProcessingService.processLatestTransaction(loan.getTransactionProcessingStrategyCode(), loanTransaction,
                     new TransactionCtx(loan.getCurrency(), loan.getRepaymentScheduleInstallments(), loan.getActiveCharges(),
                             new MoneyHolder(loan.getTotalOverpaidAsMoney()), null));
-            reprocess = false;
-            if (loan.isInterestBearingAndInterestRecalculationEnabled()) {
+            if (!loan.isProgressiveSchedule() && loan.isInterestBearingAndInterestRecalculationEnabled()) {
                 if (currentInstallment == null || currentInstallment.isNotFullyPaidOff()) {
-                    reprocess = true;
+                    reprocessOnPostConditions = true;
                 } else {
                     final LoanRepaymentScheduleInstallment nextInstallment = loan
                             .fetchRepaymentScheduleInstallment(currentInstallment.getInstallmentNumber() + 1);
                     if (nextInstallment != null && nextInstallment.getTotalPaidInAdvance(loan.getCurrency()).isGreaterThanZero()) {
-                        reprocess = true;
+                        reprocessOnPostConditions = true;
                     }
                 }
             }
         }
-        if (reprocess) {
+        if (!processLatest || reprocessOnPostConditions) {
             if (loan.isCumulativeSchedule() && loan.isInterestBearingAndInterestRecalculationEnabled()) {
                 loanScheduleService.regenerateRepaymentScheduleWithInterestRecalculation(loan, scheduleGeneratorDTO);
             } else if (loan.isProgressiveSchedule() && loan.hasChargeOffTransaction() && loan.hasAccelerateChargeOffStrategy()) {
@@ -158,19 +161,22 @@ public class LoanDownPaymentHandlerServiceImpl implements LoanDownPaymentHandler
             reprocessLoanTransactionsService.reprocessTransactions(loan);
         }
 
-        loan.updateLoanSummaryDerivedFields();
-
         /**
          * FIXME: Vishwas, skipping post loan transaction checks for Loan recoveries
          **/
         if (loanTransaction.isNotRecoveryRepayment()) {
-            loan.doPostLoanTransactionChecks(loanTransaction.getTransactionDate(), loanLifecycleStateMachine);
+            loanLifecycleStateMachine.determineAndTransition(loan, loanTransaction.getTransactionDate());
+        } else {
+            loanBalanceService.updateLoanSummaryDerivedFields(loan);
         }
 
         if (loan.getLoanProduct().isMultiDisburseLoan()) {
             final BigDecimal totalDisbursed = loan.getDisbursedAmount();
             final BigDecimal totalPrincipalAdjusted = loan.getSummary().getTotalPrincipalAdjustments();
-            final BigDecimal totalPrincipalCredited = totalDisbursed.add(totalPrincipalAdjusted);
+            final BigDecimal totalCapitalizedIncome = loan.getLoanTransactions(LoanTransaction::isCapitalizedIncome).stream()
+                    .filter(LoanTransaction::isNotReversed).map(LoanTransaction::getPrincipalPortion)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            final BigDecimal totalPrincipalCredited = totalDisbursed.add(totalPrincipalAdjusted).add(totalCapitalizedIncome);
             if (totalPrincipalCredited.compareTo(loan.getSummary().getTotalPrincipalRepaid()) < 0
                     && loan.repaymentScheduleDetail().getPrincipal().minus(totalDisbursed).isGreaterThanZero()) {
                 final String errorMessage = "The transaction amount cannot exceed threshold.";
@@ -223,8 +229,7 @@ public class LoanDownPaymentHandlerServiceImpl implements LoanDownPaymentHandler
             loanDownPaymentTransactionValidator.validateRepaymentDateIsOnNonWorkingDay(downPaymentTransaction.getTransactionDate(),
                     holidayDetailDTO.getWorkingDays(), holidayDetailDTO.isAllowTransactionsOnNonWorkingDay());
 
-            handleRepaymentOrRecoveryOrWaiverTransaction(loan, downPaymentTransaction, loan.getLoanLifecycleStateMachine(), null,
-                    scheduleGeneratorDTO);
+            handleRepaymentOrRecoveryOrWaiverTransaction(loan, downPaymentTransaction, null, scheduleGeneratorDTO);
             return downPaymentTransaction;
         } else {
             return null;

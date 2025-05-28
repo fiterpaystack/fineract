@@ -201,14 +201,13 @@ public class GroupsWorkbookPopulator extends AbstractWorkbookPopulator {
         DataValidationConstraint staffNameConstraint = validationHelper
                 .createFormulaListConstraint("INDIRECT(CONCATENATE(\"Staff_\",$B1))");
         DataValidationConstraint booleanConstraint = validationHelper.createExplicitListConstraint(new String[] { "True", "False" });
-        DataValidationConstraint activationDateConstraint = validationHelper.createDateConstraint(
-                DataValidationConstraint.OperatorType.BETWEEN, "=DATEVALUE(VLOOKUP($B1,$IR$2:$IS" + (offices.size() + 1) + ",2,FALSE))",
-                "=TODAY()", dateFormat);
+        DataValidationConstraint activationDateConstraint = validationHelper
+                .createDateConstraint(DataValidationConstraint.OperatorType.GREATER_OR_EQUAL, "=$G1", null, dateFormat);
 
         DataValidationConstraint submittedOnDateConstraint = validationHelper
-                .createDateConstraint(DataValidationConstraint.OperatorType.LESS_OR_EQUAL, "=$G1", null, dateFormat);
+                .createDateConstraint(DataValidationConstraint.OperatorType.LESS_OR_EQUAL, "=TODAY()", null, dateFormat);
         DataValidationConstraint meetingStartDateConstraint = validationHelper
-                .createDateConstraint(DataValidationConstraint.OperatorType.BETWEEN, "=$G1", "=TODAY()", dateFormat);
+                .createDateConstraint(DataValidationConstraint.OperatorType.BETWEEN, "=$H1", "=TODAY()", dateFormat);
         DataValidationConstraint repeatsConstraint = validationHelper.createExplicitListConstraint(
                 new String[] { TemplatePopulateImportConstants.FREQUENCY_DAILY, TemplatePopulateImportConstants.FREQUENCY_WEEKLY,
                         TemplatePopulateImportConstants.FREQUENCY_MONTHLY, TemplatePopulateImportConstants.FREQUENCY_YEARLY });
@@ -262,6 +261,15 @@ public class GroupsWorkbookPopulator extends AbstractWorkbookPopulator {
         Name repeatsOnWeekly = centerWorkbook.createName();
         repeatsOnWeekly.setNameName("Weekly_Days");
         repeatsOnWeekly.setRefersToFormula(TemplatePopulateImportConstants.GROUP_SHEET_NAME + "!$IV$2:$IV$8");
+        Name repeatsOnDaily = centerWorkbook.createName();
+        repeatsOnDaily.setNameName("Daily_Days");
+        repeatsOnDaily.setRefersToFormula(TemplatePopulateImportConstants.GROUP_SHEET_NAME + "!$IV$2:$IV$8");
+        Name repeatOnYearly = centerWorkbook.createName();
+        repeatOnYearly.setNameName("Yearly_Days");
+        repeatOnYearly.setRefersToFormula(TemplatePopulateImportConstants.GROUP_SHEET_NAME + "!$IV$2:$IV$8");
+        Name repeatsOnMonthly = centerWorkbook.createName();
+        repeatsOnMonthly.setNameName("Monthly_Days");
+        repeatsOnMonthly.setRefersToFormula(TemplatePopulateImportConstants.GROUP_SHEET_NAME + "!$IV$2:$IV$8");
 
         // Staff Names for each office & center Names for each office
         for (Integer i = 0; i < offices.size(); i++) {

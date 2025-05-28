@@ -234,15 +234,15 @@ class LoanAdjustmentServiceImplTest {
         when(loan.getLoanTransactions()).thenReturn(loanTransactions);
 
         // Mock methods called inside adjustExistingTransaction
-        when(loan.findExistingTransactionIds()).thenReturn(Collections.emptyList());
-        when(loan.findExistingReversedTransactionIds()).thenReturn(Collections.emptyList());
+        when(loanTransactionRepository.findTransactionIdsByLoan(loan)).thenReturn(Collections.emptyList());
+        when(loanTransactionRepository.findReversedTransactionIdsByLoan(loan)).thenReturn(Collections.emptyList());
         doNothing().when(loanTransactionValidator).validateActivityNotBeforeClientOrGroupTransferDate(any(), any(), any());
         when(loan.isClosedWrittenOff()).thenReturn(false);
         when(newTransactionDetail.isRepaymentLikeType()).thenReturn(true);
 
         // Act
-        underTest.adjustExistingTransaction(loan, newTransactionDetail, loanLifecycleStateMachine, transactionForAdjustment,
-                existingTransactionIds, existingReversedTransactionIds, scheduleGeneratorDTO, reversalExternalId);
+        underTest.adjustExistingTransaction(loan, newTransactionDetail, transactionForAdjustment, existingTransactionIds,
+                existingReversedTransactionIds, scheduleGeneratorDTO, reversalExternalId);
 
         // Assert
         // Verify that related transaction is reversed and event is triggered
@@ -279,15 +279,15 @@ class LoanAdjustmentServiceImplTest {
         LoanTransaction unrelatedTransaction = mock(LoanTransaction.class);
 
         // Mock methods called inside adjustExistingTransaction
-        when(loan.findExistingTransactionIds()).thenReturn(Collections.emptyList());
-        when(loan.findExistingReversedTransactionIds()).thenReturn(Collections.emptyList());
+        when(loanTransactionRepository.findTransactionIdsByLoan(loan)).thenReturn(Collections.emptyList());
+        when(loanTransactionRepository.findReversedTransactionIdsByLoan(loan)).thenReturn(Collections.emptyList());
         doNothing().when(loanTransactionValidator).validateActivityNotBeforeClientOrGroupTransferDate(any(), any(), any());
         when(loan.isClosedWrittenOff()).thenReturn(false);
         when(newTransactionDetail.isRepaymentLikeType()).thenReturn(true);
 
         // Act
-        underTest.adjustExistingTransaction(loan, newTransactionDetail, loanLifecycleStateMachine, transactionForAdjustment,
-                existingTransactionIds, existingReversedTransactionIds, scheduleGeneratorDTO, reversalExternalId);
+        underTest.adjustExistingTransaction(loan, newTransactionDetail, transactionForAdjustment, existingTransactionIds,
+                existingReversedTransactionIds, scheduleGeneratorDTO, reversalExternalId);
 
         // Assert
         // Verify that no related transactions are reversed

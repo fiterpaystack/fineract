@@ -45,8 +45,10 @@ import java.util.Locale;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.client.models.AdvancedPaymentData;
+import org.apache.fineract.client.models.CommandProcessingResult;
 import org.apache.fineract.client.models.DeleteLoansLoanIdChargesChargeIdResponse;
 import org.apache.fineract.client.models.DeleteLoansLoanIdResponse;
+import org.apache.fineract.client.models.DisbursementDetail;
 import org.apache.fineract.client.models.GetDelinquencyActionsResponse;
 import org.apache.fineract.client.models.GetDelinquencyTagHistoryResponse;
 import org.apache.fineract.client.models.GetLoanProductsProductIdResponse;
@@ -65,7 +67,9 @@ import org.apache.fineract.client.models.GetLoansLoanIdTransactionsResponse;
 import org.apache.fineract.client.models.GetLoansLoanIdTransactionsTemplateResponse;
 import org.apache.fineract.client.models.GetLoansLoanIdTransactionsTransactionIdResponse;
 import org.apache.fineract.client.models.GetLoansResponse;
+import org.apache.fineract.client.models.InterestPauseRequestDto;
 import org.apache.fineract.client.models.PaymentTypeData;
+import org.apache.fineract.client.models.PostAddAndDeleteDisbursementDetailRequest;
 import org.apache.fineract.client.models.PostLoanProductsRequest;
 import org.apache.fineract.client.models.PostLoanProductsResponse;
 import org.apache.fineract.client.models.PostLoansDelinquencyActionRequest;
@@ -102,6 +106,7 @@ import org.apache.fineract.integrationtests.common.accounting.Account;
 import org.apache.fineract.portfolio.delinquency.domain.DelinquencyAction;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Workbook;
+import retrofit2.Response;
 
 @Slf4j
 @SuppressWarnings({ "rawtypes", "unchecked" })
@@ -897,6 +902,11 @@ public class LoanTransactionHelper {
         return postLoanTransaction(createLoanTransactionURL(MAKE_REPAYMENT_COMMAND, loanID), getRepaymentBodyAsJSON(date, amountToBePaid));
     }
 
+    public PostLoansLoanIdTransactionsResponse executeLoanTransaction(final Long loanId, final PostLoansLoanIdTransactionsRequest request,
+            final String command) {
+        return Calls.ok(FineractClientHelper.getFineractClient().loanTransactions.executeLoanTransaction(loanId, request, command));
+    }
+
     public PostLoansLoanIdTransactionsResponse makeLoanRepayment(final Long loanId, final PostLoansLoanIdTransactionsRequest request) {
         return Calls.ok(FineractClientHelper.getFineractClient().loanTransactions.executeLoanTransaction(loanId, request, "repayment"));
     }
@@ -905,6 +915,22 @@ public class LoanTransactionHelper {
             final String user, final String pass) {
         return Calls.ok(FineractClientHelper.createNewFineractClient(user, pass).loanTransactions.executeLoanTransaction(loanId, request,
                 "repayment"));
+    }
+
+    public PostLoansLoanIdTransactionsResponse addCapitalizedIncome(final Long loanId, final PostLoansLoanIdTransactionsRequest request) {
+        return Calls
+                .ok(FineractClientHelper.getFineractClient().loanTransactions.executeLoanTransaction(loanId, request, "capitalizedIncome"));
+    }
+
+    public PostLoansLoanIdTransactionsResponse addCapitalizedIncome(final Long loanId, final String transactionDate, final double amount) {
+        return addCapitalizedIncome(loanId, new PostLoansLoanIdTransactionsRequest().transactionAmount(amount)
+                .transactionDate(transactionDate).dateFormat("dd MMMM yyyy").locale("en"));
+    }
+
+    public Response<CommandProcessingResult> createInterestPause(Long loanId, String startDate, String endDate) {
+        log.info("Creating interest pause for Loan {} from {} to {}", loanId, startDate, endDate);
+        return Calls.executeU(FineractClientHelper.getFineractClient().loanInterestPauseApi.createInterestPause(loanId,
+                new InterestPauseRequestDto().startDate(startDate).endDate(endDate).dateFormat(DATE_FORMAT).locale("en")));
     }
 
     // TODO: Rewrite to use fineract-client instead!
@@ -2311,7 +2337,7 @@ public class LoanTransactionHelper {
     public GetLoansLoanIdTransactionsTemplateResponse getPrepaymentAmount(final Long loanId, final String transactionDate,
             String dateformat) {
         return Calls.ok(FineractClientHelper.getFineractClient().loanTransactions.retrieveTransactionTemplate(loanId, "prepayLoan",
-                dateformat, transactionDate, "en"));
+                dateformat, transactionDate, "en", null));
     }
 
     // TODO: Rewrite to use fineract-client instead!
@@ -2481,6 +2507,15 @@ public class LoanTransactionHelper {
 
         return Utils.performServerPut(this.requestSpec, this.responseSpec, createAddAndDeleteDisbursementURL(loanID),
                 getAddAndDeleteDisbursementsAsJSON(approvalAmount, expectedDisbursementDate, disbursementData), jsonAttributeToGetBack);
+    }
+
+    public String addAndDeleteDisbursementDetail(final Long loanId, PostAddAndDeleteDisbursementDetailRequest request) {
+        return Calls.ok(FineractClientHelper.getFineractClient().loanDisbursementDetails.addAndDeleteDisbursementDetail(loanId, request));
+    }
+
+    public String addAndDeleteDisbursementDetail(final Long loanId, final List<DisbursementDetail> disbursementDetails) {
+        return addAndDeleteDisbursementDetail(loanId, new PostAddAndDeleteDisbursementDetailRequest().locale("en")
+                .dateFormat("dd MMMM yyyy").disbursementData(disbursementDetails));
     }
 
     // TODO: Rewrite to use fineract-client instead!
@@ -2653,7 +2688,7 @@ public class LoanTransactionHelper {
             log.info("  Id {} code {} date {} amount {}", transaction.getId(), transaction.getType().getCode(), transaction.getDate(),
                     transaction.getAmount());
             if (transactionType.equals(transaction.getType().getCode())) {
-                transactionsAmount += transaction.getAmount();
+                transactionsAmount += Utils.getDoubleValue(transaction.getAmount());
             }
         }
         assertEquals(amountExpected, transactionsAmount);
@@ -2672,7 +2707,7 @@ public class LoanTransactionHelper {
             }
         }
         assertEquals(transactionExpected, Utils.dateFormatter.format(lastTransaction.getDate()));
-        assertEquals(amountExpected, lastTransaction.getAmount());
+        assertEquals(amountExpected, Utils.getDoubleValue(lastTransaction.getAmount()));
         return lastTransaction.getId();
     }
 
@@ -2687,7 +2722,7 @@ public class LoanTransactionHelper {
         if (getLoansLoanIdSummary != null) {
             log.info("Loan with Principal Outstanding Balance {} expected {}", getLoansLoanIdSummary.getPrincipalOutstanding(),
                     amountExpected);
-            assertEquals(amountExpected, getLoansLoanIdSummary.getPrincipalOutstanding());
+            assertEquals(amountExpected, Utils.getDoubleValue(getLoansLoanIdSummary.getPrincipalOutstanding()));
         }
     }
 
@@ -2695,7 +2730,7 @@ public class LoanTransactionHelper {
         GetLoansLoanIdSummary getLoansLoanIdSummary = getLoansLoanIdResponse.getSummary();
         if (getLoansLoanIdSummary != null) {
             log.info("Loan with Fees Outstanding Balance {} expected {}", getLoansLoanIdSummary.getFeeChargesOutstanding(), amountExpected);
-            assertEquals(amountExpected, getLoansLoanIdSummary.getFeeChargesOutstanding());
+            assertEquals(amountExpected, Utils.getDoubleValue(getLoansLoanIdSummary.getFeeChargesOutstanding()));
         }
     }
 
@@ -2703,14 +2738,14 @@ public class LoanTransactionHelper {
         GetLoansLoanIdSummary getLoansLoanIdSummary = getLoansLoanIdResponse.getSummary();
         assertNotNull(getLoansLoanIdSummary);
         log.info("Loan with Fees Outstanding Balance {} expected {}", getLoansLoanIdSummary.getFeeChargesOutstanding(), amountExpected);
-        assertEquals(amountExpected, getLoansLoanIdSummary.getPenaltyChargesOutstanding());
+        assertEquals(amountExpected, Utils.getDoubleValue(getLoansLoanIdSummary.getPenaltyChargesOutstanding()));
     }
 
     public void validateLoanTotalOustandingBalance(GetLoansLoanIdResponse getLoansLoanIdResponse, Double amountExpected) {
         GetLoansLoanIdSummary getLoansLoanIdSummary = getLoansLoanIdResponse.getSummary();
         if (getLoansLoanIdSummary != null) {
             log.info("Loan with Total Outstanding Balance {} expected {}", getLoansLoanIdSummary.getTotalOutstanding(), amountExpected);
-            assertEquals(amountExpected, getLoansLoanIdSummary.getTotalOutstanding());
+            assertEquals(amountExpected, Utils.getDoubleValue(getLoansLoanIdSummary.getTotalOutstanding()));
         }
     }
 
@@ -2758,7 +2793,7 @@ public class LoanTransactionHelper {
         GetLoansLoanIdSummary getLoansLoanIdSummary = getLoansLoanIdResponse.getSummary();
         if (getLoansLoanIdSummary != null) {
             log.info("Loan with Principal Adjustments {} expected {}", getLoansLoanIdSummary.getPrincipalAdjustments(), amountExpected);
-            assertEquals(amountExpected, getLoansLoanIdSummary.getPrincipalAdjustments());
+            assertEquals(amountExpected, Utils.getDoubleValue(getLoansLoanIdSummary.getPrincipalAdjustments()));
         }
     }
 
@@ -2777,15 +2812,21 @@ public class LoanTransactionHelper {
     }
 
     public GetLoansLoanIdTransactionsTemplateResponse retrieveTransactionTemplate(Long loanId, String command, String dateFormat,
+            String transactionDate, String locale, Long transactionId) {
+        return Calls.ok(FineractClientHelper.getFineractClient().loanTransactions.retrieveTransactionTemplate(loanId, command, dateFormat,
+                transactionDate, locale, transactionId));
+    }
+
+    public GetLoansLoanIdTransactionsTemplateResponse retrieveTransactionTemplate(Long loanId, String command, String dateFormat,
             String transactionDate, String locale) {
         return Calls.ok(FineractClientHelper.getFineractClient().loanTransactions.retrieveTransactionTemplate(loanId, command, dateFormat,
-                transactionDate, locale));
+                transactionDate, locale, null));
     }
 
     public GetLoansLoanIdTransactionsTemplateResponse retrieveTransactionTemplate(String loanExternalIdStr, String command,
             String dateFormat, String transactionDate, String locale) {
         return Calls.ok(FineractClientHelper.getFineractClient().loanTransactions.retrieveTransactionTemplate1(loanExternalIdStr, command,
-                dateFormat, transactionDate, locale));
+                dateFormat, transactionDate, locale, null));
     }
 
     public GetLoansApprovalTemplateResponse getLoanApprovalTemplate(String loanExternalIdStr) {
@@ -2951,6 +2992,10 @@ public class LoanTransactionHelper {
         log.info("---------------------------------GET LOANS BY STATUS---------------------------------------------");
         final String get = Utils.performServerGet(requestSpec, responseSpec, GET_LOAN_URL, null);
         return new Gson().fromJson(get, new TypeToken<ArrayList<Integer>>() {}.getType());
+    }
+
+    public static List<Long> getLoanIdsByStatusId(Integer statusId) {
+        return Calls.ok(FineractClientHelper.getFineractClient().legacy.getLoansByStatus(statusId));
     }
 
     public PutLoanProductsProductIdResponse updateLoanProduct(Long id, PutLoanProductsProductIdRequest requestModifyLoan) {

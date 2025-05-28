@@ -135,9 +135,11 @@ import org.apache.fineract.portfolio.loanaccount.data.PaidInAdvanceData;
 import org.apache.fineract.portfolio.loanaccount.data.RepaymentScheduleRelatedLoanData;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCapitalizedIncomeCalculationType;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCapitalizedIncomeStrategy;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanCapitalizedIncomeType;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanStatus;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanSummaryBalancesRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTermVariationType;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepaymentPeriodData;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanNotFoundException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanTemplateTypeRequiredException;
 import org.apache.fineract.portfolio.loanaccount.exception.NotSupportedLoanTemplateTypeException;
@@ -149,6 +151,7 @@ import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanSchedul
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleType;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.service.LoanScheduleCalculationPlatformService;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.service.LoanScheduleHistoryReadPlatformService;
+import org.apache.fineract.portfolio.loanaccount.repository.LoanCapitalizedIncomeBalanceRepository;
 import org.apache.fineract.portfolio.loanaccount.rescheduleloan.domain.LoanTermVariationsRepository;
 import org.apache.fineract.portfolio.loanaccount.service.GLIMAccountInfoReadPlatformService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanChargeReadPlatformService;
@@ -296,6 +299,7 @@ public class LoansApiResource {
     private final ClientReadPlatformService clientReadPlatformService;
     private final LoanTermVariationsRepository loanTermVariationsRepository;
     private final LoanSummaryProviderDelegate loanSummaryProviderDelegate;
+    private final LoanCapitalizedIncomeBalanceRepository loanCapitalizedIncomeBalanceRepository;
 
     /*
      * This template API is used for loan approval, ideally this should be invoked on loan that are pending for
@@ -495,18 +499,22 @@ public class LoansApiResource {
         final Set<String> associationParameters = ApiParameterHelper.extractAssociationsForResponseIfProvided(uriInfo.getQueryParameters());
         if (associationParameters.contains(DataTableApiConstant.summaryAssociateParamName)) {
             loanBasicDetails.getPageItems().forEach(i -> {
-                Collection<DisbursementData> disbursementData = this.loanReadPlatformService.retrieveLoanDisbursementDetails(i.getId());
-                final RepaymentScheduleRelatedLoanData repaymentScheduleRelatedData = new RepaymentScheduleRelatedLoanData(
-                        i.getTimeline().getExpectedDisbursementDate(), i.getTimeline().getActualDisbursementDate(), i.getCurrency(),
-                        i.getPrincipal(), i.getInArrearsTolerance(), i.getFeeChargesAtDisbursementCharged());
-                final LoanScheduleData repaymentSchedule = this.loanReadPlatformService.retrieveRepaymentSchedule(i.getId(),
-                        repaymentScheduleRelatedData, disbursementData, i.isInterestRecalculationEnabled(),
-                        LoanScheduleType.fromEnumOptionData(i.getLoanScheduleType()));
-                LoanSummaryDataProvider loanSummaryDataProvider = loanSummaryProviderDelegate
-                        .resolveLoanSummaryDataProvider(i.getTransactionProcessingStrategyCode());
-                i.setSummary(loanSummaryDataProvider.withTransactionAmountsSummary(i.getId(), i.getSummary(), repaymentSchedule,
-                        loanSummaryBalancesRepository.retrieveLoanSummaryBalancesByTransactionType(i.getId(),
-                                LoanApiConstants.LOAN_SUMMARY_TRANSACTION_TYPES)));
+                if (i.getSummary() != null) {
+                    Collection<DisbursementData> disbursementData = this.loanReadPlatformService.retrieveLoanDisbursementDetails(i.getId());
+                    List<LoanTransactionRepaymentPeriodData> capitalizedIncomeData = this.loanCapitalizedIncomeBalanceRepository
+                            .findRepaymentPeriodDataByLoanId(i.getId());
+                    final RepaymentScheduleRelatedLoanData repaymentScheduleRelatedData = new RepaymentScheduleRelatedLoanData(
+                            i.getTimeline().getExpectedDisbursementDate(), i.getTimeline().getActualDisbursementDate(), i.getCurrency(),
+                            i.getPrincipal(), i.getInArrearsTolerance(), i.getFeeChargesAtDisbursementCharged());
+                    final LoanScheduleData repaymentSchedule = this.loanReadPlatformService.retrieveRepaymentSchedule(i.getId(),
+                            repaymentScheduleRelatedData, disbursementData, capitalizedIncomeData, i.isInterestRecalculationEnabled(),
+                            LoanScheduleType.fromEnumOptionData(i.getLoanScheduleType()));
+                    LoanSummaryDataProvider loanSummaryDataProvider = loanSummaryProviderDelegate
+                            .resolveLoanSummaryDataProvider(i.getTransactionProcessingStrategyCode());
+                    i.setSummary(loanSummaryDataProvider.withTransactionAmountsSummary(i.getId(), i.getSummary(), repaymentSchedule,
+                            loanSummaryBalancesRepository.retrieveLoanSummaryBalancesByTransactionType(i.getId(),
+                                    LoanApiConstants.LOAN_SUMMARY_TRANSACTION_TYPES)));
+                }
             });
         }
         final ApiRequestJsonSerializationSettings settings = this.apiRequestParameterHelper.process(uriInfo.getQueryParameters());
@@ -978,13 +986,15 @@ public class LoansApiResource {
 
             if (associationParameters.contains(DataTableApiConstant.repaymentScheduleAssociateParamName)) {
                 mandatoryResponseParameters.add(DataTableApiConstant.repaymentScheduleAssociateParamName);
+                List<LoanTransactionRepaymentPeriodData> capitalizedIncomeData = this.loanCapitalizedIncomeBalanceRepository
+                        .findRepaymentPeriodDataByLoanId(resolvedLoanId);
                 final RepaymentScheduleRelatedLoanData repaymentScheduleRelatedData = new RepaymentScheduleRelatedLoanData(
                         loanBasicDetails.getTimeline().getExpectedDisbursementDate(),
                         loanBasicDetails.getTimeline().getActualDisbursementDate(), loanBasicDetails.getCurrency(),
                         loanBasicDetails.getPrincipal(), loanBasicDetails.getInArrearsTolerance(),
                         loanBasicDetails.getFeeChargesAtDisbursementCharged());
                 repaymentSchedule = this.loanReadPlatformService.retrieveRepaymentSchedule(resolvedLoanId, repaymentScheduleRelatedData,
-                        disbursementData, loanBasicDetails.isInterestRecalculationEnabled(),
+                        disbursementData, capitalizedIncomeData, loanBasicDetails.isInterestRecalculationEnabled(),
                         LoanScheduleType.fromEnumOptionData(loanBasicDetails.getLoanScheduleType()));
 
                 if (associationParameters.contains(DataTableApiConstant.futureScheduleAssociateParamName)
@@ -1158,7 +1168,8 @@ public class LoansApiResource {
                 LoanScheduleType.getValuesAsEnumOptionDataList(), LoanScheduleProcessingType.getValuesAsEnumOptionDataList(),
                 loanTermVariations, ApiFacingEnum.getValuesAsStringEnumOptionDataList(DaysInYearCustomStrategyType.class),
                 ApiFacingEnum.getValuesAsStringEnumOptionDataList(LoanCapitalizedIncomeCalculationType.class),
-                ApiFacingEnum.getValuesAsStringEnumOptionDataList(LoanCapitalizedIncomeStrategy.class));
+                ApiFacingEnum.getValuesAsStringEnumOptionDataList(LoanCapitalizedIncomeStrategy.class),
+                ApiFacingEnum.getValuesAsStringEnumOptionDataList(LoanCapitalizedIncomeType.class));
 
         final ApiRequestJsonSerializationSettings settings = this.apiRequestParameterHelper.process(uriInfo.getQueryParameters(),
                 mandatoryResponseParameters);

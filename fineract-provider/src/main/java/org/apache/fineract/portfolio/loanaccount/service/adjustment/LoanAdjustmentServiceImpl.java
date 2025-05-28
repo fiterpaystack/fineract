@@ -36,6 +36,7 @@ import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.event.business.domain.loan.LoanAdjustTransactionBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.domain.loan.LoanBalanceChangedBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
+import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.portfolio.account.PortfolioAccountType;
 import org.apache.fineract.portfolio.account.service.AccountTransfersWritePlatformService;
@@ -44,6 +45,7 @@ import org.apache.fineract.portfolio.loanaccount.data.HolidayDetailDTO;
 import org.apache.fineract.portfolio.loanaccount.data.ScheduleGeneratorDTO;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanAccountDomainService;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanCharge;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanEvent;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanLifecycleStateMachine;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleInstallmentRepository;
@@ -58,9 +60,11 @@ import org.apache.fineract.portfolio.loanaccount.serialization.LoanChargeValidat
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanTransactionValidator;
 import org.apache.fineract.portfolio.loanaccount.service.LoanAccrualTransactionBusinessEventService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanAccrualsProcessingService;
+import org.apache.fineract.portfolio.loanaccount.service.LoanBalanceService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanDownPaymentHandlerService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanJournalEntryPoster;
 import org.apache.fineract.portfolio.loanaccount.service.LoanUtilService;
+import org.apache.fineract.portfolio.loanaccount.service.ReprocessLoanTransactionsService;
 import org.apache.fineract.portfolio.note.domain.Note;
 import org.apache.fineract.portfolio.note.domain.NoteRepository;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
@@ -89,6 +93,8 @@ public class LoanAdjustmentServiceImpl implements LoanAdjustmentService {
     private final LoanAccrualsProcessingService loanAccrualsProcessingService;
     private final LoanChargeValidator loanChargeValidator;
     private final LoanJournalEntryPoster journalEntryPoster;
+    private final LoanBalanceService loanBalanceService;
+    private final ReprocessLoanTransactionsService reprocessLoanTransactionsService;
 
     @Override
     public CommandProcessingResult adjustLoanTransaction(Loan loan, LoanTransaction transactionToAdjust, LoanAdjustmentParameter parameter,
@@ -110,7 +116,7 @@ public class LoanAdjustmentServiceImpl implements LoanAdjustmentService {
             Money unrecognizedIncome = transactionAmountAsMoney.zero();
             Money interestComponent = transactionAmountAsMoney;
             if (loan.isPeriodicAccrualAccountingEnabledOnLoanProduct()) {
-                Money receivableInterest = loan.getReceivableInterest(transactionDate);
+                Money receivableInterest = loanBalanceService.getReceivableInterest(loan, transactionDate);
                 if (transactionAmountAsMoney.isGreaterThan(receivableInterest)) {
                     interestComponent = receivableInterest;
                     unrecognizedIncome = transactionAmountAsMoney.minus(receivableInterest);
@@ -118,6 +124,16 @@ public class LoanAdjustmentServiceImpl implements LoanAdjustmentService {
             }
             newTransactionDetail = LoanTransaction.waiver(loan.getOffice(), loan, transactionAmountAsMoney, transactionDate,
                     interestComponent, unrecognizedIncome, txnExternalId);
+        }
+        if (transactionToAdjust.isChargesWaiver()) {
+            transactionToAdjust.getLoanChargesPaid().forEach(loanChargePaidBy -> {
+                LoanCharge loanCharge = loanChargePaidBy.getLoanCharge();
+                MonetaryCurrency currency = loanCharge.getLoan().getCurrency();
+
+                Integer installmentNumber = loanChargePaidBy.getInstallmentNumber();
+
+                loanCharge.undoWaive(currency, installmentNumber);
+            });
         }
 
         LocalDate recalculateFrom = null;
@@ -141,8 +157,8 @@ public class LoanAdjustmentServiceImpl implements LoanAdjustmentService {
         loanTransactionValidator.validateRepaymentDateIsOnNonWorkingDay(newTransactionDetail.getTransactionDate(),
                 holidayDetailDTO.getWorkingDays(), holidayDetailDTO.isAllowTransactionsOnNonWorkingDay());
 
-        adjustExistingTransaction(loan, newTransactionDetail, loanLifecycleStateMachine, transactionToAdjust, existingTransactionIds,
-                existingReversedTransactionIds, scheduleGeneratorDTO, reversalTxnExternalId);
+        adjustExistingTransaction(loan, newTransactionDetail, transactionToAdjust, existingTransactionIds, existingReversedTransactionIds,
+                scheduleGeneratorDTO, reversalTxnExternalId);
 
         loanAccrualsProcessingService.reprocessExistingAccruals(loan);
         if (loan.isInterestBearingAndInterestRecalculationEnabled()) {
@@ -185,7 +201,7 @@ public class LoanAdjustmentServiceImpl implements LoanAdjustmentService {
             this.accountTransfersWritePlatformService.reverseTransfersWithFromAccountTransactions(transactionIds,
                     PortfolioAccountType.LOAN);
         }
-        loan.updateLoanSummaryAndStatus();
+        loanLifecycleStateMachine.determineAndTransition(loan, loan.getLastUserTransactionDate());
 
         loanAccrualsProcessingService.processAccrualsOnInterestRecalculation(loan, loan.isInterestBearingAndInterestRecalculationEnabled(),
                 false);
@@ -221,18 +237,19 @@ public class LoanAdjustmentServiceImpl implements LoanAdjustmentService {
     }
 
     public void adjustExistingTransaction(final Loan loan, final LoanTransaction newTransactionDetail,
-            final LoanLifecycleStateMachine loanLifecycleStateMachine, final LoanTransaction transactionForAdjustment,
-            final List<Long> existingTransactionIds, final List<Long> existingReversedTransactionIds,
-            final ScheduleGeneratorDTO scheduleGeneratorDTO, final ExternalId reversalExternalId) {
-        existingTransactionIds.addAll(loan.findExistingTransactionIds());
-        existingReversedTransactionIds.addAll(loan.findExistingReversedTransactionIds());
+            final LoanTransaction transactionForAdjustment, final List<Long> existingTransactionIds,
+            final List<Long> existingReversedTransactionIds, final ScheduleGeneratorDTO scheduleGeneratorDTO,
+            final ExternalId reversalExternalId) {
+        existingTransactionIds.addAll(loanTransactionRepository.findTransactionIdsByLoan(loan));
+        existingReversedTransactionIds.addAll(loanTransactionRepository.findReversedTransactionIdsByLoan(loan));
 
         loanTransactionValidator.validateActivityNotBeforeClientOrGroupTransferDate(loan, LoanEvent.LOAN_REPAYMENT_OR_WAIVER,
                 transactionForAdjustment.getTransactionDate());
 
         if (!transactionForAdjustment.isAccrualRelated() && transactionForAdjustment.isNotRepaymentLikeType()
-                && transactionForAdjustment.isNotWaiver() && transactionForAdjustment.isNotCreditBalanceRefund()) {
-            final String errorMessage = "Only (non-reversed) transactions of type repayment, waiver, accrual or credit balance refund can be adjusted.";
+                && transactionForAdjustment.isNotWaiver() && transactionForAdjustment.isNotCreditBalanceRefund()
+                && !transactionForAdjustment.isCapitalizedIncome()) {
+            final String errorMessage = "Only (non-reversed) transactions of type repayment, waiver, capitalized income, accrual or credit balance refund can be adjusted.";
             throw new InvalidLoanTransactionTypeException("transaction",
                     "adjustment.is.only.allowed.to.repayment.or.waiver.or.creditbalancerefund.transactions", errorMessage);
         }
@@ -267,9 +284,13 @@ public class LoanAdjustmentServiceImpl implements LoanAdjustmentService {
             writeOffTransaction.reverse();
         }
 
-        if (newTransactionDetail.isRepaymentLikeType() || newTransactionDetail.isInterestWaiver()) {
-            loanDownPaymentHandlerService.handleRepaymentOrRecoveryOrWaiverTransaction(loan, newTransactionDetail,
-                    loanLifecycleStateMachine, transactionForAdjustment, scheduleGeneratorDTO);
+        if (newTransactionDetail.isRepaymentLikeType() || newTransactionDetail.isWaiver()) {
+            loanDownPaymentHandlerService.handleRepaymentOrRecoveryOrWaiverTransaction(loan, newTransactionDetail, transactionForAdjustment,
+                    scheduleGeneratorDTO);
+        }
+
+        if (transactionForAdjustment.getTypeOf().equals(LoanTransactionType.CAPITALIZED_INCOME)) {
+            reprocessLoanTransactionsService.reprocessTransactions(loan);
         }
     }
 

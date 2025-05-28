@@ -37,6 +37,7 @@ dependencyManagement {
         mavenBom 'org.mockito:mockito-bom:5.14.2'
         mavenBom 'software.amazon.awssdk:bom:2.29.9'
         mavenBom 'io.github.resilience4j:resilience4j-bom:2.2.0'
+        mavenBom 'org.testcontainers:testcontainers-bom:1.20.4'
     }
 
     dependencies {
@@ -52,10 +53,11 @@ dependencyManagement {
 
 
         dependency 'org.eclipse.persistence:org.eclipse.persistence.jpa:4.0.2'
-        dependency 'com.google.guava:guava:32.0.0-jre'
+        dependency 'com.google.guava:guava:33.1.0-jre'
         dependency 'com.google.code.gson:gson:2.11.0'
         dependency 'com.google.googlejavaformat:google-java-format:1.24.0'
         dependency 'org.apache.commons:commons-collections4:4.4'
+        dependency 'org.apache.commons:commons-compress:1.26.0'
         dependency ('software.amazon.msk:aws-msk-iam-auth:2.2.0') {
             exclude 'commons-logging:commons-logging:'
         }
@@ -153,15 +155,16 @@ dependencyManagement {
         dependency "commons-codec:commons-codec:1.17.1"
         dependency "org.projectlombok:lombok:1.18.36"
 
-        dependency 'org.bouncycastle:bcpkix-jdk15to18:1.79'
-        dependency 'org.bouncycastle:bcprov-jdk15to18:1.79'
-        dependency 'org.bouncycastle:bcprov-jdk15on:1.70'
-        dependency 'org.bouncycastle:bcpg-jdk15on:1.70'
+        dependency 'org.bouncycastle:bcpkix-jdk18on:1.80'
+        dependency 'org.bouncycastle:bcprov-jdk18on:1.80'
+        dependency 'org.bouncycastle:bcutil-jdk18on:1.80'
+        dependency 'org.bouncycastle:bcpg-jdk18on:1.80'
 
-        dependency 'org.eclipse.jgit:org.eclipse.jgit:6.10.0.202406032230-r'
-        dependency 'org.eclipse.jgit:org.eclipse.jgit.ssh.apache:7.0.0.202409031743-r'
+        dependency 'org.eclipse.jgit:org.eclipse.jgit:7.2.0.202503040940-r'
+        dependency 'org.eclipse.jgit:org.eclipse.jgit.gpg.bc:7.2.0.202503040940-r'
+        dependency 'org.eclipse.jgit:org.eclipse.jgit.ssh.apache:7.2.0.202503040940-r'
 
-        dependency 'org.tmatesoft.svnkit:svnkit:1.10.11'
+        dependency ('com.tmatesoft.svnkit:svnkit:1.10.12')
         dependency 'com.vdurmont:semver4j:3.1.0'
         dependency 'org.beryx:text-io:3.4.1'
 
@@ -208,7 +211,7 @@ dependencyManagement {
         dependency 'org.owasp.esapi:esapi:2.6.0.0'
         dependency 'org.awaitility:awaitility:4.2.2'
 
-        dependencySet(group: 'org.apache.poi', version: '5.3.0') {
+        dependencySet(group: 'org.apache.poi', version: '5.4.1') {
             entry 'poi'
             entry 'poi-ooxml'
             entry 'poi-ooxml-schemas'
@@ -235,13 +238,17 @@ dependencyManagement {
         //v42.7.5: performance issue: https://github.com/pgjdbc/pgjdbc/issues/3511#issuecomment-2637277977
         dependency 'org.postgresql:postgresql:42.7.4'
 
+        dependency 'com.mysql:mysql-connector-j:9.2.0'
+
         dependency 'org.assertj:assertj-core:3.26.3'
 
         dependency 'org.apache.commons:commons-math3:3.6.1'
 
         dependency 'org.mockito:mockito-inline:5.2.0'
 
-        dependency 'com.github.tomakehurst:wiremock-standalone:3.0.1'
+        dependency 'org.wiremock:wiremock-standalone:3.13.0'
+        dependency 'org.apache.sshd:sshd-common:2.15.0'
+        dependency 'org.apache.sshd:sshd-core:2.15.0'
 
         dependency 'io.cucumber:cucumber-java:7.20.1'
         dependency 'io.cucumber:cucumber-java8:7.20.1'
@@ -249,5 +256,18 @@ dependencyManagement {
         dependency 'io.cucumber:cucumber-spring:7.20.1'
 
         dependency 'org.reflections:reflections:0.10.2'
+
+        dependency 'org.openjdk.jmh:jmh-core:1.37'
+        dependency 'org.openjdk.jmh:jmh-generator-annprocess:1.37'
+
+        dependency 'org.springframework.restdocs:spring-restdocs-asciidoctor:3.0.3'
+        dependency 'org.springframework.restdocs:spring-restdocs-mockmvc:3.0.3'
+        dependency 'org.springframework.restdocs:spring-restdocs-webtestclient:3.0.3'
+        dependency 'org.springframework.restdocs:spring-restdocs-restassured:3.0.3'
+
+        dependency 'com.lmax:disruptor:3.4.4'
+
+        dependency 'com.ibm.icu:icu4j:76.1'
+        dependency 'org.yakworks:spring-icu4j:0.4.2'
     }
 }
