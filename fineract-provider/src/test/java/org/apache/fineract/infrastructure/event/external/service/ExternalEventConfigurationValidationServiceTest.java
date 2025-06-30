@@ -67,20 +67,20 @@ public class ExternalEventConfigurationValidationServiceTest {
 
         // given
         List<String> configurations = Arrays.asList("CentersCreateBusinessEvent", "ClientActivateBusinessEvent",
-                "ClientCreateBusinessEvent", "ClientRejectBusinessEvent", "FixedDepositAccountCreateBusinessEvent",
-                "GroupsCreateBusinessEvent", "LoanAcceptTransferBusinessEvent", "LoanAddChargeBusinessEvent",
-                "LoanAdjustTransactionBusinessEvent", "LoanApplyOverdueChargeBusinessEvent", "LoanApprovedBusinessEvent",
-                "LoanBalanceChangedBusinessEvent", "LoanChargebackTransactionBusinessEvent", "LoanChargePaymentPostBusinessEvent",
-                "LoanChargePaymentPreBusinessEvent", "LoanChargeRefundBusinessEvent", "LoanCloseAsRescheduleBusinessEvent",
-                "LoanCloseBusinessEvent", "LoanCreatedBusinessEvent", "LoanCreditBalanceRefundPostBusinessEvent",
-                "LoanCreditBalanceRefundPreBusinessEvent", "LoanDeleteChargeBusinessEvent", "LoanDisbursalBusinessEvent",
-                "LoanDisbursalTransactionBusinessEvent", "LoanForeClosurePostBusinessEvent", "LoanForeClosurePreBusinessEvent",
-                "LoanInitiateTransferBusinessEvent", "LoanInterestRecalculationBusinessEvent", "LoanProductCreateBusinessEvent",
-                "LoanReassignOfficerBusinessEvent", "LoanRefundPostBusinessEvent", "LoanRefundPreBusinessEvent",
-                "LoanRejectedBusinessEvent", "LoanRejectTransferBusinessEvent", "LoanRemoveOfficerBusinessEvent",
-                "LoanRepaymentDueBusinessEvent", "LoanRepaymentOverdueBusinessEvent", "LoanRescheduledDueCalendarChangeBusinessEvent",
-                "LoanRescheduledDueHolidayBusinessEvent", "LoanScheduleVariationsAddedBusinessEvent",
-                "LoanScheduleVariationsDeletedBusinessEvent", "LoanStatusChangedBusinessEvent",
+                "ClientCreateBusinessEvent", "ClientRejectBusinessEvent", "DocumentCreatedBusinessEvent", "DocumentDeletedBusinessEvent",
+                "FixedDepositAccountCreateBusinessEvent", "GroupsCreateBusinessEvent", "LoanAcceptTransferBusinessEvent",
+                "LoanAddChargeBusinessEvent", "LoanAdjustTransactionBusinessEvent", "LoanApplyOverdueChargeBusinessEvent",
+                "LoanApprovedBusinessEvent", "LoanBalanceChangedBusinessEvent", "LoanChargebackTransactionBusinessEvent",
+                "LoanChargePaymentPostBusinessEvent", "LoanChargePaymentPreBusinessEvent", "LoanChargeRefundBusinessEvent",
+                "LoanCloseAsRescheduleBusinessEvent", "LoanCloseBusinessEvent", "LoanCreatedBusinessEvent",
+                "LoanCreditBalanceRefundPostBusinessEvent", "LoanCreditBalanceRefundPreBusinessEvent", "LoanDeleteChargeBusinessEvent",
+                "LoanDisbursalBusinessEvent", "LoanDisbursalTransactionBusinessEvent", "LoanForeClosurePostBusinessEvent",
+                "LoanForeClosurePreBusinessEvent", "LoanInitiateTransferBusinessEvent", "LoanInterestRecalculationBusinessEvent",
+                "LoanProductCreateBusinessEvent", "LoanReassignOfficerBusinessEvent", "LoanRefundPostBusinessEvent",
+                "LoanRefundPreBusinessEvent", "LoanRejectedBusinessEvent", "LoanRejectTransferBusinessEvent",
+                "LoanRemoveOfficerBusinessEvent", "LoanRepaymentDueBusinessEvent", "LoanRepaymentOverdueBusinessEvent",
+                "LoanRescheduledDueCalendarChangeBusinessEvent", "LoanRescheduledDueHolidayBusinessEvent",
+                "LoanScheduleVariationsAddedBusinessEvent", "LoanScheduleVariationsDeletedBusinessEvent", "LoanStatusChangedBusinessEvent",
                 "LoanTransactionGoodwillCreditPostBusinessEvent", "LoanTransactionGoodwillCreditPreBusinessEvent",
                 "LoanTransactionMakeRepaymentPostBusinessEvent", "LoanTransactionMakeRepaymentPreBusinessEvent",
                 "LoanTransactionMerchantIssuedRefundPostBusinessEvent", "LoanTransactionMerchantIssuedRefundPreBusinessEvent",
@@ -106,7 +106,10 @@ public class ExternalEventConfigurationValidationServiceTest {
                 "LoanTransactionInterestPaymentWaiverPostBusinessEvent", "LoanTransactionAccrualActivityPostBusinessEvent",
                 "LoanTransactionAccrualActivityPreBusinessEvent", "LoanTransactionInterestRefundPostBusinessEvent",
                 "LoanTransactionInterestRefundPreBusinessEvent", "LoanAccrualAdjustmentTransactionBusinessEvent",
-                "LoanCapitalizedIncomeAmortizationTransactionCreatedBusinessEvent");
+                "LoanCapitalizedIncomeAmortizationTransactionCreatedBusinessEvent",
+                "LoanCapitalizedIncomeAdjustmentTransactionCreatedBusinessEvent", "LoanTransactionContractTerminationPostBusinessEvent",
+                "LoanCapitalizedIncomeAmortizationAdjustmentTransactionCreatedBusinessEvent",
+                "LoanCapitalizedIncomeTransactionCreatedBusinessEvent", "LoanUndoContractTerminationBusinessEvent");
 
         List<FineractPlatformTenant> tenants = Arrays
                 .asList(new FineractPlatformTenant(1L, "default", "Default Tenant", "Europe/Budapest", null));
@@ -154,12 +157,12 @@ public class ExternalEventConfigurationValidationServiceTest {
 
         // given
         List<String> configurationWithMissingCentersCreateBusinessEvent = Arrays.asList("MockBusinessEvent", "MockBusinessEvent",
-                "ClientActivateBusinessEvent", "ClientCreateBusinessEvent", "ClientRejectBusinessEvent",
-                "FixedDepositAccountCreateBusinessEvent", "GroupsCreateBusinessEvent", "LoanAcceptTransferBusinessEvent",
-                "LoanAddChargeBusinessEvent", "LoanAdjustTransactionBusinessEvent", "LoanApplyOverdueChargeBusinessEvent",
-                "LoanApprovedBusinessEvent", "LoanBalanceChangedBusinessEvent", "LoanChargebackTransactionBusinessEvent",
-                "LoanChargePaymentPostBusinessEvent", "LoanChargePaymentPreBusinessEvent", "LoanChargeRefundBusinessEvent",
-                "LoanCloseAsRescheduleBusinessEvent", "LoanCloseBusinessEvent", "LoanCreatedBusinessEvent",
+                "ClientActivateBusinessEvent", "ClientCreateBusinessEvent", "ClientRejectBusinessEvent", "DocumentCreatedBusinessEvent",
+                "DocumentDeletedBusinessEvent", "FixedDepositAccountCreateBusinessEvent", "GroupsCreateBusinessEvent",
+                "LoanAcceptTransferBusinessEvent", "LoanAddChargeBusinessEvent", "LoanAdjustTransactionBusinessEvent",
+                "LoanApplyOverdueChargeBusinessEvent", "LoanApprovedBusinessEvent", "LoanBalanceChangedBusinessEvent",
+                "LoanChargebackTransactionBusinessEvent", "LoanChargePaymentPostBusinessEvent", "LoanChargePaymentPreBusinessEvent",
+                "LoanChargeRefundBusinessEvent", "LoanCloseAsRescheduleBusinessEvent", "LoanCloseBusinessEvent", "LoanCreatedBusinessEvent",
                 "LoanCreditBalanceRefundPostBusinessEvent", "LoanCreditBalanceRefundPreBusinessEvent", "LoanDeleteChargeBusinessEvent",
                 "LoanDisbursalBusinessEvent", "LoanDisbursalTransactionBusinessEvent", "LoanForeClosurePostBusinessEvent",
                 "LoanForeClosurePreBusinessEvent", "LoanInitiateTransferBusinessEvent", "LoanInterestRecalculationBusinessEvent",
@@ -193,7 +196,10 @@ public class ExternalEventConfigurationValidationServiceTest {
                 "LoanTransactionInterestPaymentWaiverPostBusinessEvent", "LoanTransactionAccrualActivityPostBusinessEvent",
                 "LoanTransactionAccrualActivityPreBusinessEvent", "LoanTransactionInterestRefundPostBusinessEvent",
                 "LoanTransactionInterestRefundPreBusinessEvent", "LoanAccrualAdjustmentTransactionBusinessEvent",
-                "LoanCapitalizedIncomeAmortizationTransactionCreatedBusinessEvent");
+                "LoanCapitalizedIncomeAmortizationTransactionCreatedBusinessEvent",
+                "LoanCapitalizedIncomeAdjustmentTransactionCreatedBusinessEvent", "LoanTransactionContractTerminationPostBusinessEvent",
+                "LoanCapitalizedIncomeAmortizationAdjustmentTransactionCreatedBusinessEvent",
+                "LoanCapitalizedIncomeTransactionCreatedBusinessEvent", "LoanUndoContractTerminationBusinessEvent");
 
         List<FineractPlatformTenant> tenants = Arrays
                 .asList(new FineractPlatformTenant(1L, "default", "Default Tenant", "Europe/Budapest", null));

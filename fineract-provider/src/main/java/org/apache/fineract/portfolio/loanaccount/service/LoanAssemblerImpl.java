@@ -221,8 +221,9 @@ public class LoanAssemblerImpl implements LoanAssembler {
         // Here we add Rates to LoanApplication
         final List<Rate> rates = this.rateAssembler.fromParsedJson(element);
 
-        final LoanProductRelatedDetail loanProductRelatedDetail = this.loanScheduleAssembler.assembleLoanProductRelatedDetail(element,
-                loanProduct);
+        final LoanApplicationTerms loanApplicationTerms = this.loanScheduleAssembler.assembleLoanTerms(element);
+        final LoanProductRelatedDetail loanProductRelatedDetail = this.loanScheduleAssembler
+                .assembleLoanProductRelatedDetail(loanApplicationTerms, element);
 
         final BigDecimal interestRateDifferential = this.fromApiJsonHelper
                 .extractBigDecimalWithLocaleNamed(LoanApiConstants.interestRateDifferentialParameterName, element);
@@ -247,7 +248,6 @@ public class LoanAssemblerImpl implements LoanAssembler {
             isEnableInstallmentLevelDelinquency = loanProduct.isEnableInstallmentLevelDelinquency();
         }
 
-        final LoanApplicationTerms loanApplicationTerms = this.loanScheduleAssembler.assembleLoanTerms(element);
         final boolean isHolidayEnabled = this.configurationDomainService.isRescheduleRepaymentsOnHolidaysEnabled();
         Long officeId = client != null ? client.getOffice().getId() : group.getOffice().getId();
         final List<Holiday> holidays = this.holidayRepository.findByOfficeIdAndGreaterThanDate(officeId,
@@ -568,7 +568,7 @@ public class LoanAssemblerImpl implements LoanAssembler {
             changes.put(LoanApiConstants.productIdParameterName, newValue);
             loan.updateLoanProduct(loanProduct);
             final MonetaryCurrency currency = new MonetaryCurrency(loanProduct.getCurrency().getCode(),
-                    loanProduct.getCurrency().getDigitsAfterDecimal(), loanProduct.getCurrency().getCurrencyInMultiplesOf());
+                    loanProduct.getCurrency().getDigitsAfterDecimal(), loanProduct.getCurrency().getInMultiplesOf());
             loan.getLoanRepaymentScheduleDetail().setCurrency(currency);
 
             if (!changes.containsKey(LoanApiConstants.interestRateFrequencyTypeParameterName)) {
@@ -775,7 +775,7 @@ public class LoanAssemblerImpl implements LoanAssembler {
             changes.put(LoanApiConstants.fixedPrincipalPercentagePerInstallmentParamName, loan.getFixedPrincipalPercentagePerInstallment());
         }
 
-        final LoanProductRelatedDetail productRelatedDetail = loan.repaymentScheduleDetail();
+        final LoanProductRelatedDetail productRelatedDetail = loan.getLoanProductRelatedDetail();
         if (loan.loanProduct().getLoanConfigurableAttributes() != null) {
             loanScheduleAssembler.updateProductRelatedDetails(productRelatedDetail, loan);
         }

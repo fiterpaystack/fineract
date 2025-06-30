@@ -164,6 +164,7 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
     private final LoanTransactionProcessingService loanTransactionProcessingService;
     private final LoanBalanceService loanBalanceService;
     private final LoanTransactionService loanTransactionService;
+    private final LoanAccountDomainServiceJpaHelper loanAccountDomainServiceJpaHelper;
 
     @Transactional
     @Override
@@ -245,8 +246,14 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
         if (loan.isInterestBearingAndInterestRecalculationEnabled()) {
             recalculateFrom = transactionDate;
         }
+        final ScheduleGeneratorDTO scheduleGeneratorDTOForPrepay = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom,
+                transactionDate, holidayDetailDto);
+
+        LocalDate recalculateTill = loanAccountDomainServiceJpaHelper.calculateRecalculateTillDate(loan, transactionDate,
+                scheduleGeneratorDTOForPrepay, repaymentAmount);
+
         final ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom,
-                holidayDetailDto);
+                recalculateTill, holidayDetailDto);
 
         if (!isHolidayValidationDone) {
             final HolidayDetailDTO holidayDetailDTO = scheduleGeneratorDTO.getHolidayDetailDTO();
@@ -280,15 +287,14 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
 
         setLoanDelinquencyTag(loan, transactionDate);
 
+        postJournalEntries(loan, existingTransactionIds, existingReversedTransactionIds, isAccountTransfer, isLoanToLoanTransfer);
+        loanAccrualTransactionBusinessEventService.raiseBusinessEventForAccrualTransactions(loan, existingTransactionIds);
         if (!repaymentTransactionType.isChargeRefund()) {
-            LoanTransactionBusinessEvent transactionRepaymentEvent = getTransactionRepaymentTypeBusinessEvent(repaymentTransactionType,
-                    isRecoveryRepayment, newRepaymentTransaction);
+            final LoanTransactionBusinessEvent transactionRepaymentEvent = getTransactionRepaymentTypeBusinessEvent(
+                    repaymentTransactionType, isRecoveryRepayment, newRepaymentTransaction);
             businessEventNotifierService.notifyPostBusinessEvent(new LoanBalanceChangedBusinessEvent(loan));
             businessEventNotifierService.notifyPostBusinessEvent(transactionRepaymentEvent);
         }
-
-        postJournalEntries(loan, existingTransactionIds, existingReversedTransactionIds, isAccountTransfer, isLoanToLoanTransfer);
-        loanAccrualTransactionBusinessEventService.raiseBusinessEventForAccrualTransactions(loan, existingTransactionIds);
 
         // disable all active standing orders linked to this loan if status
         // changes to closed
@@ -434,11 +440,11 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
 
         loanAccrualsProcessingService.processAccrualsOnInterestRecalculation(loan, loan.isInterestBearingAndInterestRecalculationEnabled(),
                 false);
-        businessEventNotifierService.notifyPostBusinessEvent(new LoanBalanceChangedBusinessEvent(loan));
-        businessEventNotifierService.notifyPostBusinessEvent(new LoanChargePaymentPostBusinessEvent(newPaymentTransaction));
 
         postJournalEntries(loan, existingTransactionIds, existingReversedTransactionIds, isAccountTransfer);
         loanAccrualTransactionBusinessEventService.raiseBusinessEventForAccrualTransactions(loan, existingTransactionIds);
+        businessEventNotifierService.notifyPostBusinessEvent(new LoanBalanceChangedBusinessEvent(loan));
+        businessEventNotifierService.notifyPostBusinessEvent(new LoanChargePaymentPostBusinessEvent(newPaymentTransaction));
         return newPaymentTransaction;
     }
 
@@ -686,12 +692,12 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
 
         loanAccrualsProcessingService.processAccrualsOnInterestRecalculation(loan, loan.isInterestBearingAndInterestRecalculationEnabled(),
                 false);
-        businessEventNotifierService.notifyPostBusinessEvent(new LoanBalanceChangedBusinessEvent(loan));
-        businessEventNotifierService
-                .notifyPostBusinessEvent(new LoanCreditBalanceRefundPostBusinessEvent(newCreditBalanceRefundTransaction));
 
         postJournalEntries(loan, existingTransactionIds, existingReversedTransactionIds, false);
         loanAccrualTransactionBusinessEventService.raiseBusinessEventForAccrualTransactions(loan, existingTransactionIds);
+        businessEventNotifierService.notifyPostBusinessEvent(new LoanBalanceChangedBusinessEvent(loan));
+        businessEventNotifierService
+                .notifyPostBusinessEvent(new LoanCreditBalanceRefundPostBusinessEvent(newCreditBalanceRefundTransaction));
 
         return newCreditBalanceRefundTransaction;
     }
@@ -739,11 +745,11 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
 
         loanAccrualsProcessingService.processAccrualsOnInterestRecalculation(loan, loan.isInterestBearingAndInterestRecalculationEnabled(),
                 false);
-        businessEventNotifierService.notifyPostBusinessEvent(new LoanBalanceChangedBusinessEvent(loan));
-        businessEventNotifierService.notifyPostBusinessEvent(new LoanRefundPostBusinessEvent(newRefundTransaction));
 
         postJournalEntries(loan, existingTransactionIds, existingReversedTransactionIds, false);
         loanAccrualTransactionBusinessEventService.raiseBusinessEventForAccrualTransactions(loan, existingTransactionIds);
+        businessEventNotifierService.notifyPostBusinessEvent(new LoanBalanceChangedBusinessEvent(loan));
+        businessEventNotifierService.notifyPostBusinessEvent(new LoanRefundPostBusinessEvent(newRefundTransaction));
 
         builderResult.withEntityId(newRefundTransaction.getId()).withOfficeId(loan.getOfficeId()).withClientId(loan.getClientId())
                 .withGroupId(loan.getGroupId());
@@ -803,8 +809,9 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
         }
 
         for (LoanTransaction newTransaction : newTransactions) {
-            loanAccountService.saveLoanTransactionWithDataIntegrityViolationChecks(newTransaction);
-            transactionIds.add(newTransaction.getId());
+            LoanTransaction savedNewTransaction = loanAccountService.saveLoanTransactionWithDataIntegrityViolationChecks(newTransaction);
+            loan.addLoanTransaction(savedNewTransaction);
+            transactionIds.add(savedNewTransaction.getId());
         }
         changes.put("transactions", transactionIds);
         changes.put("eventAmount", payPrincipal.getAmount().negate());
@@ -913,7 +920,8 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
         } else {
             if (loan.isCumulativeSchedule() && loan.isInterestBearingAndInterestRecalculationEnabled()) {
                 loanScheduleService.regenerateRepaymentScheduleWithInterestRecalculation(loan, scheduleGeneratorDTO);
-            } else if (loan.isProgressiveSchedule() && loan.hasChargeOffTransaction() && loan.hasAccelerateChargeOffStrategy()) {
+            } else if (loan.isProgressiveSchedule() && ((loan.hasChargeOffTransaction() && loan.hasAccelerateChargeOffStrategy())
+                    || loan.hasContractTerminationTransaction())) {
                 loanScheduleService.regenerateRepaymentSchedule(loan, scheduleGeneratorDTO);
             }
             loan.getLoanTransactions().add(refundTransaction);

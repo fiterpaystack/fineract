@@ -59,6 +59,9 @@ import org.apache.fineract.portfolio.floatingrates.data.FloatingRateDTO;
 import org.apache.fineract.portfolio.floatingrates.data.FloatingRatePeriodData;
 import org.apache.fineract.portfolio.floatingrates.domain.FloatingRate;
 import org.apache.fineract.portfolio.fund.domain.Fund;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanBuyDownFeeCalculationType;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanBuyDownFeeIncomeType;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanBuyDownFeeStrategy;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCapitalizedIncomeCalculationType;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCapitalizedIncomeStrategy;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCapitalizedIncomeType;
@@ -179,9 +182,6 @@ public class LoanProduct extends AbstractPersistableCustom<Long> {
     @Column(name = "can_define_fixed_emi_amount")
     private boolean canDefineInstallmentAmount;
 
-    @Column(name = "instalment_amount_in_multiples_of")
-    private Integer installmentAmountInMultiplesOf;
-
     @Column(name = "is_linked_to_floating_interest_rates", nullable = false)
     private boolean isLinkedToFloatingInterestRate;
 
@@ -285,7 +285,9 @@ public class LoanProduct extends AbstractPersistableCustom<Long> {
             final LoanChargeOffBehaviour chargeOffBehaviour, final boolean isInterestRecognitionOnDisbursementDate,
             final DaysInYearCustomStrategyType daysInYearCustomStrategy, final boolean enableIncomeCapitalization,
             final LoanCapitalizedIncomeCalculationType capitalizedIncomeCalculationType,
-            final LoanCapitalizedIncomeStrategy capitalizedIncomeStrategy, final LoanCapitalizedIncomeType capitalizedIncomeType) {
+            final LoanCapitalizedIncomeStrategy capitalizedIncomeStrategy, final LoanCapitalizedIncomeType capitalizedIncomeType,
+            final boolean enableBuyDownFee, final LoanBuyDownFeeCalculationType buyDownFeeCalculationType,
+            final LoanBuyDownFeeStrategy buyDownFeeStrategy, final LoanBuyDownFeeIncomeType buyDownFeeIncomeType) {
         this.fund = fund;
         this.transactionProcessingStrategyCode = transactionProcessingStrategyCode;
 
@@ -336,7 +338,8 @@ public class LoanProduct extends AbstractPersistableCustom<Long> {
                 isInterestRecalculationEnabled, isEqualAmortization, enableDownPayment, disbursedAmountPercentageForDownPayment,
                 enableAutoRepaymentForDownPayment, loanScheduleType, loanScheduleProcessingType, fixedLength, enableAccrualActivityPosting,
                 supportedInterestRefundTypes, chargeOffBehaviour, isInterestRecognitionOnDisbursementDate, daysInYearCustomStrategy,
-                enableIncomeCapitalization, capitalizedIncomeCalculationType, capitalizedIncomeStrategy, capitalizedIncomeType);
+                enableIncomeCapitalization, capitalizedIncomeCalculationType, capitalizedIncomeStrategy, capitalizedIncomeType,
+                installmentAmountInMultiplesOf, enableBuyDownFee, buyDownFeeCalculationType, buyDownFeeStrategy, buyDownFeeIncomeType);
 
         this.loanProductMinMaxConstraints = new LoanProductMinMaxConstraints(defaultMinPrincipal, defaultMaxPrincipal,
                 defaultMinNominalInterestRatePerPeriod, defaultMaxNominalInterestRatePerPeriod, defaultMinNumberOfInstallments,
@@ -368,7 +371,6 @@ public class LoanProduct extends AbstractPersistableCustom<Long> {
         this.principalThresholdForLastInstallment = principalThresholdForLastInstallment;
         this.accountMovesOutOfNPAOnlyOnArrearsCompletion = accountMovesOutOfNPAOnlyOnArrearsCompletion;
         this.canDefineInstallmentAmount = canDefineEmiAmount;
-        this.installmentAmountInMultiplesOf = installmentAmountInMultiplesOf;
         this.syncExpectedWithDisbursementDate = syncExpectedWithDisbursementDate;
         this.canUseForTopup = canUseForTopup;
         this.fixedPrincipalPercentagePerInstallment = fixedPrincipalPercentagePerInstallment;
@@ -413,7 +415,7 @@ public class LoanProduct extends AbstractPersistableCustom<Long> {
         }
 
         if (this.allowApprovedDisbursedAmountsOverApplied) {
-            if (!this.disallowExpectedDisbursements) {
+            if (this.isMultiDisburseLoan() && !this.disallowExpectedDisbursements) {
                 throw new LoanProductGeneralRuleException(
                         "disallowExpectedDisbursements.not.set.allowApprovedDisbursedAmountsOverApplied.cant.be.set",
                         "Disallow Expected Disbursals Not Set - Allow Approved / Disbursed Amounts Over Applied Can't Be Set");

@@ -215,8 +215,8 @@ public final class LoanApplicationValidator {
         }
 
         validateLoanTermAndRepaidEveryValues(loan.getTermFrequency(), loan.getTermPeriodFrequencyType().getValue(),
-                loan.repaymentScheduleDetail().getNumberOfRepayments(), loan.repaymentScheduleDetail().getRepayEvery(),
-                loan.repaymentScheduleDetail().getRepaymentPeriodFrequencyType().getValue(), loan);
+                loan.getLoanProductRelatedDetail().getNumberOfRepayments(), loan.getLoanProductRelatedDetail().getRepayEvery(),
+                loan.getLoanProductRelatedDetail().getRepaymentPeriodFrequencyType().getValue(), loan);
     }
 
     public void validateForModify(final Loan loan) {
@@ -229,8 +229,8 @@ public final class LoanApplicationValidator {
         }
 
         validateLoanTermAndRepaidEveryValues(loan.getTermFrequency(), loan.getTermPeriodFrequencyType().getValue(),
-                loan.repaymentScheduleDetail().getNumberOfRepayments(), loan.repaymentScheduleDetail().getRepayEvery(),
-                loan.repaymentScheduleDetail().getRepaymentPeriodFrequencyType().getValue(), loan);
+                loan.getLoanProductRelatedDetail().getNumberOfRepayments(), loan.getLoanProductRelatedDetail().getRepayEvery(),
+                loan.getLoanProductRelatedDetail().getRepaymentPeriodFrequencyType().getValue(), loan);
     }
 
     public void validateForCreate(JsonCommand command) {
@@ -2124,7 +2124,7 @@ public final class LoanApplicationValidator {
     }
 
     private void compareApprovedToProposedPrincipal(Loan loan, BigDecimal approvedLoanAmount) {
-        if (loan.loanProduct().isDisallowExpectedDisbursements() && loan.loanProduct().isAllowApprovedDisbursedAmountsOverApplied()) {
+        if (loan.loanProduct().isAllowApprovedDisbursedAmountsOverApplied()) {
             BigDecimal maxApprovedLoanAmount = getOverAppliedMax(loan);
             if (approvedLoanAmount.compareTo(maxApprovedLoanAmount) > 0) {
                 final String errorMessage = "Loan approved amount can't be greater than maximum applied loan amount calculation.";

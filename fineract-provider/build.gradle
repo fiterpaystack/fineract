@@ -30,37 +30,10 @@ apply plugin: 'se.thinkcode.cucumber-runner'
 
 check.dependsOn('cucumber')
 
-tasks.register('staticWeaveJpa', JavaExec) {
-    group = "build"
-    description = "Performs EclipseLink static weaving of entity classes"
+// Static weaving is now configured in gradle/static-weaving.gradle
+// This ensures consistent configuration across all modules with JPA entities
 
-    dependsOn classes
-
-    def classesDir = file("$buildDir/classes/java/main")
-
-    mainClass.set('org.eclipse.persistence.tools.weaving.jpa.StaticWeave')
-    classpath = sourceSets.main.runtimeClasspath
-    args '-persistenceinfo', classesDir.absolutePath, classesDir.absolutePath, classesDir.absolutePath
-}
-
-staticWeaveJpa.doLast {
-    delete "${sourceSets.main.output.classesDirs.asPath}/META-INF/persistence.xml"
-}
-
-tasks.named('classes') {
-    finalizedBy staticWeaveJpa
-}
-
-tasks.named('processResources') {
-    from('src/main/resources')
-    into sourceSets.main.java.classesDirectory
-    outputs.upToDateWhen { false }
-}
-
-tasks.named('staticWeaveJpa') {
-    mustRunAfter tasks.named('resolve')
-}
-
+// Add dependency on avro schemas
 compileJava {
     dependsOn ':fineract-avro-schemas:buildJavaSdk'
 }
@@ -246,7 +219,7 @@ tasks.register('setBlankPassword') {
 
 bootRun {
     jvmArgs = [
-        "-Dspring.output.ansi.enabled=ALWAYS"
+            "-Dspring.output.ansi.enabled=ALWAYS"
     ]
 
     dependencies {
@@ -266,6 +239,30 @@ bootJar {
     }
     archiveClassifier = ''
     dependsOn resolve
+}
+
+// Task to copy files from resources/main to the compiled output directory
+tasks.register('injectDefaultResources', Copy) {
+    dependsOn bootJar, jar
+    from layout.buildDirectory.dir("resources/main")
+    into "$buildDir/classes/java/main"
+}
+tasks.injectDefaultResources.dependsOn(bootJar)
+
+// Ensure this runs before the Jib build
+tasks.named("jib").configure {
+    dependsOn injectDefaultResources
+    finalizedBy removeMergedClasses
+}
+
+tasks.named("jibDockerBuild").configure {
+    dependsOn injectDefaultResources
+    finalizedBy removeMergedClasses
+}
+
+// Task to delete files from the merged output directory
+tasks.register('removeMergedClasses', Delete) {
+    delete layout.buildDirectory.dir("classes/java/main")
 }
 
 jib {

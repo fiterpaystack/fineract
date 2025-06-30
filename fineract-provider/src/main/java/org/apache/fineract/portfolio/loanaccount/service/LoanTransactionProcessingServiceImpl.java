@@ -90,6 +90,7 @@ public class LoanTransactionProcessingServiceImpl implements LoanTransactionProc
                 new ChangedTransactionDetail(), savedModel.orElse(null), getTotalRefundInterestAmount(loan));
         progressiveContext.getAlreadyProcessedTransactions().addAll(loanTransactionService.retrieveListOfTransactionsForReprocessing(loan));
         progressiveContext.setChargedOff(loan.isChargedOff());
+        progressiveContext.setContractTerminated(loan.isContractTermination());
         ChangedTransactionDetail result = advancedProcessor.processLatestTransaction(loanTransaction, progressiveContext);
         if (savedModel.isPresent() && !TransactionSynchronizationManager.isCurrentTransactionReadOnly()) {
             modelRepository.writeInterestScheduleModel(loan, savedModel.get());
@@ -199,7 +200,7 @@ public class LoanTransactionProcessingServiceImpl implements LoanTransactionProc
                 loan.getTransactionProcessingStrategyCode());
 
         return loanScheduleGenerator.rescheduleNextInstallments(mc, loanApplicationTerms, loan, generatorDTO.getHolidayDetailDTO(),
-                loanRepaymentScheduleTransactionProcessor, generatorDTO.getRecalculateFrom());
+                loanRepaymentScheduleTransactionProcessor, generatorDTO.getRecalculateFrom(), generatorDTO.getRecalculateTill());
     }
 
     @Override

@@ -146,10 +146,10 @@ public class LoanDisbursementService {
                     disbursementDetails.updatePrincipal(principalDisbursed);
                 }
             }
+            BigDecimal totalAmount = BigDecimal.ZERO;
             if (loan.loanProduct().isMultiDisburseLoan()) {
                 Collection<LoanDisbursementDetails> loanDisburseDetails = loan.getDisbursementDetails();
                 BigDecimal setPrincipalAmount = BigDecimal.ZERO;
-                BigDecimal totalAmount = BigDecimal.ZERO;
                 for (LoanDisbursementDetails disbursementDetails : loanDisburseDetails) {
                     if (disbursementDetails.actualDisbursementDate() != null) {
                         setPrincipalAmount = setPrincipalAmount.add(disbursementDetails.principal());
@@ -157,12 +157,11 @@ public class LoanDisbursementService {
                     totalAmount = totalAmount.add(disbursementDetails.principal());
                 }
                 loan.getLoanRepaymentScheduleDetail().setPrincipal(setPrincipalAmount);
-                loanDisbursementValidator.compareDisbursedToApprovedOrProposedPrincipal(loan, disburseAmount.getAmount(), totalAmount);
             } else {
                 loan.getLoanRepaymentScheduleDetail()
                         .setPrincipal(loan.getLoanRepaymentScheduleDetail().getPrincipal().minus(diff).getAmount());
             }
-            loanDisbursementValidator.validateDisburseAmountNotExceedingApprovedAmount(loan, diff, principalDisbursed);
+            loanDisbursementValidator.compareDisbursedToApprovedOrProposedPrincipal(loan, disburseAmount.getAmount(), totalAmount);
         }
         return disburseAmount;
     }
@@ -187,13 +186,18 @@ public class LoanDisbursementService {
         final Integer installmentNumber = null;
         for (final LoanCharge charge : loan.getActiveCharges()) {
             LocalDate actualDisbursementDate = loan.getActualDisbursementDate(charge);
+
+            boolean isDisbursementCharge = charge.getCharge().getChargeTimeType().equals(ChargeTimeType.DISBURSEMENT.getValue())
+                    && disbursedOn.equals(actualDisbursementDate) && !charge.isWaived() && !charge.isFullyPaid();
+
+            boolean isTrancheDisbursementCharge = charge.getCharge().getChargeTimeType()
+                    .equals(ChargeTimeType.TRANCHE_DISBURSEMENT.getValue()) && disbursedOn.equals(actualDisbursementDate)
+                    && !charge.isWaived() && !charge.isFullyPaid();
+
             /*
              * create a Charge applied transaction if Up front Accrual, None or Cash based accounting is enabled
              */
-            if ((charge.getCharge().getChargeTimeType().equals(ChargeTimeType.DISBURSEMENT.getValue())
-                    && disbursedOn.equals(actualDisbursementDate) && !charge.isWaived() && !charge.isFullyPaid())
-                    || (charge.getCharge().getChargeTimeType().equals(ChargeTimeType.TRANCHE_DISBURSEMENT.getValue())
-                            && disbursedOn.equals(actualDisbursementDate) && !charge.isWaived() && !charge.isFullyPaid())) {
+            if (isDisbursementCharge || isTrancheDisbursementCharge) {
                 if (totalFeeChargesDueAtDisbursement.isGreaterThanZero() && !charge.getChargePaymentMode().isPaymentModeAccountTransfer()) {
                     charge.markAsFullyPaid();
                     // Add "Loan Charge Paid By" details to this transaction

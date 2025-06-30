@@ -55,7 +55,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.apache.fineract.accounting.glaccount.domain.GLAccountType;
 import org.apache.fineract.client.models.AllowAttributeOverrides;
-import org.apache.fineract.client.models.BusinessDateRequest;
+import org.apache.fineract.client.models.BusinessDateUpdateRequest;
 import org.apache.fineract.client.models.ChargeRequest;
 import org.apache.fineract.client.models.GetJournalEntriesTransactionIdResponse;
 import org.apache.fineract.client.models.GetLoanTransactionRelation;
@@ -87,7 +87,6 @@ import org.apache.fineract.client.models.PostLoansResponse;
 import org.apache.fineract.client.models.PutChargeTransactionChangesRequest;
 import org.apache.fineract.client.models.PutGlobalConfigurationsRequest;
 import org.apache.fineract.client.util.CallFailedRuntimeException;
-import org.apache.fineract.infrastructure.businessdate.domain.BusinessDateType;
 import org.apache.fineract.infrastructure.configuration.api.GlobalConfigurationConstants;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.integrationtests.common.BusinessDateHelper;
@@ -5320,7 +5319,7 @@ public class ClientLoanIntegrationTest extends BaseLoanIntegrationTest {
         try {
             globalConfigurationHelper.updateGlobalConfiguration(GlobalConfigurationConstants.ENABLE_BUSINESS_DATE,
                     new PutGlobalConfigurationsRequest().enabled(true));
-            BUSINESS_DATE_HELPER.updateBusinessDate(new BusinessDateRequest().type(BusinessDateType.BUSINESS_DATE.getName())
+            BUSINESS_DATE_HELPER.updateBusinessDate(new BusinessDateUpdateRequest().type(BusinessDateUpdateRequest.TypeEnum.BUSINESS_DATE)
                     .date("01 November 2022").dateFormat(DATETIME_PATTERN).locale("en"));
             final Account assetAccount = ACCOUNT_HELPER.createAssetAccount();
             final Account incomeAccount = ACCOUNT_HELPER.createIncomeAccount();
@@ -5491,7 +5490,7 @@ public class ClientLoanIntegrationTest extends BaseLoanIntegrationTest {
         try {
             globalConfigurationHelper.updateGlobalConfiguration(GlobalConfigurationConstants.ENABLE_BUSINESS_DATE,
                     new PutGlobalConfigurationsRequest().enabled(true));
-            BUSINESS_DATE_HELPER.updateBusinessDate(new BusinessDateRequest().type(BusinessDateType.BUSINESS_DATE.getName())
+            BUSINESS_DATE_HELPER.updateBusinessDate(new BusinessDateUpdateRequest().type(BusinessDateUpdateRequest.TypeEnum.BUSINESS_DATE)
                     .date("01 November 2022").dateFormat(DATETIME_PATTERN).locale("en"));
             final Account assetAccount = ACCOUNT_HELPER.createAssetAccount();
             final Account assetFeeAndPenaltyAccount = ACCOUNT_HELPER.createAssetAccount();
@@ -6172,7 +6171,7 @@ public class ClientLoanIntegrationTest extends BaseLoanIntegrationTest {
                     new PutGlobalConfigurationsRequest().enabled(true));
             globalConfigurationHelper.updateGlobalConfiguration(GlobalConfigurationConstants.ENABLE_BUSINESS_DATE,
                     new PutGlobalConfigurationsRequest().enabled(true));
-            BUSINESS_DATE_HELPER.updateBusinessDate(new BusinessDateRequest().type(BusinessDateType.BUSINESS_DATE.getName())
+            BUSINESS_DATE_HELPER.updateBusinessDate(new BusinessDateUpdateRequest().type(BusinessDateUpdateRequest.TypeEnum.BUSINESS_DATE)
                     .date("04 September 2022").dateFormat(DATETIME_PATTERN).locale("en"));
             final Account assetAccount = ACCOUNT_HELPER.createAssetAccount();
             final Account incomeAccount = ACCOUNT_HELPER.createIncomeAccount();
@@ -6309,7 +6308,7 @@ public class ClientLoanIntegrationTest extends BaseLoanIntegrationTest {
             assertEquals(403, exception.getResponse().code());
             assertTrue(exception.getMessage().contains("error.msg.loan.is.not.charged.off"));
 
-            BUSINESS_DATE_HELPER.updateBusinessDate(new BusinessDateRequest().type(BusinessDateType.BUSINESS_DATE.getName())
+            BUSINESS_DATE_HELPER.updateBusinessDate(new BusinessDateUpdateRequest().type(BusinessDateUpdateRequest.TypeEnum.BUSINESS_DATE)
                     .date("08 September 2022").dateFormat(DATETIME_PATTERN).locale("en"));
 
             PostLoansLoanIdTransactionsResponse loanRepaymentResponse = LOAN_TRANSACTION_HELPER.makeLoanRepayment((long) loanID,
@@ -6643,7 +6642,7 @@ public class ClientLoanIntegrationTest extends BaseLoanIntegrationTest {
                     new PutGlobalConfigurationsRequest().enabled(true));
             globalConfigurationHelper.updateGlobalConfiguration(GlobalConfigurationConstants.ENABLE_BUSINESS_DATE,
                     new PutGlobalConfigurationsRequest().enabled(true));
-            BUSINESS_DATE_HELPER.updateBusinessDate(new BusinessDateRequest().type(BusinessDateType.BUSINESS_DATE.getName())
+            BUSINESS_DATE_HELPER.updateBusinessDate(new BusinessDateUpdateRequest().type(BusinessDateUpdateRequest.TypeEnum.BUSINESS_DATE)
                     .date("10 October 2022").dateFormat(DATETIME_PATTERN).locale("en"));
 
             final Account assetAccount = ACCOUNT_HELPER.createAssetAccount();
@@ -6779,7 +6778,7 @@ public class ClientLoanIntegrationTest extends BaseLoanIntegrationTest {
                     new PutGlobalConfigurationsRequest().enabled(true));
             globalConfigurationHelper.updateGlobalConfiguration(GlobalConfigurationConstants.ENABLE_BUSINESS_DATE,
                     new PutGlobalConfigurationsRequest().enabled(true));
-            BUSINESS_DATE_HELPER.updateBusinessDate(new BusinessDateRequest().type(BusinessDateType.BUSINESS_DATE.getName())
+            BUSINESS_DATE_HELPER.updateBusinessDate(new BusinessDateUpdateRequest().type(BusinessDateUpdateRequest.TypeEnum.BUSINESS_DATE)
                     .date("10 October 2022").dateFormat(DATETIME_PATTERN).locale("en"));
 
             final Account assetAccount = ACCOUNT_HELPER.createAssetAccount();
@@ -6911,7 +6910,7 @@ public class ClientLoanIntegrationTest extends BaseLoanIntegrationTest {
                     new PutGlobalConfigurationsRequest().enabled(true));
             globalConfigurationHelper.updateGlobalConfiguration(GlobalConfigurationConstants.ENABLE_BUSINESS_DATE,
                     new PutGlobalConfigurationsRequest().enabled(true));
-            BUSINESS_DATE_HELPER.updateBusinessDate(new BusinessDateRequest().type(BusinessDateType.BUSINESS_DATE.getName())
+            BUSINESS_DATE_HELPER.updateBusinessDate(new BusinessDateUpdateRequest().type(BusinessDateUpdateRequest.TypeEnum.BUSINESS_DATE)
                     .date("10 October 2022").dateFormat(DATETIME_PATTERN).locale("en"));
 
             final Account assetAccount = ACCOUNT_HELPER.createAssetAccount();
@@ -6993,7 +6992,7 @@ public class ClientLoanIntegrationTest extends BaseLoanIntegrationTest {
                     new PutGlobalConfigurationsRequest().enabled(true));
             globalConfigurationHelper.updateGlobalConfiguration(GlobalConfigurationConstants.ENABLE_BUSINESS_DATE,
                     new PutGlobalConfigurationsRequest().enabled(true));
-            BUSINESS_DATE_HELPER.updateBusinessDate(new BusinessDateRequest().type(BusinessDateType.BUSINESS_DATE.getName())
+            BUSINESS_DATE_HELPER.updateBusinessDate(new BusinessDateUpdateRequest().type(BusinessDateUpdateRequest.TypeEnum.BUSINESS_DATE)
                     .date("01 January 2023").dateFormat(DATETIME_PATTERN).locale("en"));
             LOG.info("-----------------------------------NEW CLIENT-----------------------------------------");
             final PostClientsRequest newClient = createRandomClientWithDate("01 January 2023");
@@ -7026,7 +7025,7 @@ public class ClientLoanIntegrationTest extends BaseLoanIntegrationTest {
                     new PostLoansLoanIdChargesRequest().chargeId(penaltyCharge.getResourceId()).dateFormat(DATETIME_PATTERN).locale("en")
                             .amount(10.0).dueDate("10 January 2023"));
             LOG.info("-------------------------------DO SOME PARTIAL REPAYMENTS-------------------------------------------");
-            BUSINESS_DATE_HELPER.updateBusinessDate(new BusinessDateRequest().type(BusinessDateType.BUSINESS_DATE.getName())
+            BUSINESS_DATE_HELPER.updateBusinessDate(new BusinessDateUpdateRequest().type(BusinessDateUpdateRequest.TypeEnum.BUSINESS_DATE)
                     .date("07 January 2023").dateFormat(DATETIME_PATTERN).locale("en"));
             String firstRepaymentUUID = UUID.randomUUID().toString();
             PostLoansLoanIdTransactionsResponse firstRepaymentResult = LOAN_TRANSACTION_HELPER.makeLoanRepayment(loanId,
@@ -7060,6 +7059,44 @@ public class ClientLoanIntegrationTest extends BaseLoanIntegrationTest {
                     GlobalConfigurationConstants.IS_INTEREST_TO_BE_RECOVERED_FIRST_WHEN_GREATER_THAN_EMI,
                     new PutGlobalConfigurationsRequest().enabled(false));
         }
+    }
+
+    @Test
+    public void testLoanCharges_DISBURSEMENT_WITH_AMOUNT_AND_INTEREST() {
+
+        Calendar fourMonthsfromNowCalendar = Calendar.getInstance(Utils.getTimeZoneOfTenant());
+        fourMonthsfromNowCalendar.add(Calendar.MONTH, -4);
+        if (fourMonthsfromNowCalendar.get(Calendar.DAY_OF_MONTH) > 27) {
+            fourMonthsfromNowCalendar.add(Calendar.DAY_OF_MONTH, 4);
+        }
+
+        String fourMonthsfromNow = Utils.convertDateToURLFormat(fourMonthsfromNowCalendar);
+        final Integer clientID = ClientHelper.createClient(REQUEST_SPEC, RESPONSE_SPEC);
+        ClientHelper.verifyClientCreatedOnServer(REQUEST_SPEC, RESPONSE_SPEC, clientID);
+        final Integer loanProductID = createLoanProduct(false, NONE);
+
+        List<HashMap> charges = new ArrayList<>();
+        Integer disbursementFee = ChargesHelper.createCharges(REQUEST_SPEC, RESPONSE_SPEC,
+                ChargesHelper.getLoanDisbursementJSON(ChargesHelper.CHARGE_CALCULATION_TYPE_PERCENTAGE_AMOUNT_AND_INTEREST, "2"));
+        addCharges(charges, disbursementFee, "2", null);
+
+        List<HashMap> collaterals = new ArrayList<>();
+        final Integer loanID = applyForLoanApplicationWithPaymentStrategyAndPastMonth(clientID, loanProductID, charges, null, "1000",
+                LoanApplicationTestBuilder.DEFAULT_STRATEGY, fourMonthsfromNow, collaterals);
+        Assertions.assertNotNull(loanID);
+
+        LOAN_TRANSACTION_HELPER.approveLoan(fourMonthsfromNow, loanID);
+
+        String loanDetails = LOAN_TRANSACTION_HELPER.getLoanDetails(REQUEST_SPEC, RESPONSE_SPEC, loanID);
+        LOAN_TRANSACTION_HELPER.disburseLoanWithNetDisbursalAmount(fourMonthsfromNow, loanID,
+                JsonPath.from(loanDetails).get("netDisbursalAmount").toString());
+
+        // check for disbursement fee: Principal 1,000 with 24% Annual Rate for 6 Months we have Total Interest of:
+        // 120.00
+        ArrayList<HashMap> loanSchedule = LOAN_TRANSACTION_HELPER.getLoanRepaymentSchedule(REQUEST_SPEC, RESPONSE_SPEC, loanID);
+        HashMap disbursementDetail = loanSchedule.get(0);
+        // Disbursement Fee: 2% of 1,120.00 = 22.40
+        validateNumberForEqual("22.40", String.valueOf(disbursementDetail.get("feeChargesDue")));
     }
 
     private void checkLoanTransactionOrder(Long loanId, String... transactionUUIDs) {

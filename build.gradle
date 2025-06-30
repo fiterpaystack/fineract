@@ -28,6 +28,7 @@ buildscript {
             [
                 'fineract-api',
                 'fineract-core',
+                'fineract-validation',
                 'fineract-command',
                 'fineract-accounting',
                 'fineract-provider',
@@ -57,6 +58,7 @@ buildscript {
                 'fineract-api',
                 'fineract-client',
                 'fineract-core',
+                'fineract-validation',
                 'fineract-command',
                 'fineract-accounting',
                 'fineract-provider',
@@ -146,6 +148,11 @@ gitVersioning.apply {
 ext['groovy.version'] = '4.0.17'
 ext['swaggerFile'] = "$rootDir/fineract-provider/build/classes/java/main/static/fineract.json".toString()
 
+// Apply static weaving configuration to all subprojects
+subprojects { subproject ->
+    apply from: rootProject.file('static-weaving.gradle')
+}
+
 allprojects  {
     group = 'org.apache.fineract'
 
@@ -154,6 +161,10 @@ allprojects  {
     }
 
     configurations {
+        implementation {
+            exclude group: 'commons-logging', module: 'commons-logging'
+        }
+
         api {
             canBeResolved = true
         }
@@ -365,18 +376,28 @@ configure(project.fineractJavaProjects) {
         withJavadocJar()
     }
 
-    tasks.withType(ProcessResources).configureEach {
-        destinationDir = layout.buildDirectory.dir('classes/java/main').get().asFile
+    // TODO: we are forcing Gradle to do something it shouldn't! This effects Gradle caching AND breaks Liquibase!
+    // tasks.withType(ProcessResources) {
+    //     destinationDir = layout.buildDirectory.dir('classes/java/main').get().asFile
+    // }
+
+    processResources {
+        destinationDir = file("${buildDir}/resources/main")
+
+        doLast {
+            delete fileTree(dir: "${buildDir}/classes/java/main/db")
+            delete fileTree(dir: "${buildDir}/classes/java/main/META-INF")
+        }
     }
 
     // Add performance optimizations
-    configurations.configureEach {
+    configurations.all {
         resolutionStrategy {
             cacheChangingModulesFor 0, 'seconds'
             cacheDynamicVersionsFor 0, 'seconds'
         }
     }
-    
+
     tasks.withType(JavaCompile).configureEach {
         options.incremental = true
         options.fork = true
@@ -406,10 +427,6 @@ configure(project.fineractJavaProjects) {
 
     group = 'org.apache.fineract'
 
-    /* http://stackoverflow.com/questions/19653311/jpa-repository-works-in-idea-and-production-but-not-in-gradle */
-    sourceSets.main.output.resourcesDir = sourceSets.main.java.classesDirectory
-    sourceSets.test.output.resourcesDir = sourceSets.test.java.classesDirectory
-
     configurations.named('spotbugs').configure {
         resolutionStrategy.eachDependency {
             if (it.requested.group == 'org.ow2.asm') {
@@ -422,40 +439,40 @@ configure(project.fineractJavaProjects) {
     configurations {
         api.setCanBeResolved(true)
     }
-    tasks.withType(Copy).configureEach {
+    tasks.withType(Copy) {
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     }
-    tasks.withType(JavaCompile).configureEach {
+    tasks.withType(JavaCompile) {
         options.compilerArgs += [
-                "-Xlint:cast",
-                "-Xlint:auxiliaryclass",
-                "-Xlint:dep-ann",
-                "-Xlint:divzero",
-                "-Xlint:empty",
-                "-Xlint:exports",
-                "-Xlint:fallthrough",
-                "-Xlint:finally",
-                "-Xlint:module",
-                "-Xlint:opens",
-                "-Xlint:options",
-                "-Xlint:overloads",
-                "-Xlint:overrides",
-                "-Xlint:path",
-                "-Xlint:processing",
-                "-Xlint:removal",
-                "-Xlint:requires-automatic",
-                "-Xlint:requires-transitive-automatic",
-                "-Xlint:try",
-                "-Xlint:varargs",
-                "-Xlint:preview",
-                "-Xlint:static",
-                // -Werror needs to be disabled because EclipseLink's static weaving doesn't generate warning-free code
-                // and during an IntelliJ recompilation, it fails
-                //"-Werror",
-                "-Xmaxwarns",
-                "1500",
-                "-Xmaxerrs",
-                "1500"
+            "-Xlint:cast",
+            "-Xlint:auxiliaryclass",
+            "-Xlint:dep-ann",
+            "-Xlint:divzero",
+            "-Xlint:empty",
+            "-Xlint:exports",
+            "-Xlint:fallthrough",
+            "-Xlint:finally",
+            "-Xlint:module",
+            "-Xlint:opens",
+            "-Xlint:options",
+            "-Xlint:overloads",
+            "-Xlint:overrides",
+            "-Xlint:path",
+            "-Xlint:processing",
+            "-Xlint:removal",
+            "-Xlint:requires-automatic",
+            "-Xlint:requires-transitive-automatic",
+            "-Xlint:try",
+            "-Xlint:varargs",
+            "-Xlint:preview",
+            "-Xlint:static",
+            // -Werror needs to be disabled because EclipseLink's static weaving doesn't generate warning-free code
+            // and during an IntelliJ recompilation, it fails
+            //"-Werror",
+            "-Xmaxwarns",
+            "1500",
+            "-Xmaxerrs",
+            "1500"
         ]
         // TODO FINERACT-959 (gradually) enable -Xlint:all (see "javac -help -X")
 
@@ -672,7 +689,7 @@ configure(project.fineractJavaProjects) {
                 'org.junit.jupiter:junit-jupiter-api',
                 'org.junit.jupiter:junit-jupiter-engine',
                 'org.junit.jupiter:junit-jupiter-params',
-                'org.junit.platform:junit-platform-runner', // required to be able to run tests directly under Eclipse, see FINERACT-943 & FINERACT-1021
+                'org.junit.platform:junit-platform-suite', // required to be able to run tests directly under Eclipse, see FINERACT-943 & FINERACT-1021
                 'org.bouncycastle:bcpkix-jdk18on',
                 'org.bouncycastle:bcprov-jdk18on',
                 'org.bouncycastle:bcutil-jdk18on',
@@ -738,13 +755,11 @@ configure(project.fineractJavaProjects) {
         ]
     }
 
-    tasks.withType(Javadoc).tap {
-        configureEach {
-            options.addStringOption('Xdoclint:none', '-quiet')
-            options.encoding = 'UTF-8'
-            // Ignore any errors during javadoc generation
-            failOnError = false
-        }
+    tasks.withType(Javadoc) {
+        options.addStringOption('Xdoclint:none', '-quiet')
+        options.encoding = 'UTF-8'
+        // Ignore any errors during javadoc generation
+        failOnError = false
     }
 }
 
@@ -783,7 +798,7 @@ configure(project.fineractCustomProjects) {
                 'org.mockito:mockito-junit-jupiter',
                 'org.junit.jupiter:junit-jupiter-api',
                 'org.junit.jupiter:junit-jupiter-engine',
-                'org.junit.platform:junit-platform-runner', // required to be able to run tests directly under Eclipse, see FINERACT-943 & FINERACT-1021
+                'org.junit.platform:junit-platform-suite', // required to be able to run tests directly under Eclipse, see FINERACT-943 & FINERACT-1021
                 'org.bouncycastle:bcpkix-jdk18on',
                 'org.bouncycastle:bcprov-jdk18on',
                 'org.bouncycastle:bcutil-jdk18on',
@@ -870,17 +885,17 @@ configure(project.fineractPublishProjects) {
     }
 }
 
-    tasks.register('printSourceSetInformation') {
-        doLast {
-            sourceSets.each { srcSet ->
-                println "[" + srcSet.name + "]"
-                print "-->Source directories: " + srcSet.allJava.srcDirs + "\n"
-                print "-->Output directories: " + srcSet.output.classesDirs.files + "\n"
-                print "-->Compile classpath:\n"
-                srcSet.compileClasspath.files.each {
-                    print "  " + it.path + "\n"
-                }
-                println ""
+task printSourceSetInformation() {
+    doLast{
+        sourceSets.each { srcSet ->
+            println "["+srcSet.name+"]"
+            print "-->Source directories: "+srcSet.allJava.srcDirs+"\n"
+            print "-->Output directories: "+srcSet.output.classesDirs.files+"\n"
+            print "-->Compile classpath:\n"
+            srcSet.compileClasspath.files.each {
+                print "  "+it.path+"\n"
             }
+            println ""
         }
     }
+}

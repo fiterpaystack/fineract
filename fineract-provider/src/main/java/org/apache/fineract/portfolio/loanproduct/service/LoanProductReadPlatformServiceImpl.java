@@ -46,6 +46,9 @@ import org.apache.fineract.portfolio.common.domain.DaysInYearCustomStrategyType;
 import org.apache.fineract.portfolio.common.service.CommonEnumerations;
 import org.apache.fineract.portfolio.delinquency.data.DelinquencyBucketData;
 import org.apache.fineract.portfolio.delinquency.service.DelinquencyReadPlatformService;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanBuyDownFeeCalculationType;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanBuyDownFeeIncomeType;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanBuyDownFeeStrategy;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCapitalizedIncomeCalculationType;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCapitalizedIncomeStrategy;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCapitalizedIncomeType;
@@ -254,7 +257,7 @@ public class LoanProductReadPlatformServiceImpl implements LoanProductReadPlatfo
                     + "lp.allow_multiple_disbursals as multiDisburseLoan, lp.max_disbursals as maxTrancheCount, lp.max_outstanding_loan_balance as outstandingLoanBalance, "
                     + "lp.disallow_expected_disbursements as disallowExpectedDisbursements, lp.allow_approved_disbursed_amounts_over_applied as allowApprovedDisbursedAmountsOverApplied, lp.over_applied_calculation_type as overAppliedCalculationType, over_applied_number as overAppliedNumber, "
                     + "lp.days_in_month_enum as daysInMonth, lp.days_in_year_enum as daysInYear, lp.interest_recalculation_enabled as isInterestRecalculationEnabled, "
-                    + "lp.can_define_fixed_emi_amount as canDefineInstallmentAmount, lp.instalment_amount_in_multiples_of as installmentAmountInMultiplesOf, "
+                    + "lp.can_define_fixed_emi_amount as canDefineInstallmentAmount, lp.installment_amount_in_multiples_of as installmentAmountInMultiplesOf, "
                     + "lp.due_days_for_repayment_event as dueDaysForRepaymentEvent, lp.overdue_days_for_repayment_event as overDueDaysForRepaymentEvent, lp.enable_down_payment as enableDownPayment, lp.disbursed_amount_percentage_for_down_payment as disbursedAmountPercentageForDownPayment, lp.enable_auto_repayment_for_down_payment as enableAutoRepaymentForDownPayment, lp.repayment_start_date_type_enum as repaymentStartDateType, "
                     + "lp.enable_installment_level_delinquency as enableInstallmentLevelDelinquency, "
                     + "lpr.pre_close_interest_calculation_strategy as preCloseInterestCalculationStrategy, "
@@ -296,7 +299,9 @@ public class LoanProductReadPlatformServiceImpl implements LoanProductReadPlatfo
                     + "lp.enable_income_capitalization as enableIncomeCapitalization, " //
                     + "lp.capitalized_income_calculation_type as capitalizedIncomeCalculationType, " //
                     + "lp.capitalized_income_strategy as capitalizedIncomeStrategy, " //
-                    + "lp.capitalized_income_type as capitalizedIncomeType " //
+                    + "lp.capitalized_income_type as capitalizedIncomeType, " //
+                    + "lp.enable_buy_down_fee as enableBuyDownFee, " + "lp.buy_down_fee_calculation_type as buyDownFeeCalculationType, "
+                    + "lp.buy_down_fee_strategy as buyDownFeeStrategy, " + "lp.buy_down_fee_income_type as buyDownFeeIncomeType "
                     + " from m_product_loan lp " + " left join m_fund f on f.id = lp.fund_id "
                     + " left join m_product_loan_recalculation_details lpr on lpr.product_id=lp.id "
                     + " left join m_product_loan_guarantee_details lpg on lpg.loan_product_id=lp.id "
@@ -567,6 +572,13 @@ public class LoanProductReadPlatformServiceImpl implements LoanProductReadPlatfo
                     .getStringEnumOptionData(LoanCapitalizedIncomeStrategy.class, rs.getString("capitalizedIncomeStrategy"));
             final StringEnumOptionData capitalizedIncome = ApiFacingEnum.getStringEnumOptionData(LoanCapitalizedIncomeType.class,
                     rs.getString("capitalizedIncomeType"));
+            final boolean enableBuyDownFee = rs.getBoolean("enableBuyDownFee");
+            final StringEnumOptionData buyDownFeeCalculationType = ApiFacingEnum
+                    .getStringEnumOptionData(LoanBuyDownFeeCalculationType.class, rs.getString("buyDownFeeCalculationType"));
+            final StringEnumOptionData buyDownFeeStrategy = ApiFacingEnum.getStringEnumOptionData(LoanBuyDownFeeStrategy.class,
+                    rs.getString("buyDownFeeStrategy"));
+            final StringEnumOptionData buyDownFeeIncomeType = ApiFacingEnum.getStringEnumOptionData(LoanBuyDownFeeIncomeType.class,
+                    rs.getString("buyDownFeeIncomeType"));
 
             return new LoanProductData(id, name, shortName, description, currency, principal, minPrincipal, maxPrincipal, tolerance,
                     numberOfRepayments, minNumberOfRepayments, maxNumberOfRepayments, repaymentEvery, interestRatePerPeriod,
@@ -592,7 +604,7 @@ public class LoanProductReadPlatformServiceImpl implements LoanProductReadPlatfo
                     fixedLength, enableAccrualActivityPosting, supportedInterestRefundTypes,
                     loanChargeOffBehaviour.getValueAsStringEnumOptionData(), interestRecognitionOnDisbursementDate,
                     daysInYearCustomStrategy, enableIncomeCapitalization, capitalizedIncomeCalculationType, capitalizedIncomeStrategy,
-                    capitalizedIncome);
+                    capitalizedIncome, enableBuyDownFee, buyDownFeeCalculationType, buyDownFeeStrategy, buyDownFeeIncomeType);
         }
     }
 

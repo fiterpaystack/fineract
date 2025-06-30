@@ -90,7 +90,7 @@ public class ProductToGLAccountMappingHelper {
             final ProductToGLAccountMapping accountMapping = this.accountMappingRepository.findCoreProductToFinAccountMapping(productId,
                     portfolioProductType.getValue(), accountTypeId);
             if (accountMapping == null) {
-                ArrayList<String> optionalProductToGLAccountMappingEntries = new ArrayList<String>();
+                ArrayList<String> optionalProductToGLAccountMappingEntries = new ArrayList<>();
                 optionalProductToGLAccountMappingEntries.add(LoanProductAccountingParams.GOODWILL_CREDIT.getValue());
                 optionalProductToGLAccountMappingEntries.add(LoanProductAccountingParams.INCOME_FROM_CHARGE_OFF_INTEREST.getValue());
                 optionalProductToGLAccountMappingEntries.add(LoanProductAccountingParams.INCOME_FROM_CHARGE_OFF_FEES.getValue());
@@ -102,6 +102,8 @@ public class ProductToGLAccountMappingHelper {
                 optionalProductToGLAccountMappingEntries.add("incomeFromGoodwillCreditPenaltyAccountId");
                 optionalProductToGLAccountMappingEntries.add(LoanProductAccountingParams.DEFERRED_INCOME_LIABILITY.getValue());
                 optionalProductToGLAccountMappingEntries.add(LoanProductAccountingParams.INCOME_FROM_CAPITALIZATION.getValue());
+                optionalProductToGLAccountMappingEntries.add(LoanProductAccountingParams.BUY_DOWN_EXPENSE.getValue());
+                optionalProductToGLAccountMappingEntries.add(LoanProductAccountingParams.INCOME_FROM_BUY_DOWN.getValue());
 
                 if (optionalProductToGLAccountMappingEntries.contains(paramName)) {
                     saveProductToAccountMapping(element, paramName, productId, accountTypeId, expectedAccountType, portfolioProductType);
@@ -560,7 +562,7 @@ public class ProductToGLAccountMappingHelper {
     public void deleteProductToGLAccountMapping(final Long loanProductId, final PortfolioProductType portfolioProductType) {
         final List<ProductToGLAccountMapping> productToGLAccountMappings = this.accountMappingRepository
                 .findByProductIdAndProductType(loanProductId, portfolioProductType.getValue());
-        if (productToGLAccountMappings != null && productToGLAccountMappings.size() > 0) {
+        if (productToGLAccountMappings != null && !productToGLAccountMappings.isEmpty()) {
             this.accountMappingRepository.deleteAllInBatch(productToGLAccountMappings);
         }
     }

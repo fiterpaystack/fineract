@@ -50,7 +50,7 @@ public class InterestScheduleModelRepositoryWrapperImpl implements InterestSched
 
     @Transactional
     @Override
-    public String writeInterestScheduleModel(Loan loan, ProgressiveLoanInterestScheduleModel model) {
+    public ProgressiveLoanInterestScheduleModel writeInterestScheduleModel(Loan loan, ProgressiveLoanInterestScheduleModel model) {
         if (model == null) {
             return null;
         }
@@ -66,7 +66,7 @@ public class InterestScheduleModelRepositoryWrapperImpl implements InterestSched
             progressiveLoanModel.setJsonModel(jsonModel);
             loanModelRepository.save(progressiveLoanModel);
         });
-        return jsonModel;
+        return model;
     }
 
     @Override
@@ -83,7 +83,7 @@ public class InterestScheduleModelRepositoryWrapperImpl implements InterestSched
         return progressiveLoanModel.map(ProgressiveLoanModel::getJsonModel) //
                 .map(jsonModel -> progressiveLoanInterestScheduleModelParserService.fromJson(jsonModel,
                         progressiveLoanModel.get().getLoan().getLoanProductRelatedDetail(), MoneyHelper.getMathContext(),
-                        progressiveLoanModel.get().getLoan().getLoanProduct().getInstallmentAmountInMultiplesOf()));
+                        progressiveLoanModel.get().getLoan().getLoanProductRelatedDetail().getInstallmentAmountInMultiplesOf()));
     }
 
     @Override
@@ -103,6 +103,7 @@ public class InterestScheduleModelRepositoryWrapperImpl implements InterestSched
                 ProgressiveTransactionCtx ctx = new ProgressiveTransactionCtx(loan.getCurrency(), loan.getRepaymentScheduleInstallments(),
                         Set.of(), new MoneyHolder(loan.getTotalOverpaidAsMoney()), new ChangedTransactionDetail(), savedModel.get());
                 ctx.setChargedOff(loan.isChargedOff());
+                ctx.setContractTerminated(loan.isContractTermination());
                 advancedPaymentScheduleTransactionProcessor.recalculateInterestForDate(businessDate, ctx);
             }
         } else {

@@ -106,6 +106,7 @@ public final class LoanTransactionValidatorImpl implements LoanTransactionValida
     private final EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService;
     private final CalendarInstanceRepository calendarInstanceRepository;
     private final LoanDownPaymentTransactionValidator loanDownPaymentTransactionValidator;
+    private final LoanDisbursementValidator loanDisbursementValidator;
 
     private void throwExceptionIfValidationWarningsExist(final List<ApiParameterError> dataValidationErrors) {
         if (!dataValidationErrors.isEmpty()) {
@@ -157,6 +158,9 @@ public final class LoanTransactionValidatorImpl implements LoanTransactionValida
             validateLoanClientIsActive(loan);
             validateLoanGroupIsActive(loan);
 
+            final BigDecimal disbursedAmount = loan.getDisbursedAmount();
+            loanDisbursementValidator.compareDisbursedToApprovedOrProposedPrincipal(loan, principal, disbursedAmount);
+
             if (loan.isChargedOff()) {
                 throw new GeneralPlatformDomainRuleException("error.msg.loan.disbursal.not.allowed.on.charged.off",
                         "Loan: " + loan.getId() + " disbursement is not allowed on charged-off loan.");
@@ -173,7 +177,6 @@ public final class LoanTransactionValidatorImpl implements LoanTransactionValida
                 baseDataValidator.getDataValidationErrors().add(error);
             }
 
-            final BigDecimal disbursedAmount = loan.getDisbursedAmount();
             final Set<LoanCollateralManagement> loanCollateralManagements = loan.getLoanCollateralManagements();
 
             if ((loanCollateralManagements != null && !loanCollateralManagements.isEmpty()) && loan.getLoanType().isIndividualAccount()) {
@@ -947,7 +950,7 @@ public final class LoanTransactionValidatorImpl implements LoanTransactionValida
 
         final Set<String> transactionParameters = new HashSet<>(
                 Arrays.asList("transactionDate", "transactionAmount", "externalId", "note", "locale", "dateFormat", "paymentTypeId",
-                        "accountNumber", "checkNumber", "routingCode", "receiptNumber", "bankNumber", "loanId"));
+                        "accountNumber", "checkNumber", "routingCode", "receiptNumber", "bankNumber", "loanId", "numberOfRepayments"));
 
         final Type typeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
         this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, json, transactionParameters);
@@ -1076,6 +1079,14 @@ public final class LoanTransactionValidatorImpl implements LoanTransactionValida
         final String externalId = this.fromApiJsonHelper.extractStringNamed("externalId", element);
         if (StringUtils.isNotBlank(externalId)) {
             baseDataValidator.reset().parameter("externalId").value(externalId).notExceedingLengthOf(100);
+        }
+    }
+
+    @Override
+    public void validateReversalExternalId(final DataValidatorBuilder baseDataValidator, final JsonElement element) {
+        final String reversalExternalId = this.fromApiJsonHelper.extractStringNamed("reversalExternalId", element);
+        if (StringUtils.isNotBlank(reversalExternalId)) {
+            baseDataValidator.reset().parameter("reversalExternalId").value(reversalExternalId).notExceedingLengthOf(100);
         }
     }
 }

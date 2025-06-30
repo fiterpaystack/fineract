@@ -296,7 +296,8 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
         }
 
         if (reprocessRequired) {
-            if (loan.isProgressiveSchedule() && loan.hasChargeOffTransaction() && loan.hasAccelerateChargeOffStrategy()) {
+            if (loan.isProgressiveSchedule() && ((loan.hasChargeOffTransaction() && loan.hasAccelerateChargeOffStrategy())
+                    || loan.hasContractTerminationTransaction())) {
                 final ScheduleGeneratorDTO scheduleGeneratorDTO = loanUtilService.buildScheduleGeneratorDTO(loan, null);
                 loanScheduleService.regenerateRepaymentSchedule(loan, scheduleGeneratorDTO);
             }
@@ -317,10 +318,10 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
         this.loanAccountDomainService.setLoanDelinquencyTag(loan, DateUtils.getBusinessLocalDate());
 
         businessEventNotifierService.notifyPostBusinessEvent(new LoanAddChargeBusinessEvent(loanCharge));
-        businessEventNotifierService.notifyPostBusinessEvent(new LoanBalanceChangedBusinessEvent(loan));
 
         postJournalEntries(loan, existingTransactionIds, existingReversedTransactionIds);
         loanAccrualTransactionBusinessEventService.raiseBusinessEventForAccrualTransactions(loan, existingTransactionIds);
+        businessEventNotifierService.notifyPostBusinessEvent(new LoanBalanceChangedBusinessEvent(loan));
 
         return new CommandProcessingResultBuilder().withCommandId(command.commandId()) //
                 .withEntityId(loanCharge.getId()) //
@@ -881,7 +882,8 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
 
             if (reprocessRequired) {
                 addInstallmentIfPenaltyAppliedAfterLastDueDate(loan, lastChargeDate);
-                if (loan.isProgressiveSchedule() && loan.hasChargeOffTransaction() && loan.hasAccelerateChargeOffStrategy()) {
+                if (loan.isProgressiveSchedule() && ((loan.hasChargeOffTransaction() && loan.hasAccelerateChargeOffStrategy())
+                        || loan.hasContractTerminationTransaction())) {
                     final ScheduleGeneratorDTO scheduleGeneratorDTO = loanUtilService.buildScheduleGeneratorDTO(loan, null);
                     loanScheduleService.regenerateRepaymentSchedule(loan, scheduleGeneratorDTO);
                 }
@@ -916,7 +918,8 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
                 .determineProcessor(loan.transactionProcessingStrategy());
         loan.addLoanTransaction(loanChargeAdjustmentTransaction);
         if (loan.isInterestBearingAndInterestRecalculationEnabled()) {
-            if (loan.isProgressiveSchedule() && loan.hasChargeOffTransaction() && loan.hasAccelerateChargeOffStrategy()) {
+            if (loan.isProgressiveSchedule() && ((loan.hasChargeOffTransaction() && loan.hasAccelerateChargeOffStrategy())
+                    || loan.hasContractTerminationTransaction())) {
                 final ScheduleGeneratorDTO scheduleGeneratorDTO = loanUtilService.buildScheduleGeneratorDTO(loan, null);
                 loanScheduleService.regenerateRepaymentSchedule(loan, scheduleGeneratorDTO);
             }
@@ -1500,7 +1503,8 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
         if (loan.isCumulativeSchedule() && loan.isInterestBearingAndInterestRecalculationEnabled()
                 && DateUtils.isBefore(loanCharge.getDueLocalDate(), businessDate)) {
             loanScheduleService.regenerateRepaymentScheduleWithInterestRecalculation(loan, scheduleGeneratorDTO);
-        } else if (loan.isProgressiveSchedule() && loan.hasChargeOffTransaction() && loan.hasAccelerateChargeOffStrategy()) {
+        } else if (loan.isProgressiveSchedule() && ((loan.hasChargeOffTransaction() && loan.hasAccelerateChargeOffStrategy())
+                || loan.hasContractTerminationTransaction())) {
             loanScheduleService.regenerateRepaymentSchedule(loan, scheduleGeneratorDTO);
         }
         // Waive of charges whose due date falls after latest 'repayment' transaction don't require entire loan schedule

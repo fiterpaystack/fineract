@@ -19,7 +19,6 @@
 package org.apache.fineract.integrationtests;
 
 import static java.lang.System.lineSeparator;
-import static org.apache.fineract.infrastructure.businessdate.domain.BusinessDateType.BUSINESS_DATE;
 import static org.apache.fineract.integrationtests.BaseLoanIntegrationTest.TransactionProcessingStrategyCode.ADVANCED_PAYMENT_ALLOCATION_STRATEGY;
 import static org.apache.fineract.integrationtests.common.loans.LoanApplicationTestBuilder.DUE_PENALTY_INTEREST_PRINCIPAL_FEE_IN_ADVANCE_PENALTY_INTEREST_PRINCIPAL_FEE_STRATEGY;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -59,7 +58,7 @@ import org.apache.fineract.batch.domain.BatchRequest;
 import org.apache.fineract.batch.domain.BatchResponse;
 import org.apache.fineract.client.models.AdvancedPaymentData;
 import org.apache.fineract.client.models.AllowAttributeOverrides;
-import org.apache.fineract.client.models.BusinessDateRequest;
+import org.apache.fineract.client.models.BusinessDateUpdateRequest;
 import org.apache.fineract.client.models.GetJournalEntriesTransactionIdResponse;
 import org.apache.fineract.client.models.GetLoansLoanIdChargesChargeIdResponse;
 import org.apache.fineract.client.models.GetLoansLoanIdRepaymentPeriod;
@@ -87,6 +86,7 @@ import org.apache.fineract.client.models.RetrieveLoansPointInTimeRequest;
 import org.apache.fineract.client.util.CallFailedRuntimeException;
 import org.apache.fineract.client.util.Calls;
 import org.apache.fineract.infrastructure.configuration.api.GlobalConfigurationConstants;
+import org.apache.fineract.infrastructure.event.external.data.ExternalEventResponse;
 import org.apache.fineract.integrationtests.client.IntegrationTest;
 import org.apache.fineract.integrationtests.common.BatchHelper;
 import org.apache.fineract.integrationtests.common.BusinessDateHelper;
@@ -99,6 +99,9 @@ import org.apache.fineract.integrationtests.common.accounting.AccountHelper;
 import org.apache.fineract.integrationtests.common.accounting.JournalEntryHelper;
 import org.apache.fineract.integrationtests.common.charges.ChargesHelper;
 import org.apache.fineract.integrationtests.common.error.ErrorResponse;
+import org.apache.fineract.integrationtests.common.externalevents.BusinessEvent;
+import org.apache.fineract.integrationtests.common.externalevents.ExternalEventHelper;
+import org.apache.fineract.integrationtests.common.externalevents.ExternalEventsExtension;
 import org.apache.fineract.integrationtests.common.loans.LoanAccountLockHelper;
 import org.apache.fineract.integrationtests.common.loans.LoanProductHelper;
 import org.apache.fineract.integrationtests.common.loans.LoanProductTestBuilder;
@@ -119,7 +122,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @Slf4j
-@ExtendWith(LoanTestLifecycleExtension.class)
+@ExtendWith({ LoanTestLifecycleExtension.class, ExternalEventsExtension.class })
 public abstract class BaseLoanIntegrationTest extends IntegrationTest {
 
     protected static final String DATETIME_PATTERN = "dd MMMM yyyy";
@@ -159,6 +162,7 @@ public abstract class BaseLoanIntegrationTest extends IntegrationTest {
     protected final Account goodwillExpenseAccount = accountHelper.createExpenseAccount("goodwillExpenseAccount");
     protected final Account goodwillIncomeAccount = accountHelper.createIncomeAccount("goodwillIncomeAccount");
     protected final Account deferredIncomeLiabilityAccount = accountHelper.createLiabilityAccount("deferredIncomeLiabilityAccount");
+    protected final Account buyDownExpenseAccount = accountHelper.createExpenseAccount("buyDownExpenseAccount");
     protected final LoanTransactionHelper loanTransactionHelper = new LoanTransactionHelper(requestSpec, responseSpec);
     protected JournalEntryHelper journalEntryHelper = new JournalEntryHelper(requestSpec, responseSpec);
     protected ClientHelper clientHelper = new ClientHelper(requestSpec, responseSpec);
@@ -171,6 +175,7 @@ public abstract class BaseLoanIntegrationTest extends IntegrationTest {
     protected GlobalConfigurationHelper globalConfigurationHelper = new GlobalConfigurationHelper();
     protected final CodeHelper codeHelper = new CodeHelper();
     protected final ChargesHelper chargesHelper = new ChargesHelper();
+    protected final ExternalEventHelper externalEventHelper = new ExternalEventHelper();
 
     protected static void validateRepaymentPeriod(GetLoansLoanIdResponse loanDetails, Integer index, LocalDate dueDate, double principalDue,
             double principalPaid, double principalOutstanding, double paidInAdvance, double paidLate) {
@@ -971,8 +976,8 @@ public abstract class BaseLoanIntegrationTest extends IntegrationTest {
         try {
             globalConfigurationHelper.updateGlobalConfiguration(GlobalConfigurationConstants.ENABLE_BUSINESS_DATE,
                     new PutGlobalConfigurationsRequest().enabled(true));
-            businessDateHelper.updateBusinessDate(
-                    new BusinessDateRequest().type(BUSINESS_DATE.getName()).date(date).dateFormat(DATETIME_PATTERN).locale("en"));
+            businessDateHelper.updateBusinessDate(new BusinessDateUpdateRequest().type(BusinessDateUpdateRequest.TypeEnum.BUSINESS_DATE)
+                    .date(date).dateFormat(DATETIME_PATTERN).locale("en"));
             runnable.run();
         } finally {
             globalConfigurationHelper.updateGlobalConfiguration(GlobalConfigurationConstants.ENABLE_BUSINESS_DATE,
@@ -1142,8 +1147,8 @@ public abstract class BaseLoanIntegrationTest extends IntegrationTest {
     }
 
     protected void updateBusinessDate(String date) {
-        businessDateHelper.updateBusinessDate(
-                new BusinessDateRequest().type(BUSINESS_DATE.getName()).date(date).dateFormat(DATETIME_PATTERN).locale("en"));
+        businessDateHelper.updateBusinessDate(new BusinessDateUpdateRequest().type(BusinessDateUpdateRequest.TypeEnum.BUSINESS_DATE)
+                .date(date).dateFormat(DATETIME_PATTERN).locale("en"));
     }
 
     protected Long getTransactionId(Long loanId, String type, String date) {
@@ -1267,6 +1272,42 @@ public abstract class BaseLoanIntegrationTest extends IntegrationTest {
     protected void rejectLoan(Long loanId, String rejectedOnDate) {
         loanTransactionHelper.rejectLoan(loanId,
                 new PostLoansLoanIdRequest().rejectedOnDate(rejectedOnDate).locale("en").dateFormat(DATETIME_PATTERN));
+    }
+
+    protected void verifyBusinessEvents(BusinessEvent... businessEvents) {
+        List<ExternalEventResponse> allExternalEvents = ExternalEventHelper.getAllExternalEvents(requestSpec, responseSpec);
+        logBusinessEvents(allExternalEvents);
+        Assertions.assertNotNull(businessEvents);
+        Assertions.assertNotNull(allExternalEvents);
+        Assertions.assertTrue(businessEvents.length <= allExternalEvents.size(),
+                "Expected business event count is less than actual. Expected: " + businessEvents.length + " Actual: "
+                        + allExternalEvents.size());
+        final DateTimeFormatter formatter = DateTimeFormatter.ofPattern(DATETIME_PATTERN, Locale.ENGLISH);
+        for (BusinessEvent businessEvent : businessEvents) {
+            long count = allExternalEvents.stream().filter(externalEvent -> businessEvent.verify(externalEvent, formatter)).count();
+            Assertions.assertEquals(1, count, "Expected business event not found " + businessEvent);
+        }
+    }
+
+    protected void logBusinessEvents(List<ExternalEventResponse> allExternalEvents) {
+        allExternalEvents.forEach(externalEventDTO -> {
+            Object amount = externalEventDTO.getPayLoad().get("amount");
+            Object outstandingLoanBalance = externalEventDTO.getPayLoad().get("outstandingLoanBalance");
+            Object principalPortion = externalEventDTO.getPayLoad().get("principalPortion");
+            Object interestPortion = externalEventDTO.getPayLoad().get("interestPortion");
+            Object feePortion = externalEventDTO.getPayLoad().get("feeChargesPortion");
+            Object penaltyPortion = externalEventDTO.getPayLoad().get("penaltyChargesPortion");
+            log.info("Event Received\n type:'{}'\n businessDate:'{}'", externalEventDTO.getType(), externalEventDTO.getBusinessDate());
+            log.info(
+                    "Values\n amount: {}\n outstandingLoanBalance: {}\n principalPortion: {}\n interestPortion: {}\n feePortion: {}\n penaltyPortion: {}",
+                    amount, outstandingLoanBalance, principalPortion, interestPortion, feePortion, penaltyPortion);
+        });
+    }
+
+    protected void deleteAllExternalEvents() {
+        ExternalEventHelper.deleteAllExternalEvents(requestSpec, createResponseSpecification(Matchers.is(204)));
+        List<ExternalEventResponse> allExternalEvents = ExternalEventHelper.getAllExternalEvents(requestSpec, responseSpec);
+        Assertions.assertEquals(0, allExternalEvents.size());
     }
 
     @RequiredArgsConstructor

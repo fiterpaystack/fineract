@@ -29,7 +29,6 @@ import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.MathUtil;
-import org.apache.fineract.infrastructure.event.business.domain.loan.LoanBalanceChangedBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.domain.loan.transaction.LoanTransactionDownPaymentPostBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.domain.loan.transaction.LoanTransactionDownPaymentPreBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
@@ -73,7 +72,6 @@ public class LoanDownPaymentHandlerServiceImpl implements LoanDownPaymentHandler
         if (downPaymentTransaction != null) {
             downPaymentTransaction = loanTransactionRepository.saveAndFlush(downPaymentTransaction);
             businessEventNotifierService.notifyPostBusinessEvent(new LoanTransactionDownPaymentPostBusinessEvent(downPaymentTransaction));
-            businessEventNotifierService.notifyPostBusinessEvent(new LoanBalanceChangedBusinessEvent(loan));
         }
         return downPaymentTransaction;
     }
@@ -155,7 +153,8 @@ public class LoanDownPaymentHandlerServiceImpl implements LoanDownPaymentHandler
         if (!processLatest || reprocessOnPostConditions) {
             if (loan.isCumulativeSchedule() && loan.isInterestBearingAndInterestRecalculationEnabled()) {
                 loanScheduleService.regenerateRepaymentScheduleWithInterestRecalculation(loan, scheduleGeneratorDTO);
-            } else if (loan.isProgressiveSchedule() && loan.hasChargeOffTransaction() && loan.hasAccelerateChargeOffStrategy()) {
+            } else if (loan.isProgressiveSchedule() && ((loan.hasChargeOffTransaction() && loan.hasAccelerateChargeOffStrategy())
+                    || loan.hasContractTerminationTransaction())) {
                 loanScheduleService.regenerateRepaymentSchedule(loan, scheduleGeneratorDTO);
             }
             reprocessLoanTransactionsService.reprocessTransactions(loan);
@@ -173,12 +172,10 @@ public class LoanDownPaymentHandlerServiceImpl implements LoanDownPaymentHandler
         if (loan.getLoanProduct().isMultiDisburseLoan()) {
             final BigDecimal totalDisbursed = loan.getDisbursedAmount();
             final BigDecimal totalPrincipalAdjusted = loan.getSummary().getTotalPrincipalAdjustments();
-            final BigDecimal totalCapitalizedIncome = loan.getLoanTransactions(LoanTransaction::isCapitalizedIncome).stream()
-                    .filter(LoanTransaction::isNotReversed).map(LoanTransaction::getPrincipalPortion)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            final BigDecimal totalCapitalizedIncome = loan.getSummary().getTotalCapitalizedIncome();
             final BigDecimal totalPrincipalCredited = totalDisbursed.add(totalPrincipalAdjusted).add(totalCapitalizedIncome);
             if (totalPrincipalCredited.compareTo(loan.getSummary().getTotalPrincipalRepaid()) < 0
-                    && loan.repaymentScheduleDetail().getPrincipal().minus(totalDisbursed).isGreaterThanZero()) {
+                    && loan.getLoanProductRelatedDetail().getPrincipal().minus(totalDisbursed).isGreaterThanZero()) {
                 final String errorMessage = "The transaction amount cannot exceed threshold.";
                 throw new InvalidLoanStateTransitionException("transaction", "amount.exceeds.threshold", errorMessage);
             }
@@ -196,8 +193,9 @@ public class LoanDownPaymentHandlerServiceImpl implements LoanDownPaymentHandler
         }
         Money downPaymentMoney = Money.of(loan.getCurrency(),
                 MathUtil.percentageOf(disbursementTransaction.getAmount(), disbursedAmountPercentageForDownPayment, 19));
-        if (loan.getLoanProduct().getInstallmentAmountInMultiplesOf() != null) {
-            downPaymentMoney = Money.roundToMultiplesOf(downPaymentMoney, loan.getLoanProduct().getInstallmentAmountInMultiplesOf());
+        if (loan.getLoanProductRelatedDetail().getInstallmentAmountInMultiplesOf() != null) {
+            downPaymentMoney = Money.roundToMultiplesOf(downPaymentMoney,
+                    loan.getLoanProductRelatedDetail().getInstallmentAmountInMultiplesOf());
         }
         final Money adjustedDownPaymentMoney = switch (loan.getLoanProductRelatedDetail().getLoanScheduleType()) {
             // For Cumulative loan: To check whether the loan was overpaid when the disbursement happened and to get the

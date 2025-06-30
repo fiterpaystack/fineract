@@ -667,10 +667,6 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         return this.loanProduct;
     }
 
-    public LoanProductRelatedDetail repaymentScheduleDetail() {
-        return this.loanRepaymentScheduleDetail;
-    }
-
     public void updateClient(final Client client) {
         this.client = client;
     }
@@ -967,8 +963,7 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     }
 
     private boolean hasDisbursementTransaction() {
-        return this.loanTransactions.stream()
-                .anyMatch(loanTransaction -> loanTransaction.isDisbursement() && loanTransaction.isNotReversed());
+        return this.loanTransactions.stream().anyMatch(LoanTransaction::isDisbursement);
 
     }
 
@@ -1348,7 +1343,7 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     }
 
     public Money getTotalOverpaidAsMoney() {
-        return Money.of(this.repaymentScheduleDetail().getCurrency(), this.totalOverpaid);
+        return Money.of(this.getLoanProductRelatedDetail().getCurrency(), this.totalOverpaid);
     }
 
     public void updateIsInterestRecalculationEnabled() {
@@ -1513,7 +1508,7 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
 
     public boolean isFeeCompoundingEnabledForInterestRecalculation() {
         boolean isEnabled = false;
-        if (this.repaymentScheduleDetail().isInterestRecalculationEnabled()) {
+        if (this.getLoanProductRelatedDetail().isInterestRecalculationEnabled()) {
             isEnabled = this.loanInterestRecalculationDetails.getInterestRecalculationCompoundingMethod().isFeeCompoundingEnabled();
         }
         return isEnabled;
@@ -1603,7 +1598,7 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
             }
             return numberOfInstallments;
         }
-        return this.repaymentScheduleDetail().getNumberOfRepayments() + adjustNumberOfRepayments();
+        return this.getLoanProductRelatedDetail().getNumberOfRepayments() + adjustNumberOfRepayments();
     }
 
     /*
@@ -1646,6 +1641,20 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         }
 
         return isForeClosure;
+    }
+
+    public boolean isContractTermination() {
+        if (this.loanSubStatus != null) {
+            return loanSubStatus.isContractTermination();
+        }
+
+        return false;
+    }
+
+    public void liftContractTerminationSubStatus() {
+        if (this.loanSubStatus.isContractTermination()) {
+            this.loanSubStatus = null;
+        }
     }
 
     public List<LoanTermVariations> getActiveLoanTermVariations() {
@@ -1780,6 +1789,10 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         return getLoanTransaction(e -> e.isNotReversed() && e.isChargeOff());
     }
 
+    public LoanTransaction findContractTerminationTransaction() {
+        return getLoanTransaction(e -> e.isNotReversed() && e.isContractTermination());
+    }
+
     public void handleMaturityDateActivate() {
         if (this.expectedMaturityDate != null && !this.expectedMaturityDate.equals(this.actualMaturityDate)) {
             this.actualMaturityDate = this.expectedMaturityDate;
@@ -1845,6 +1858,10 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
 
     public boolean hasAccelerateChargeOffStrategy() {
         return LoanChargeOffBehaviour.ACCELERATE_MATURITY.equals(getLoanProductRelatedDetail().getChargeOffBehaviour());
+    }
+
+    public boolean hasContractTerminationTransaction() {
+        return getLoanTransactions().stream().anyMatch(t -> t.isContractTermination() && t.isNotReversed());
     }
 
 }

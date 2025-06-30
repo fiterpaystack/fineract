@@ -26,13 +26,14 @@ import static org.apache.fineract.test.data.loanproduct.DefaultLoanProduct.LP2_A
 import static org.apache.fineract.test.factory.LoanProductsRequestFactory.CHARGE_OFF_REASONS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.gson.Gson;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.cucumber.datatable.DataTable;
+import io.cucumber.java.ParameterType;
 import io.cucumber.java.en.And;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
@@ -60,6 +61,7 @@ import org.apache.fineract.avro.loan.v1.LoanChargePaidByDataV1;
 import org.apache.fineract.avro.loan.v1.LoanStatusEnumDataV1;
 import org.apache.fineract.avro.loan.v1.LoanTransactionDataV1;
 import org.apache.fineract.client.models.AdvancedPaymentData;
+import org.apache.fineract.client.models.BusinessDateResponse;
 import org.apache.fineract.client.models.DeleteLoansLoanIdResponse;
 import org.apache.fineract.client.models.DisbursementDetail;
 import org.apache.fineract.client.models.GetLoanProductsChargeOffReasonOptions;
@@ -80,6 +82,7 @@ import org.apache.fineract.client.models.GetLoansLoanIdTransactions;
 import org.apache.fineract.client.models.GetLoansLoanIdTransactionsResponse;
 import org.apache.fineract.client.models.GetLoansLoanIdTransactionsTransactionIdResponse;
 import org.apache.fineract.client.models.IsCatchUpRunningDTO;
+import org.apache.fineract.client.models.OldestCOBProcessedLoanDTO;
 import org.apache.fineract.client.models.PaymentAllocationOrder;
 import org.apache.fineract.client.models.PostAddAndDeleteDisbursementDetailRequest;
 import org.apache.fineract.client.models.PostClientsResponse;
@@ -96,6 +99,7 @@ import org.apache.fineract.client.models.PutLoanProductsProductIdRequest;
 import org.apache.fineract.client.models.PutLoanProductsProductIdResponse;
 import org.apache.fineract.client.models.PutLoansLoanIdRequest;
 import org.apache.fineract.client.models.PutLoansLoanIdResponse;
+import org.apache.fineract.client.services.BusinessDateManagementApi;
 import org.apache.fineract.client.services.LoanCobCatchUpApi;
 import org.apache.fineract.client.services.LoanDisbursementDetailsApi;
 import org.apache.fineract.client.services.LoanInterestPauseApi;
@@ -121,6 +125,7 @@ import org.apache.fineract.test.data.loanproduct.LoanProductResolver;
 import org.apache.fineract.test.data.paymenttype.DefaultPaymentType;
 import org.apache.fineract.test.data.paymenttype.PaymentTypeResolver;
 import org.apache.fineract.test.factory.LoanRequestFactory;
+import org.apache.fineract.test.helper.BusinessDateHelper;
 import org.apache.fineract.test.helper.CodeHelper;
 import org.apache.fineract.test.helper.ErrorHelper;
 import org.apache.fineract.test.helper.ErrorMessageHelper;
@@ -129,6 +134,7 @@ import org.apache.fineract.test.helper.Utils;
 import org.apache.fineract.test.initializer.global.LoanProductGlobalInitializerStep;
 import org.apache.fineract.test.messaging.EventAssertion;
 import org.apache.fineract.test.messaging.config.EventProperties;
+import org.apache.fineract.test.messaging.config.JobPollingProperties;
 import org.apache.fineract.test.messaging.event.EventCheckHelper;
 import org.apache.fineract.test.messaging.event.loan.LoanRescheduledDueAdjustScheduleEvent;
 import org.apache.fineract.test.messaging.event.loan.LoanStatusChangedEvent;
@@ -136,14 +142,19 @@ import org.apache.fineract.test.messaging.event.loan.transaction.BulkBusinessEve
 import org.apache.fineract.test.messaging.event.loan.transaction.LoanAccrualAdjustmentTransactionBusinessEvent;
 import org.apache.fineract.test.messaging.event.loan.transaction.LoanAccrualTransactionCreatedBusinessEvent;
 import org.apache.fineract.test.messaging.event.loan.transaction.LoanAdjustTransactionBusinessEvent;
+import org.apache.fineract.test.messaging.event.loan.transaction.LoanCapitalizedIncomeAdjustmentTransactionCreatedBusinessEvent;
+import org.apache.fineract.test.messaging.event.loan.transaction.LoanCapitalizedIncomeAmortizationAdjustmentTransactionCreatedBusinessEvent;
 import org.apache.fineract.test.messaging.event.loan.transaction.LoanCapitalizedIncomeAmortizationTransactionCreatedBusinessEvent;
+import org.apache.fineract.test.messaging.event.loan.transaction.LoanCapitalizedIncomeTransactionCreatedBusinessEvent;
 import org.apache.fineract.test.messaging.event.loan.transaction.LoanChargeAdjustmentPostBusinessEvent;
 import org.apache.fineract.test.messaging.event.loan.transaction.LoanChargeOffEvent;
 import org.apache.fineract.test.messaging.event.loan.transaction.LoanChargeOffUndoEvent;
 import org.apache.fineract.test.messaging.event.loan.transaction.LoanTransactionAccrualActivityPostEvent;
+import org.apache.fineract.test.messaging.event.loan.transaction.LoanTransactionContractTerminationPostBusinessEvent;
 import org.apache.fineract.test.messaging.store.EventStore;
 import org.apache.fineract.test.stepdef.AbstractStepDef;
 import org.apache.fineract.test.support.TestContextKey;
+import org.assertj.core.api.SoftAssertions;
 import org.springframework.beans.factory.annotation.Autowired;
 import retrofit2.Response;
 
@@ -161,6 +172,10 @@ public class LoanStepDef extends AbstractStepDef {
     private static final Gson GSON = new JSON().getGson();
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(DATE_FORMAT);
     private static final DateTimeFormatter FORMATTER_EVENTS = DateTimeFormatter.ofPattern(DATE_FORMAT_EVENTS);
+    private static final String TRANSACTION_DATE_FORMAT = "dd MMMM yyyy";
+
+    @Autowired
+    private BusinessDateHelper businessDateHelper;
 
     @Autowired
     private LoansApi loansApi;
@@ -209,6 +224,12 @@ public class LoanStepDef extends AbstractStepDef {
 
     @Autowired
     private LoanDisbursementDetailsApi loanDisbursementDetailsApi;
+
+    @Autowired
+    private JobPollingProperties jobPollingProperties;
+
+    @Autowired
+    private BusinessDateManagementApi businessDateApi;
 
     @When("Admin creates a new Loan")
     public void createLoan() throws IOException {
@@ -1655,6 +1676,39 @@ public class LoanStepDef extends AbstractStepDef {
                 .isEqualTo(ErrorMessageHelper.disbursePastDateFailure((int) loanId, futureApproveDateISO));
     }
 
+    @Then("Admin fails to disburse the loan on {string} with {string} EUR transaction amount due to exceed approved amount")
+    public void disbursementForbiddenExceedApprovedAmount(String actualDisbursementDate, String transactionAmount) throws IOException {
+        Response<PostLoansResponse> loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
+        long loanId = loanResponse.body().getLoanId();
+        PostLoansLoanIdRequest disburseRequest = LoanRequestFactory.defaultLoanDisburseRequest()
+                .actualDisbursementDate(actualDisbursementDate).transactionAmount(new BigDecimal(transactionAmount));
+
+        Response<PostLoansLoanIdResponse> loanDisburseResponse = loansApi.stateTransitions(loanId, disburseRequest, "disburse").execute();
+        testContext().set(TestContextKey.LOAN_DISBURSE_RESPONSE, loanDisburseResponse);
+        ErrorResponse errorDetails = ErrorResponse.from(loanDisburseResponse);
+        assertThat(errorDetails.getHttpStatusCode()).as(ErrorMessageHelper.addDisbursementExceedApprovedAmountFailure()).isEqualTo(403);
+        assertThat(errorDetails.getSingleError().getDeveloperMessage())
+                .isEqualTo(ErrorMessageHelper.addDisbursementExceedApprovedAmountFailure());
+    }
+
+    @Then("Admin fails to disburse the loan on {string} with {string} EUR trn amount with total disb amount {string} and max disb amount {string} due to exceed max applied amount")
+    public void disbursementForbiddenExceedMaxAppliedAmount(String actualDisbursementDate, String transactionAmount,
+            String totalDisbursalAmount, String maxDisbursalAmount) throws IOException {
+        Response<PostLoansResponse> loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
+        long loanId = loanResponse.body().getLoanId();
+        PostLoansLoanIdRequest disburseRequest = LoanRequestFactory.defaultLoanDisburseRequest()
+                .actualDisbursementDate(actualDisbursementDate).transactionAmount(new BigDecimal(transactionAmount));
+
+        Response<PostLoansLoanIdResponse> loanDisburseResponse = loansApi.stateTransitions(loanId, disburseRequest, "disburse").execute();
+        testContext().set(TestContextKey.LOAN_DISBURSE_RESPONSE, loanDisburseResponse);
+        ErrorResponse errorDetails = ErrorResponse.from(loanDisburseResponse);
+        assertThat(errorDetails.getHttpStatusCode())
+                .as(ErrorMessageHelper.addDisbursementExceedMaxAppliedAmountFailure(totalDisbursalAmount, maxDisbursalAmount))
+                .isEqualTo(403);
+        assertThat(errorDetails.getSingleError().getDeveloperMessage())
+                .isEqualTo(ErrorMessageHelper.addDisbursementExceedMaxAppliedAmountFailure(totalDisbursalAmount, maxDisbursalAmount));
+    }
+
     @And("Admin does charge-off the loan on {string}")
     public void chargeOffLoan(String transactionDate) throws IOException {
         Response<PostLoansResponse> loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
@@ -1719,7 +1773,7 @@ public class LoanStepDef extends AbstractStepDef {
         final List<GetLoansLoanIdTransactions> transactions = loanDetailsResponse.body().getTransactions();
         final Optional<GetLoansLoanIdTransactions> transactionsMatch = transactions.stream()
                 .filter(t -> formatter.format(t.getDate()).equals(transactionDate) && t.getType().getCapitalizedIncomeAmortization())
-                .findFirst();
+                .reduce((one, two) -> two);
         if (transactionsMatch.isPresent()) {
             testContext().set(TestContextKey.LOAN_CAPITALIZED_INCOME_AMORTIZATION_ID, transactionsMatch.get().getId());
         }
@@ -1841,6 +1895,41 @@ public class LoanStepDef extends AbstractStepDef {
                 .isEqualTo(totalOutstandingExpected);
     }
 
+    @Then("Loan has {double} interest outstanding amount")
+    public void loanInterestOutstanding(double totalInterestOutstandingExpected) throws IOException {
+        final Response<PostLoansResponse> loanCreateResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
+        assert loanCreateResponse.body() != null;
+        final long loanId = loanCreateResponse.body().getLoanId();
+
+        final Response<GetLoansLoanIdResponse> loanDetailsResponse = loansApi.retrieveLoan(loanId, false, "", "", "").execute();
+        ErrorHelper.checkSuccessfulApiCall(loanDetailsResponse);
+        testContext().set(TestContextKey.LOAN_RESPONSE, loanDetailsResponse);
+
+        assert loanDetailsResponse.body() != null;
+        assert loanDetailsResponse.body().getSummary() != null;
+        assert loanDetailsResponse.body().getSummary().getInterestOutstanding() != null;
+        final double totalInterestOutstandingActual = loanDetailsResponse.body().getSummary().getInterestOutstanding().doubleValue();
+        assertThat(totalInterestOutstandingActual)
+                .as(ErrorMessageHelper.wrongAmountInTotalOutstanding(totalInterestOutstandingActual, totalInterestOutstandingExpected))
+                .isEqualTo(totalInterestOutstandingExpected);
+    }
+
+    @Then("Loan has {double} total unpaid payable due interest")
+    public void loanTotalUnpaidPayableDueInterest(double totalUnpaidPayableDueInterestExpected) throws IOException {
+        Response<PostLoansResponse> loanCreateResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
+        long loanId = loanCreateResponse.body().getLoanId();
+
+        Response<GetLoansLoanIdResponse> loanDetailsResponse = loansApi.retrieveLoan(loanId, false, "repaymentSchedule", "", "").execute();
+        ErrorHelper.checkSuccessfulApiCall(loanDetailsResponse);
+        testContext().set(TestContextKey.LOAN_RESPONSE, loanDetailsResponse);
+
+        Double totalUnpaidPayableDueInterestActual = loanDetailsResponse.body().getSummary().getTotalUnpaidPayableDueInterest()
+                .doubleValue();
+        assertThat(totalUnpaidPayableDueInterestActual).as(ErrorMessageHelper
+                .wrongAmountInTotalUnpaidPayableDueInterest(totalUnpaidPayableDueInterestActual, totalUnpaidPayableDueInterestExpected))
+                .isEqualTo(totalUnpaidPayableDueInterestExpected);
+    }
+
     @Then("Loan has {double} overpaid amount")
     public void loanOverpaid(double totalOverpaidExpected) throws IOException {
         Response<PostLoansResponse> loanCreateResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
@@ -1873,6 +1962,24 @@ public class LoanStepDef extends AbstractStepDef {
         Double totalOverdueActual = loanDetailsResponse.body().getSummary().getTotalOverdue().doubleValue();
         assertThat(totalOverdueActual).as(ErrorMessageHelper.wrongAmountInTotalOverdue(totalOverdueActual, totalOverdueExpected))
                 .isEqualTo(totalOverdueExpected);
+    }
+
+    @Then("Loan has {double} total interest overdue amount")
+    public void loanInterestOverdue(final double totalInterestOverdueExpected) throws IOException {
+        final Response<PostLoansResponse> loanCreateResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
+        assert loanCreateResponse.body() != null;
+        final long loanId = loanCreateResponse.body().getLoanId();
+
+        final Response<GetLoansLoanIdResponse> loanDetailsResponse = loansApi.retrieveLoan(loanId, false, "", "", "").execute();
+        ErrorHelper.checkSuccessfulApiCall(loanDetailsResponse);
+        testContext().set(TestContextKey.LOAN_RESPONSE, loanDetailsResponse);
+
+        assert Objects.requireNonNull(loanDetailsResponse.body()).getSummary() != null;
+        assert loanDetailsResponse.body().getSummary().getInterestOverdue() != null;
+        final double totalInterestOverdueActual = loanDetailsResponse.body().getSummary().getInterestOverdue().doubleValue();
+        assertThat(totalInterestOverdueActual)
+                .as(ErrorMessageHelper.wrongAmountInTotalOverdue(totalInterestOverdueActual, totalInterestOverdueExpected))
+                .isEqualTo(totalInterestOverdueExpected);
     }
 
     @Then("Loan has {double} last payment amount")
@@ -2409,8 +2516,10 @@ public class LoanStepDef extends AbstractStepDef {
         long loanId = loanResponse.body().getLoanId();
 
         LoanStatusEnumDataV1 expectedStatus = getExpectedStatus(loanStatus);
-        await().pollDelay(Duration.ofSeconds(1L)).pollInterval(Duration.ofSeconds(1L))
-                .atMost(Duration.ofSeconds(eventProperties.getEventWaitTimeoutInSec())).untilAsserted(() -> {
+        await().atMost(Duration.ofMillis(eventProperties.getWaitTimeoutInMillis()))//
+                .pollDelay(Duration.ofMillis(eventProperties.getDelayInMillis())) //
+                .pollInterval(Duration.ofMillis(eventProperties.getIntervalInMillis()))//
+                .untilAsserted(() -> {
                     eventAssertion.assertEvent(LoanStatusChangedEvent.class, loanId).extractingData(LoanAccountDataV1::getStatus)
                             .isEqualTo(expectedStatus);
                 });
@@ -2435,7 +2544,7 @@ public class LoanStepDef extends AbstractStepDef {
     public void getLoanLastCOBDate(String date) throws IOException {
         Response<PostLoansResponse> loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         long loanId = loanResponse.body().getLoanId();
-
+        log.debug("Loan ID: {}", loanId);
         Response<GetLoansLoanIdResponse> loanDetails = loansApi.retrieveLoan(loanId, false, "", "", "").execute();
         ErrorHelper.checkSuccessfulApiCall(loanDetails);
         if ("null".equals(date)) {
@@ -2453,24 +2562,37 @@ public class LoanStepDef extends AbstractStepDef {
 
     @When("Admin checks that Loan COB is running until the current business date")
     public void checkLoanCOBCatchUpRunningUntilCOBBusinessDate() {
-        await().atMost(Duration.ofMinutes(2)) //
-                .pollInterval(Duration.ofSeconds(5)) //
-                .pollDelay(Duration.ofSeconds(5)) //
+        await().atMost(Duration.ofMillis(jobPollingProperties.getTimeoutInMillis())) //
+                .pollInterval(Duration.ofMillis(jobPollingProperties.getIntervalInMillis())) //
                 .until(() -> {
                     Response<IsCatchUpRunningDTO> isCatchUpRunningResponse = loanCobCatchUpApi.isCatchUpRunning().execute();
                     ErrorHelper.checkSuccessfulApiCall(isCatchUpRunningResponse);
                     IsCatchUpRunningDTO isCatchUpRunning = isCatchUpRunningResponse.body();
                     return isCatchUpRunning.getCatchUpRunning();
                 });
-        await().atMost(Duration.ofMinutes(4)) //
-                .pollInterval(Duration.ofSeconds(5)) //
-                .pollDelay(Duration.ofSeconds(5)) //
-                .until(() -> {
-                    Response<IsCatchUpRunningDTO> isCatchUpRunningResponse = loanCobCatchUpApi.isCatchUpRunning().execute();
-                    ErrorHelper.checkSuccessfulApiCall(isCatchUpRunningResponse);
-                    IsCatchUpRunningDTO isCatchUpRunning = isCatchUpRunningResponse.body();
-                    return !isCatchUpRunning.getCatchUpRunning();
-                });
+        // Then wait for catch-up to complete
+        await().atMost(Duration.ofMinutes(4)).pollInterval(Duration.ofSeconds(5)).pollDelay(Duration.ofSeconds(5)).until(() -> {
+            // Check if catch-up is still running
+            Response<IsCatchUpRunningDTO> statusResponse = loanCobCatchUpApi.isCatchUpRunning().execute();
+            ErrorHelper.checkSuccessfulApiCall(statusResponse);
+
+            // Only proceed with date check if catch-up is not running
+            if (!statusResponse.body().getCatchUpRunning()) {
+                // Get the current business date
+                Response<BusinessDateResponse> businessDateResponse = businessDateApi.getBusinessDate(BusinessDateHelper.COB).execute();
+                ErrorHelper.checkSuccessfulApiCall(businessDateResponse);
+                LocalDate currentBusinessDate = businessDateResponse.body().getDate();
+
+                // Get the last closed business date
+                Response<OldestCOBProcessedLoanDTO> catchUpResponse = loanCobCatchUpApi.getOldestCOBProcessedLoan().execute();
+                ErrorHelper.checkSuccessfulApiCall(catchUpResponse);
+                LocalDate lastClosedDate = catchUpResponse.body().getCobBusinessDate();
+
+                // Verify that the last closed date is not before the current business date
+                return !lastClosedDate.isBefore(currentBusinessDate);
+            }
+            return false;
+        });
     }
 
     @Then("Loan's actualMaturityDate is {string}")
@@ -2641,8 +2763,8 @@ public class LoanStepDef extends AbstractStepDef {
 
         Response<GetLoansLoanIdTransactionsTransactionIdResponse> originalTransaction = loanTransactionsApi
                 .retrieveTransaction(loanId, originalTransactionId, "").execute();
-        assertNull(String.format("Original transaction external id is not null %n%s", originalTransaction.body()),
-                originalTransaction.body().getExternalId());
+        assertNull(originalTransaction.body().getExternalId(),
+                String.format("Original transaction external id is not null %n%s", originalTransaction.body()));
     }
 
     @Then("LoanTransactionAccrualActivityPostBusinessEvent is raised on {string}")
@@ -4060,6 +4182,13 @@ public class LoanStepDef extends AbstractStepDef {
 
     @Then("Loan Product response contains interestRecognitionOnDisbursementDate flag with value {string}")
     public void verifyInterestRecognitionOnDisbursementDateFlag(final String expectedValue) throws IOException {
+        GetLoanProductsResponse targetProduct = getLoanProductResponse();
+
+        assertNotNull(targetProduct.getInterestRecognitionOnDisbursementDate());
+        assertThat(targetProduct.getInterestRecognitionOnDisbursementDate().toString()).isEqualTo(expectedValue);
+    }
+
+    public GetLoanProductsResponse getLoanProductResponse() throws IOException {
         final Response<PostLoansResponse> loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         assertNotNull(loanResponse.body());
         final Long loanId = loanResponse.body().getLoanId();
@@ -4082,8 +4211,153 @@ public class LoanStepDef extends AbstractStepDef {
             return product.getId().equals(targetLoanProductId);
         }).findFirst().orElseThrow(() -> new AssertionError("Loan product with ID " + targetLoanProductId + " not found in response"));
 
-        assertNotNull(targetProduct.getInterestRecognitionOnDisbursementDate());
-        assertThat(targetProduct.getInterestRecognitionOnDisbursementDate().toString()).isEqualTo(expectedValue);
+        return targetProduct;
+    }
+
+    @Then("Loan Product response contains Buy Down Fees flag {string} with data:")
+    public void verifyLoanProductWithBuyDownFeesData(String expectedValue, DataTable table) throws IOException {
+        GetLoanProductsResponse targetProduct = getLoanProductResponse();
+
+        assertNotNull(targetProduct.getEnableBuyDownFee());
+        assertThat(targetProduct.getEnableBuyDownFee().toString()).isEqualTo(expectedValue);
+
+        List<String> data = table.asLists().get(1); // skip header
+        String buyDownFeeCalculationType = data.get(0);
+        String buyDownFeeStrategy = data.get(1);
+        String buyDownFeeIncomeType = data.get(2);
+
+        assertNotNull(targetProduct.getBuyDownFeeCalculationType());
+        assertNotNull(targetProduct.getBuyDownFeeStrategy());
+        assertNotNull(targetProduct.getBuyDownFeeIncomeType());
+
+        SoftAssertions assertions = new SoftAssertions();
+        assertions.assertThat(buyDownFeeCalculationType).isEqualTo(targetProduct.getBuyDownFeeCalculationType().getValue());
+        assertions.assertThat(buyDownFeeStrategy).isEqualTo(targetProduct.getBuyDownFeeStrategy().getValue());
+        assertions.assertThat(buyDownFeeIncomeType).isEqualTo(targetProduct.getBuyDownFeeIncomeType().getValue());
+        assertions.assertAll();
+    }
+
+    @Then("Loan Product response contains Buy Down Fees flag {string}")
+    public void verifyLoanProductWithBuyDownFeesFlag(String expectedValue) throws IOException {
+        GetLoanProductsResponse targetProduct = getLoanProductResponse();
+
+        assertNotNull(targetProduct.getEnableBuyDownFee());
+        assertThat(targetProduct.getEnableBuyDownFee().toString()).isEqualTo(expectedValue);
+    }
+
+    public Response<GetLoansLoanIdResponse> getLoanDetailsResponse() throws IOException {
+        Response<PostLoansResponse> loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
+
+        long loanId = loanResponse.body().getLoanId();
+
+        Optional<Response<GetLoansLoanIdResponse>> loanDetailsResponseOptional = Optional
+                .of(loansApi.retrieveLoan(loanId, false, "", "", "").execute());
+        Response<GetLoansLoanIdResponse> loanDetailsResponse = loanDetailsResponseOptional
+                .orElseThrow(() -> new RuntimeException("Failed to retrieve loan details - response is null"));
+
+        ErrorHelper.checkSuccessfulApiCall(loanDetailsResponse);
+        testContext().set(TestContextKey.LOAN_RESPONSE, loanDetailsResponse);
+        return loanDetailsResponse;
+    }
+
+    @Then("Loan Details response contains Buy Down Fees flag {string} and data:")
+    public void verifyBuyDownFeeDataInLoanResponse(final String expectedValue, DataTable table) throws IOException {
+        Response<GetLoansLoanIdResponse> loanDetailsResponse = getLoanDetailsResponse();
+
+        ErrorHelper.checkSuccessfulApiCall(loanDetailsResponse);
+        testContext().set(TestContextKey.LOAN_RESPONSE, loanDetailsResponse);
+
+        GetLoansLoanIdResponse loanDetails = loanDetailsResponse.body();
+
+        assertNotNull(loanDetails.getEnableBuyDownFee());
+        assertThat(loanDetails.getEnableBuyDownFee().toString()).isEqualTo(expectedValue);
+
+        List<String> data = table.asLists().get(1); // skip header
+        String buyDownFeeCalculationType = data.get(0);
+        String buyDownFeeStrategy = data.get(1);
+        String buyDownFeeIncomeType = data.get(2);
+
+        assertNotNull(loanDetails.getBuyDownFeeCalculationType());
+        assertNotNull(loanDetails.getBuyDownFeeStrategy());
+        assertNotNull(loanDetails.getBuyDownFeeIncomeType());
+
+        SoftAssertions assertions = new SoftAssertions();
+        assertions.assertThat(buyDownFeeCalculationType).isEqualTo(loanDetails.getBuyDownFeeCalculationType().getValue());
+        assertions.assertThat(buyDownFeeStrategy).isEqualTo(loanDetails.getBuyDownFeeStrategy().getValue());
+        assertions.assertThat(buyDownFeeIncomeType).isEqualTo(loanDetails.getBuyDownFeeIncomeType().getValue());
+        assertions.assertAll();
+    }
+
+    @Then("Loan Details response contains Buy Down Fees flag {string}")
+    public void verifyBuyDownFeeFlagInLoanResponse(final String expectedValue) throws IOException {
+        Response<GetLoansLoanIdResponse> loanDetailsResponse = getLoanDetailsResponse();
+
+        ErrorHelper.checkSuccessfulApiCall(loanDetailsResponse);
+        testContext().set(TestContextKey.LOAN_RESPONSE, loanDetailsResponse);
+
+        GetLoansLoanIdResponse loanDetails = loanDetailsResponse.body();
+
+        assertNotNull(loanDetails.getEnableBuyDownFee());
+        assertThat(loanDetails.getEnableBuyDownFee().toString()).isEqualTo(expectedValue);
+    }
+
+    @Then("Loan Details response contains chargedOffOnDate set to {string}")
+    public void verifyChargedOffOnDateFlagInLoanResponse(final String expectedValue) throws IOException {
+        Response<PostLoansLoanIdTransactionsResponse> loanResponse = testContext().get(TestContextKey.LOAN_CHARGE_OFF_RESPONSE);
+
+        long loanId = loanResponse.body().getLoanId();
+
+        Optional<Response<GetLoansLoanIdResponse>> loanDetailsResponseOptional = Optional
+                .of(loansApi.retrieveLoan(loanId, false, "", "", "").execute());
+        Response<GetLoansLoanIdResponse> loanDetailsResponse = loanDetailsResponseOptional
+                .orElseThrow(() -> new RuntimeException("Failed to retrieve loan details - response is null"));
+
+        ErrorHelper.checkSuccessfulApiCall(loanDetailsResponse);
+        testContext().set(TestContextKey.LOAN_RESPONSE, loanDetailsResponse);
+
+        assertThat(loanDetailsResponse.body().getTimeline().getChargedOffOnDate()).isEqualTo(LocalDate.parse(expectedValue, FORMATTER));
+    }
+
+    @Then("Loan Details response does not contain chargedOff flag and chargedOffOnDate field after repayment and reverted charge off")
+    public void verifyChargedOffOnDateFlagIsNotPresentLoanResponse() throws IOException {
+        Response<PostLoansLoanIdTransactionsResponse> loanResponse = testContext().get(TestContextKey.LOAN_REPAYMENT_RESPONSE);
+
+        long loanId = loanResponse.body().getLoanId();
+
+        Optional<Response<GetLoansLoanIdResponse>> loanDetailsResponseOptional = Optional
+                .of(loansApi.retrieveLoan(loanId, false, "", "", "").execute());
+        Response<GetLoansLoanIdResponse> loanDetailsResponse = loanDetailsResponseOptional
+                .orElseThrow(() -> new RuntimeException("Failed to retrieve loan details - response is null"));
+
+        ErrorHelper.checkSuccessfulApiCall(loanDetailsResponse);
+        testContext().set(TestContextKey.LOAN_RESPONSE, loanDetailsResponse);
+
+        assertThat(loanDetailsResponse.body().getTimeline().getChargedOffOnDate()).isNull();
+        assertThat(loanDetailsResponse.body().getChargedOff()).isFalse();
+    }
+
+    @Then("Loan Details response contains chargedOff flag set to {booleanValue}")
+    public void verifyChargeOffFlagInLoanResponse(final Boolean expectedValue) throws IOException {
+        Response<PostLoansLoanIdTransactionsResponse> loanResponse = expectedValue
+                ? testContext().get(TestContextKey.LOAN_CHARGE_OFF_RESPONSE)
+                : testContext().get(TestContextKey.LOAN_CHARGE_OFF_UNDO_RESPONSE);
+
+        long loanId = loanResponse.body().getLoanId();
+
+        Optional<Response<GetLoansLoanIdResponse>> loanDetailsResponseOptional = Optional
+                .of(loansApi.retrieveLoan(loanId, false, "", "", "").execute());
+        Response<GetLoansLoanIdResponse> loanDetailsResponse = loanDetailsResponseOptional
+                .orElseThrow(() -> new RuntimeException("Failed to retrieve loan details - response is null"));
+
+        ErrorHelper.checkSuccessfulApiCall(loanDetailsResponse);
+        testContext().set(TestContextKey.LOAN_RESPONSE, loanDetailsResponse);
+
+        assertThat(loanDetailsResponse.body().getChargedOff()).isEqualTo(expectedValue);
+    }
+
+    @ParameterType(value = "true|True|TRUE|false|False|FALSE")
+    public Boolean booleanValue(String value) {
+        return Boolean.valueOf(value);
     }
 
     public Response<PostLoansLoanIdTransactionsResponse> addCapitalizedIncomeToTheLoanOnWithEURTransactionAmount(
@@ -4112,6 +4386,26 @@ public class LoanStepDef extends AbstractStepDef {
         ErrorHelper.checkSuccessfulApiCall(capitalizedIncomeResponse);
     }
 
+    public Response<PostLoansLoanIdTransactionsResponse> adjustCapitalizedIncome(final String transactionPaymentType,
+            final String transactionDate, final String amount, final Long transactionId) throws IOException {
+
+        final Response<PostLoansResponse> loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
+        final long loanId = loanResponse.body().getLoanId();
+
+        final DefaultPaymentType paymentType = DefaultPaymentType.valueOf(transactionPaymentType);
+        final Long paymentTypeValue = paymentTypeResolver.resolve(paymentType);
+
+        final PostLoansLoanIdTransactionsTransactionIdRequest capitalizedIncomeRequest = new PostLoansLoanIdTransactionsTransactionIdRequest()
+                .transactionDate(transactionDate).dateFormat("dd MMMM yyyy").locale("en").transactionAmount(Double.valueOf(amount))
+                .paymentTypeId(paymentTypeValue).externalId("EXT-CAP-INC-ADJ-" + UUID.randomUUID());
+
+        // Use adjustLoanTransaction with the transaction ID and command
+        final Response<PostLoansLoanIdTransactionsResponse> capitalizedIncomeResponse = loanTransactionsApi
+                .adjustLoanTransaction(loanId, transactionId, capitalizedIncomeRequest, "capitalizedIncomeAdjustment").execute();
+
+        return capitalizedIncomeResponse;
+    }
+
     @Then("Capitalized income with payment type {string} on {string} is forbidden with amount {string} while exceed approved amount")
     public void capitalizedIncomeForbiddenExceedApprovedAmount(final String transactionPaymentType, final String transactionDate,
             final String amount) throws IOException {
@@ -4123,6 +4417,18 @@ public class LoanStepDef extends AbstractStepDef {
                 .isEqualTo(400);
         assertThat(errorDetails.getSingleError().getDeveloperMessage())
                 .isEqualTo(ErrorMessageHelper.addCapitalizedIncomeExceedApprovedAmountFailure());
+    }
+
+    @Then("Capitalized income with payment type {string} on {string} is forbidden with amount {string} due to future date")
+    public void capitalizedIncomeForbiddenFutureDate(final String transactionPaymentType, final String transactionDate, final String amount)
+            throws IOException {
+        final Response<PostLoansLoanIdTransactionsResponse> capitalizedIncomeResponse = addCapitalizedIncomeToTheLoanOnWithEURTransactionAmount(
+                transactionPaymentType, transactionDate, amount);
+
+        ErrorResponse errorDetails = ErrorResponse.from(capitalizedIncomeResponse);
+        assertThat(errorDetails.getHttpStatusCode()).as(ErrorMessageHelper.addCapitalizedIncomeFutureDateFailure()).isEqualTo(400);
+        assertThat(errorDetails.getSingleError().getDeveloperMessage())
+                .isEqualTo(ErrorMessageHelper.addCapitalizedIncomeFutureDateFailure());
     }
 
     @Then("LoanCapitalizedIncomeAmortizationTransactionCreatedBusinessEvent is raised on {string}")
@@ -4142,5 +4448,226 @@ public class LoanStepDef extends AbstractStepDef {
 
         eventAssertion.assertEventRaised(LoanCapitalizedIncomeAmortizationTransactionCreatedBusinessEvent.class,
                 finalAmortizationTransactionId);
+    }
+
+    @Then("LoanCapitalizedIncomeAmortizationAdjustmentTransactionCreatedBusinessEvent is raised on {string}")
+    public void checkLoanCapitalizedIncomeAmortizationAdjustmentTransactionCreatedBusinessEvent(final String date) throws IOException {
+        Response<PostLoansResponse> loanCreateResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
+        long loanId = loanCreateResponse.body().getLoanId();
+
+        Response<GetLoansLoanIdResponse> loanDetailsResponse = loansApi.retrieveLoan(loanId, false, "transactions", "", "").execute();
+        ErrorHelper.checkSuccessfulApiCall(loanDetailsResponse);
+
+        List<GetLoansLoanIdTransactions> transactions = loanDetailsResponse.body().getTransactions();
+        GetLoansLoanIdTransactions finalAmortizationTransaction = transactions.stream()
+                .filter(t -> date.equals(FORMATTER.format(t.getDate()))
+                        && "Capitalized Income Amortization Adjustment".equals(t.getType().getValue()))
+                .findFirst().orElseThrow(() -> new IllegalStateException(
+                        String.format("No Capitalized Income Amortization Adjustment transaction found on %s", date)));
+        Long finalAmortizationTransactionId = finalAmortizationTransaction.getId();
+
+        eventAssertion.assertEventRaised(LoanCapitalizedIncomeAmortizationAdjustmentTransactionCreatedBusinessEvent.class,
+                finalAmortizationTransactionId);
+    }
+
+    @Then("LoanCapitalizedIncomeTransactionCreatedBusinessEvent is raised on {string}")
+    public void checkLoanCapitalizedIncomeTransactionCreatedBusinessEvent(final String date) throws IOException {
+        Response<PostLoansResponse> loanCreateResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
+        long loanId = loanCreateResponse.body().getLoanId();
+
+        Response<GetLoansLoanIdResponse> loanDetailsResponse = loansApi.retrieveLoan(loanId, false, "transactions", "", "").execute();
+        ErrorHelper.checkSuccessfulApiCall(loanDetailsResponse);
+
+        List<GetLoansLoanIdTransactions> transactions = loanDetailsResponse.body().getTransactions();
+        GetLoansLoanIdTransactions finalAmortizationTransaction = transactions.stream()
+                .filter(t -> date.equals(FORMATTER.format(t.getDate())) && "Capitalized Income".equals(t.getType().getValue())).findFirst()
+                .orElseThrow(() -> new IllegalStateException(String.format("No Capitalized Income transaction found on %s", date)));
+        Long finalAmortizationTransactionId = finalAmortizationTransaction.getId();
+
+        eventAssertion.assertEventRaised(LoanCapitalizedIncomeTransactionCreatedBusinessEvent.class, finalAmortizationTransactionId);
+    }
+
+    @Then("LoanCapitalizedIncomeAdjustmentTransactionCreatedBusinessEvent is raised on {string}")
+    public void checkLoanCapitalizedIncomeAdjustmentTransactionCreatedBusinessEvent(final String date) throws IOException {
+        Response<PostLoansResponse> loanCreateResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
+        long loanId = loanCreateResponse.body().getLoanId();
+
+        Response<GetLoansLoanIdResponse> loanDetailsResponse = loansApi.retrieveLoan(loanId, false, "transactions", "", "").execute();
+        ErrorHelper.checkSuccessfulApiCall(loanDetailsResponse);
+
+        List<GetLoansLoanIdTransactions> transactions = loanDetailsResponse.body().getTransactions();
+        GetLoansLoanIdTransactions finalAmortizationTransaction = transactions.stream()
+                .filter(t -> date.equals(FORMATTER.format(t.getDate())) && "Capitalized Income Adjustment".equals(t.getType().getValue()))
+                .findFirst().orElseThrow(
+                        () -> new IllegalStateException(String.format("No Capitalized Income Adjustment transaction found on %s", date)));
+        Long finalAmortizationTransactionId = finalAmortizationTransaction.getId();
+
+        eventAssertion.assertEventRaised(LoanCapitalizedIncomeAdjustmentTransactionCreatedBusinessEvent.class,
+                finalAmortizationTransactionId);
+    }
+
+    @And("Admin adds capitalized income adjustment with {string} payment type to the loan on {string} with {string} EUR transaction amount")
+    public void adminAddsCapitalizedIncomeAdjustmentToTheLoan(final String transactionPaymentType, final String transactionDate,
+            final String amount) throws IOException {
+        final Response<PostLoansResponse> loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
+        final long loanId = loanResponse.body().getLoanId();
+
+        // Get current business date to ensure we're not creating backdated transactions
+        String currentBusinessDate = businessDateHelper.getBusinessDate();
+        log.info("Current business date: {}, Transaction date: {}", currentBusinessDate, transactionDate);
+
+        final Response<GetLoansLoanIdResponse> loanDetailsResponse = loansApi.retrieveLoan(loanId, false, "transactions", "", "").execute();
+        ErrorHelper.checkSuccessfulApiCall(loanDetailsResponse);
+
+        final List<GetLoansLoanIdTransactions> transactions = loanDetailsResponse.body().getTransactions();
+        final GetLoansLoanIdTransactions capitalizedIncomeTransaction = transactions.stream()
+                .filter(t -> "Capitalized Income".equals(t.getType().getValue())).findFirst()
+                .orElseThrow(() -> new IllegalStateException("No Capitalized Income transaction found for loan " + loanId));
+
+        final Response<PostLoansLoanIdTransactionsResponse> adjustmentResponse = adjustCapitalizedIncome(transactionPaymentType,
+                transactionDate, amount, capitalizedIncomeTransaction.getId());
+
+        testContext().set(TestContextKey.LOAN_CAPITALIZED_INCOME_ADJUSTMENT_RESPONSE, adjustmentResponse);
+        ErrorHelper.checkSuccessfulApiCall(adjustmentResponse);
+
+        log.info("Capitalized Income Adjustment created: Transaction ID {}", adjustmentResponse.body().getResourceId());
+    }
+
+    @And("Admin adds capitalized income adjustment with {string} payment type to the loan on {string} with {string} EUR trn amount with {string} date for capitalized income")
+    public void adminAddsCapitalizedIncomeAdjustmentToTheLoanWithCapitalizedIncomeDate(final String transactionPaymentType,
+            final String transactionDate, final String amount, final String capitalizedIncomeTrnsDate) throws IOException {
+        final Response<PostLoansResponse> loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
+        final long loanId = loanResponse.body().getLoanId();
+
+        final Response<GetLoansLoanIdResponse> loanDetailsResponse = loansApi.retrieveLoan(loanId, false, "transactions", "", "").execute();
+        ErrorHelper.checkSuccessfulApiCall(loanDetailsResponse);
+
+        final List<GetLoansLoanIdTransactions> transactions = loanDetailsResponse.body().getTransactions();
+        final GetLoansLoanIdTransactions capitalizedIncomeTransaction = transactions.stream()
+                .filter(t -> "Capitalized Income".equals(t.getType().getValue()))
+                .filter(t -> FORMATTER.format(t.getDate()).equals(capitalizedIncomeTrnsDate)).findFirst()
+                .orElseThrow(() -> new IllegalStateException("No Capitalized Income transaction found for loan " + loanId));
+
+        final Response<PostLoansLoanIdTransactionsResponse> adjustmentResponse = adjustCapitalizedIncome(transactionPaymentType,
+                transactionDate, amount, capitalizedIncomeTransaction.getId());
+
+        testContext().set(TestContextKey.LOAN_CAPITALIZED_INCOME_ADJUSTMENT_RESPONSE, adjustmentResponse);
+        ErrorHelper.checkSuccessfulApiCall(adjustmentResponse);
+
+        log.info("Capitalized Income Adjustment created: Transaction ID {}", adjustmentResponse.body().getResourceId());
+    }
+
+    @And("Admin adds invalid capitalized income adjustment with {string} payment type to the loan on {string} with {string} EUR transaction amount")
+    public void adminAddsArbitraryCapitalizedIncomeAdjustmentToTheLoan(final String transactionPaymentType, final String transactionDate,
+            final String amount) throws IOException {
+        final Response<PostLoansResponse> loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
+        final long loanId = loanResponse.body().getLoanId();
+
+        // Get current business date to ensure we're not creating backdated transactions
+        String currentBusinessDate = businessDateHelper.getBusinessDate();
+        log.info("Current business date: {}, Transaction date: {}", currentBusinessDate, transactionDate);
+
+        final Response<GetLoansLoanIdResponse> loanDetailsResponse = loansApi.retrieveLoan(loanId, false, "transactions", "", "").execute();
+        ErrorHelper.checkSuccessfulApiCall(loanDetailsResponse);
+
+        final List<GetLoansLoanIdTransactions> transactions = loanDetailsResponse.body().getTransactions();
+        final GetLoansLoanIdTransactions capitalizedIncomeTransaction = transactions.stream()
+                .filter(t -> "Capitalized Income".equals(t.getType().getValue())).findFirst()
+                .orElseThrow(() -> new IllegalStateException("No Capitalized Income transaction found for loan " + loanId));
+
+        final Response<PostLoansLoanIdTransactionsResponse> adjustmentResponse = adjustCapitalizedIncome(transactionPaymentType,
+                transactionDate, amount, capitalizedIncomeTransaction.getId());
+
+        testContext().set(TestContextKey.LOAN_CAPITALIZED_INCOME_ADJUSTMENT_RESPONSE, adjustmentResponse);
+        ErrorHelper.checkFailedApiCall(adjustmentResponse, 400);
+    }
+
+    @And("Admin successfully terminates loan contract")
+    public void makeLoanContractTermination() throws IOException {
+        final Response<PostLoansResponse> loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
+        assert loanResponse.body() != null;
+        final long loanId = loanResponse.body().getLoanId();
+
+        final PostLoansLoanIdRequest contractTerminationRequest = LoanRequestFactory.defaultLoanContractTerminationRequest();
+
+        final Response<PostLoansLoanIdResponse> loanContractTerminationResponse = loansApi
+                .stateTransitions(loanId, contractTerminationRequest, "contractTermination").execute();
+        testContext().set(TestContextKey.LOAN_CONTRACT_TERMINATION_RESPONSE, loanContractTerminationResponse);
+        ErrorHelper.checkSuccessfulApiCall(loanContractTerminationResponse);
+
+        assert loanContractTerminationResponse.body() != null;
+        final Long transactionId = loanContractTerminationResponse.body().getResourceId();
+        eventAssertion.assertEvent(LoanTransactionContractTerminationPostBusinessEvent.class, transactionId)
+                .extractingData(LoanTransactionDataV1::getLoanId).isEqualTo(loanId).extractingData(LoanTransactionDataV1::getId)
+                .isEqualTo(transactionId);
+    }
+
+    @And("Admin successfully undoes loan contract termination")
+    public void undoLoanContractTermination() throws IOException {
+        final Response<PostLoansResponse> loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
+        assert loanResponse.body() != null;
+        final Response<PostLoansLoanIdResponse> loanContractTerminationResponse = testContext()
+                .get(TestContextKey.LOAN_CONTRACT_TERMINATION_RESPONSE);
+        assert loanContractTerminationResponse.body() != null;
+        final Long loanId = loanResponse.body().getLoanId();
+
+        final List<GetLoansLoanIdTransactions> transactions = Objects
+                .requireNonNull(loansApi.retrieveLoan(loanId, false, "transactions", "", "").execute().body()).getTransactions();
+
+        assert transactions != null;
+        final GetLoansLoanIdTransactions targetTransaction = transactions.stream().filter(t -> {
+            assert t.getType() != null;
+            return Boolean.TRUE.equals(t.getType().getContractTermination());
+        }).findFirst().orElse(null);
+
+        final PostLoansLoanIdRequest request = LoanRequestFactory.defaultContractTerminationUndoRequest();
+
+        final Response<PostLoansLoanIdResponse> response = loansApi.stateTransitions(loanId, request, "undoContractTermination").execute();
+        testContext().set(TestContextKey.LOAN_UNDO_CONTRACT_TERMINATION_RESPONSE, response);
+        ErrorHelper.checkSuccessfulApiCall(response);
+        assert targetTransaction != null;
+        eventCheckHelper.checkTransactionWithLoanTransactionAdjustmentBizEvent(targetTransaction);
+        eventCheckHelper.loanUndoContractTerminationEventCheck(targetTransaction);
+        eventCheckHelper.loanBalanceChangedEventCheck(loanId);
+    }
+
+    @Then("LoanTransactionContractTerminationPostBusinessEvent is raised on {string}")
+    public void checkLoanTransactionContractTerminationPostBusinessEvent(final String date) throws IOException {
+        final Response<PostLoansResponse> loanCreateResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
+        final long loanId = loanCreateResponse.body().getLoanId();
+
+        final Response<GetLoansLoanIdResponse> loanDetailsResponse = loansApi.retrieveLoan(loanId, false, "transactions", "", "").execute();
+        ErrorHelper.checkSuccessfulApiCall(loanDetailsResponse);
+
+        final List<GetLoansLoanIdTransactions> transactions = loanDetailsResponse.body().getTransactions();
+        final GetLoansLoanIdTransactions loanContractTerminationTransaction = transactions.stream()
+                .filter(t -> date.equals(FORMATTER.format(t.getDate())) && "Contract Termination".equals(t.getType().getValue()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(String.format("No Contract Termination transaction found on %s", date)));
+        final Long loanContractTerminationTransactionId = loanContractTerminationTransaction.getId();
+
+        eventAssertion.assertEventRaised(LoanTransactionContractTerminationPostBusinessEvent.class, loanContractTerminationTransactionId);
+    }
+
+    @Then("Capitalized income adjustment with payment type {string} on {string} is forbidden with amount {string} due to future date")
+    public void capitalizedIncomeAdjustmentForbiddenFutureDate(final String transactionPaymentType, final String transactionDate,
+            final String amount) throws IOException {
+        final Response<PostLoansResponse> loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
+        final long loanId = loanResponse.body().getLoanId();
+        final Response<GetLoansLoanIdResponse> loanDetailsResponse = loansApi.retrieveLoan(loanId, false, "transactions", "", "").execute();
+        ErrorHelper.checkSuccessfulApiCall(loanDetailsResponse);
+
+        final List<GetLoansLoanIdTransactions> transactions = loanDetailsResponse.body().getTransactions();
+        final GetLoansLoanIdTransactions capitalizedIncomeTransaction = transactions.stream()
+                .filter(t -> "Capitalized Income".equals(t.getType().getValue())).findFirst()
+                .orElseThrow(() -> new IllegalStateException("No Capitalized Income transaction found for loan " + loanId));
+
+        final Response<PostLoansLoanIdTransactionsResponse> capitalizedIncomeAdjustmentResponse = adjustCapitalizedIncome(
+                transactionPaymentType, transactionDate, amount, capitalizedIncomeTransaction.getId());
+
+        ErrorResponse errorDetails = ErrorResponse.from(capitalizedIncomeAdjustmentResponse);
+        assertThat(errorDetails.getHttpStatusCode()).as(ErrorMessageHelper.addCapitalizedIncomeFutureDateFailure()).isEqualTo(400);
+        assertThat(errorDetails.getSingleError().getDeveloperMessage())
+                .isEqualTo(ErrorMessageHelper.addCapitalizedIncomeFutureDateFailure());
     }
 }
