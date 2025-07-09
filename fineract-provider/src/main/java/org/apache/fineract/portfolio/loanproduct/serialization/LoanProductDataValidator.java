@@ -200,7 +200,8 @@ public final class LoanProductDataValidator {
             LoanProductConstants.CAPITALIZED_INCOME_CALCULATION_TYPE_PARAM_NAME,
             LoanProductConstants.CAPITALIZED_INCOME_STRATEGY_PARAM_NAME, LoanProductConstants.CAPITALIZED_INCOME_TYPE_PARAM_NAME,
             LoanProductConstants.ENABLE_BUY_DOWN_FEE_PARAM_NAME, LoanProductConstants.BUY_DOWN_FEE_CALCULATION_TYPE_PARAM_NAME,
-            LoanProductConstants.BUY_DOWN_FEE_STRATEGY_PARAM_NAME, LoanProductConstants.BUY_DOWN_FEE_INCOME_TYPE_PARAM_NAME));
+            LoanProductConstants.BUY_DOWN_FEE_STRATEGY_PARAM_NAME, LoanProductConstants.BUY_DOWN_FEE_INCOME_TYPE_PARAM_NAME,
+            LoanProductAccountingParams.BUY_DOWN_EXPENSE.getValue(), LoanProductAccountingParams.INCOME_FROM_BUY_DOWN.getValue()));
 
     private static final String[] SUPPORTED_LOAN_CONFIGURABLE_ATTRIBUTES = { LoanProductConstants.amortizationTypeParamName,
             LoanProductConstants.interestTypeParamName, LoanProductConstants.transactionProcessingStrategyCodeParamName,
@@ -1245,6 +1246,22 @@ public final class LoanProductDataValidator {
         baseDataValidator.reset().parameter(LoanProductConstants.preClosureInterestCalculationStrategyParamName)
                 .value(preCloseInterestCalculationStrategy).ignoreIfNull().inMinMaxRange(
                         LoanPreCloseInterestCalculationStrategy.getMinValue(), LoanPreCloseInterestCalculationStrategy.getMaxValue());
+
+        String loanScheduleType = LoanScheduleType.CUMULATIVE.toString();
+        if (fromApiJsonHelper.parameterExists(LoanProductConstants.LOAN_SCHEDULE_TYPE, element)) {
+            loanScheduleType = fromApiJsonHelper.extractStringNamed(LoanProductConstants.LOAN_SCHEDULE_TYPE, element);
+        }
+        if (LoanScheduleType.PROGRESSIVE.equals(LoanScheduleType.valueOf(loanScheduleType))
+                && preCloseInterestCalculationStrategy != null) {
+            LoanPreCloseInterestCalculationStrategy preCloseStrategy = LoanPreCloseInterestCalculationStrategy
+                    .fromInt(preCloseInterestCalculationStrategy);
+            if (preCloseStrategy.calculateTillRestFrequencyEnabled() && !frequencyType.isSameAsRepayment() && !frequencyType.isDaily()) {
+                baseDataValidator.reset().failWithCodeNoParameterAddedToErrorCode(
+                        "when.preclose.strategy.is.till.rest.frequency.then.frequency.type.is.daily.or.same.as.repayment",
+                        "When the pre-close interest calculation strategy is set to `Till Rest Frequency Date` "
+                                + "the frequency of outstanding principal calculation must be `Daily` or `Same as repayment period`.");
+            }
+        }
     }
 
     public void validateForUpdate(final JsonCommand command, final LoanProduct loanProduct) {
