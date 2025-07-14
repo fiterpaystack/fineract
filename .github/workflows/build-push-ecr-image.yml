@@ -34,19 +34,14 @@ jobs:
           role-session-name: distribution_deploy
           aws-region: ${{ env.AWS_REGION }}
 
-      - id: commit
-        uses: pr-mpt/actions-commit-hash@v1
-
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
       - name: Create ECR repository if it doesn't exist
-        id: create-ecr-repository
-        uses: aws-actions/amazon-ecr-repository@v1
+        uses: int128/create-ecr-repository-action@v1
         with:
-          repository-name: ${{ env.ECR_REPOSITORY }}
-          region: ${{ env.AWS_REGION }}
+          repository: ${{ env.ECR_REPOSITORY }}
 
       - name: Build, tag, and push image to Amazon ECR
         env:
