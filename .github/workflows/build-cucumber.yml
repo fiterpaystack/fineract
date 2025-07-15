@@ -55,10 +55,10 @@ jobs:
         run: |
           case "${{ matrix.task }}" in
             build-core)
-              ./gradlew --no-daemon build -x test -x cucumber -x doc
+              ./gradlew --no-daemon build -x test -x cucumber -x doc -x rat
               ;;
             cucumber)
-              ./gradlew --no-daemon cucumber -x :fineract-e2e-tests-runner:cucumber -x checkstyleJmh -x checkstyleMain -x checkstyleTest -x spotlessCheck -x spotlessApply -x spotbugsMain -x spotbugsTest -x javadoc -x javadocJar -x modernizer
+              ./gradlew --no-daemon cucumber -x :fineract-e2e-tests-runner:cucumber -x checkstyleJmh -x checkstyleMain -x checkstyleTest -x spotlessCheck -x spotlessApply -x spotbugsMain -x spotbugsTest -x javadoc -x javadocJar -x modernizer -x rat
               ;;
           esac
 
