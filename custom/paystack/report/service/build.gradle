@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-description = 'Paystack Fineract Report Service'
+description = 'Paystack Fineract Pentaho Report Service'
 
 group = 'com.paystack.fineract'
 
@@ -51,25 +51,6 @@ repositories {
         name = 'spring-milestones'
         url = uri('https://repo.spring.io/milestone')
     }
-    /*maven {
-        url 'https://repo.orl.eng.hitachivantara.com/artifactory/pnt-mvn/'
-        allowInsecureProtocol = true
-    }
-    maven {
-        url 'https://mifos.jfrog.io/artifactory/libs-release-local'
-    }
-    maven {
-        url 'https://mifos.jfrog.io/artifactory/libs-snapshot-local'
-    }
-    maven {
-        url 'https://oss.sonatype.org/content/repositories/snapshots/'
-    }
-    maven {
-        url 'https://repo.spring.io/snapshot'
-    }
-    maven {
-        url 'https://repo.spring.io/milestone'
-    }*/
 }
 
 apply from: 'dependencies.gradle'
