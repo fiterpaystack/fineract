@@ -23,5 +23,4 @@ import org.springframework.context.annotation.ComponentScan;
 
 @AutoConfiguration
 @ComponentScan("com.paystack.fineract.report")
-public class PayStackReportAutoConfiguration {
-}
+public class PayStackReportAutoConfiguration {}
