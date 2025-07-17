@@ -23,6 +23,16 @@ apply plugin: 'com.google.cloud.tools.jib'
 apply from: "${rootDir}/buildSrc/src/main/groovy/org.apache.fineract.dependencies.gradle"
 
 jib {
+    extraDirectories {
+        paths {
+            path {
+                // copy everything in src/main/jib to root of container
+                from = file('../paystack/report/service/pentahoReports/Postgresql')
+                into = '/app/pentahoReports'
+            }
+        }
+    }
+
     from {
         image = 'azul/zulu-openjdk-alpine:21'
         platforms {
@@ -53,6 +63,10 @@ jib {
         ports = ['8080/tcp', '8443/tcp']
         labels = [maintainer: 'Aleksandar Vidakovic <aleks@apache.org>']
         user = 'nobody:nogroup'
+
+        environment = [
+            'FINERACT_PENTAHO_REPORTS_PATH': '/app/pentahoReports/'
+        ]
     }
 
     allowInsecureRegistries = true
@@ -62,7 +76,7 @@ jib {
         implementation project(':fineract-provider')
         // NOTE: dynamically load all custom modules
         file("${rootDir}/custom").eachDir { companyDir ->
-            if('build' != companyDir.name && 'docker' != companyDir.name) {
+            if('build' != companyDir.name && 'docker' != companyDir.name && 'acme' != companyDir.name) {
                 file("${rootDir}/custom/${companyDir.name}").eachDir { categoryDir ->
                     if('build' != categoryDir.name) {
                         file("${rootDir}/custom/${companyDir.name}/${categoryDir.name}").eachDir { moduleDir ->

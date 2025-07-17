@@ -33,3 +33,5 @@ gradleExp/
 
 .run/
 .java-version
+
+!custom/paystack/report/service/libs/*
