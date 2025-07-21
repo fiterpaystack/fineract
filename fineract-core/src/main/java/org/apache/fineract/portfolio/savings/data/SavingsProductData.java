@@ -598,11 +598,13 @@ public final class SavingsProductData implements Serializable {
     }
 
     public boolean isUpfrontAccrualAccounting() {
-        return this.accountingRule != null && AccountingRuleType.ACCRUAL_UPFRONT.getValue().toString().equals(this.accountingRule.getValue());
+        return this.accountingRule != null
+                && AccountingRuleType.ACCRUAL_UPFRONT.getValue().toString().equals(this.accountingRule.getValue());
     }
 
     public boolean isPeriodicAccrualAccounting() {
-        return this.accountingRule != null && AccountingRuleType.ACCRUAL_PERIODIC.getValue().toString().equals(this.accountingRule.getValue());
+        return this.accountingRule != null
+                && AccountingRuleType.ACCRUAL_PERIODIC.getValue().toString().equals(this.accountingRule.getValue());
     }
 
 }
