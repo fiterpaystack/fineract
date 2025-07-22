@@ -55,7 +55,7 @@ jib {
         creationTime = 'USE_CURRENT_TIMESTAMP'
         mainClass = 'org.apache.fineract.ServerApplication'
         args = [
-            '-Duser.home=/tmp',
+            '--user.home=/tmp',
             '-Dfile.encoding=UTF-8',
             '-Duser.timezone=UTC',
             '-Djava.security.egd=file:/dev/./urandom'
