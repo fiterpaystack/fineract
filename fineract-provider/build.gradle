@@ -265,7 +265,7 @@ jib {
         mainClass = 'org.apache.fineract.ServerApplication'
         extraClasspath = ['/app/plugins/*']
         args = [
-            '-Duser.home=/tmp',
+            '--user.home=/tmp',
             '-Dfile.encoding=UTF-8',
             '-Duser.timezone=UTC',
             '-Djava.security.egd=file:/dev/./urandom'
