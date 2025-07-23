@@ -20,8 +20,10 @@ package org.apache.fineract.portfolio.tax.data;
 
 import java.io.Serializable;
 import java.time.LocalDate;
+import lombok.Getter;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 
+@Getter
 public class TaxGroupMappingsData implements Serializable {
 
     @SuppressWarnings("unused")
@@ -38,10 +40,6 @@ public class TaxGroupMappingsData implements Serializable {
         this.taxComponent = taxComponent;
         this.startDate = startDate;
         this.endDate = endDate;
-    }
-
-    public TaxComponentData getTaxComponent() {
-        return this.taxComponent;
     }
 
     public boolean occursOnDayFromAndUpToAndIncluding(final LocalDate target) {
