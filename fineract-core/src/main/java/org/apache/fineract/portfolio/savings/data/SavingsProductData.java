@@ -590,7 +590,7 @@ public final class SavingsProductData implements Serializable {
     }
 
     public boolean isCashBasedAccountingEnabled() {
-        return AccountingRuleType.CASH_BASED.getValue().toString().equals(this.accountingRule.getValue());
+        return this.accountingRule != null && AccountingRuleType.CASH_BASED.getValue().toString().equals(this.accountingRule.getValue());
     }
 
     public boolean isAccrualBasedAccountingEnabled() {
@@ -598,11 +598,13 @@ public final class SavingsProductData implements Serializable {
     }
 
     public boolean isUpfrontAccrualAccounting() {
-        return AccountingRuleType.ACCRUAL_UPFRONT.getValue().toString().equals(this.accountingRule.getValue());
+        return this.accountingRule != null
+                && AccountingRuleType.ACCRUAL_UPFRONT.getValue().toString().equals(this.accountingRule.getValue());
     }
 
     public boolean isPeriodicAccrualAccounting() {
-        return AccountingRuleType.ACCRUAL_PERIODIC.getValue().toString().equals(this.accountingRule.getValue());
+        return this.accountingRule != null
+                && AccountingRuleType.ACCRUAL_PERIODIC.getValue().toString().equals(this.accountingRule.getValue());
     }
 
 }
