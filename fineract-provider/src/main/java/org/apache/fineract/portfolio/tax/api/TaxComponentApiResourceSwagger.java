@@ -71,6 +71,8 @@ final class TaxComponentApiResourceSwagger {
         public Float percentage;
         public GetTaxesComponentsCreditAccountType creditAccountType;
         public GetTaxesComponentsCreditAccount creditAccount;
+        public GetTaxesComponentsCreditAccountType debitAccountType;
+        public GetTaxesComponentsCreditAccount debitAccount;
         @Schema(example = "[2016, 4, 11]")
         public LocalDate startDate;
         public Set<GetTaxesComponentsHistories> taxComponentsHistories;
@@ -89,6 +91,10 @@ final class TaxComponentApiResourceSwagger {
         public Integer creditAccountType;
         @Schema(example = "4")
         public Long creditAcountId;
+        @Schema(example = "2")
+        public Integer debitAccountType;
+        @Schema(example = "4")
+        public Long debitAccountId;
         @Schema(example = "en")
         public String locale;
         @Schema(example = "dd MMMM yyyy")
