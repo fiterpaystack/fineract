@@ -37,7 +37,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriInfo;
-import java.util.List;
+import java.util.Collection;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.commands.domain.CommandWrapper;
 import org.apache.fineract.commands.service.CommandWrapperBuilder;
@@ -72,7 +72,7 @@ public class TaxGroupApiResource {
     @Operation(summary = "List Tax Group", description = "List Tax Group")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "OK", content = @Content(array = @ArraySchema(schema = @Schema(implementation = TaxGroupApiResourceSwagger.GetTaxesGroupResponse.class)))) })
-    public List<TaxGroupData> retrieveAllTaxGroups() {
+    public Collection<TaxGroupData> retrieveAllTaxGroups() {
         context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
         return readPlatformService.retrieveAllTaxGroups();
     }
