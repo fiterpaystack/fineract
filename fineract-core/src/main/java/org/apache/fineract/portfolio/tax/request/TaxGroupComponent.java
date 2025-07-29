@@ -34,4 +34,5 @@ public class TaxGroupComponent implements Serializable {
 
     private Long taxComponentId;
     private String startDate;
+    private String endDate;
 }
