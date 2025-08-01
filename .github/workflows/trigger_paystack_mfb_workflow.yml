@@ -1,0 +1,18 @@
+name: Trigger Paystack-MFB Fineract Workflow
+
+on:
+  push:
+    branches:
+      - main
+jobs:
+  trigger-workflow:
+    name: Trigger Workflow in Paystack-MFB/fineract to fetch upstream changes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger workflow in Paystack-MFB/fineract
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          token: ${{ secrets.PAYSTACKHQ_GITHUB_PAT }}
+          repo: Paystack-MFB/fineract
+          workflow: fetch-upstream-origin-changes.yml
+          ref: main
