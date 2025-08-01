@@ -49,5 +49,5 @@ jobs:
           ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
         run: |
           ./gradlew --no-daemon --console=plain :custom:docker:jibDockerBuild
-          docker tag fineract:latest $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+          docker tag fineract-custom:latest $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
