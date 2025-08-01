@@ -3,7 +3,7 @@ name: Trigger Paystack-MFB Fineract Workflow
 on:
   push:
     branches:
-      - main
+      - develop
 jobs:
   trigger-workflow:
     name: Trigger Workflow in Paystack-MFB/fineract to fetch upstream changes
