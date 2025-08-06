@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Generate GitHub App token
         id: generate_token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e #v2
         with:
           app_id: ${{ vars.APP_ID }}
           private_key: ${{ secrets.PRIVATE_KEY }}
@@ -19,7 +19,7 @@ jobs:
           permission-actions: write
 
       - name: Trigger workflow in Paystack-MFB/fineract
-        uses: benc-uk/workflow-dispatch@v1
+        uses: benc-uk/workflow-dispatch@e2e5e9a103e331dad343f381a29e654aea3cf8fc #v1
         with:
           token: ${{ steps.generate_token.outputs.token }}
           repo: Paystack-MFB/fineract
