@@ -245,4 +245,6 @@ public abstract class TestContextKey {
     public static final String DEFAULT_LOAN_PRODUCT_CREATE_RESPONSE_LP2_ADV_PYMNT_INTEREST_DAILY_INSTALLMENT_FEE_PERCENT_AMOUNT_INTEREST_CHARGES = "loanProductCreateResponseLP2AdvancedPaymentInterestDailyInstallmentFeeAmountPlusPercentageInterestCharges";
     public static final String DEFAULT_LOAN_PRODUCT_CREATE_RESPONSE_LP2_ADV_PYMNT_INTEREST_DAILY_INSTALLMENT_FEE_ALL_CHARGES = "loanProductCreateResponseLP2AdvancedPaymentInterestDailyInstallmentFeeAllCharges";
     public static final String DEFAULT_LOAN_PRODUCT_CREATE_RESPONSE_LP2_ADV_PYMNT_INTEREST_DAILY_INSTALLMENT_FEE_FLAT_INTEREST_CHARGES_TRANCHE = "loanProductCreateResponseLP2AdvancedPaymentInterestDailyInstallmentFeeFlatPlusPercentageInterestChargesMultidisbursal";
+    public static final String TAX_COMPONENT_CREATED_RESPONSE = "taxComponentCreatedResponse";
+    public static final String CREATED_TAX_COMPONENTS = "listOfTaxComponentsCreated";
 }

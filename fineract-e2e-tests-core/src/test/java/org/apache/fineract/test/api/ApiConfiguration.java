@@ -55,6 +55,8 @@ import org.apache.fineract.client.services.SavingsAccountTransactionsApi;
 import org.apache.fineract.client.services.SavingsProductApi;
 import org.apache.fineract.client.services.SchedulerApi;
 import org.apache.fineract.client.services.SchedulerJobApi;
+import org.apache.fineract.client.services.TaxComponentsApi;
+import org.apache.fineract.client.services.TaxGroupApi;
 import org.apache.fineract.client.services.UsersApi;
 import org.apache.fineract.client.util.FineractClient;
 import org.apache.fineract.test.stepdef.loan.LoanProductsCustomApi;
@@ -255,5 +257,15 @@ public class ApiConfiguration {
     @Bean
     public LoanDisbursementDetailsApi loanDisbursementDetailsApi() {
         return fineractClient.createService(LoanDisbursementDetailsApi.class);
+    }
+
+    @Bean
+    public TaxComponentsApi taxComponentsApi() {
+        return fineractClient.createService(TaxComponentsApi.class);
+    }
+
+    @Bean
+    public TaxGroupApi taxGroupApi() {
+        return fineractClient.createService(TaxGroupApi.class);
     }
 }

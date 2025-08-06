@@ -20,7 +20,7 @@ package org.apache.fineract.portfolio.tax.api;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
-import java.util.Set;
+import java.util.Collection;
 
 /**
  * Created by Chirag Gupta on 12/20/17.
@@ -75,7 +75,7 @@ final class TaxComponentApiResourceSwagger {
         public GetTaxesComponentsCreditAccount debitAccount;
         @Schema(example = "[2016, 4, 11]")
         public LocalDate startDate;
-        public Set<GetTaxesComponentsHistories> taxComponentsHistories;
+        public Collection<GetTaxesComponentsHistories> taxComponentHistories;
     }
 
     @Schema(description = "PostTaxesComponentsRequest")
@@ -90,7 +90,7 @@ final class TaxComponentApiResourceSwagger {
         @Schema(example = "2")
         public Integer creditAccountType;
         @Schema(example = "4")
-        public Long creditAcountId;
+        public Long creditAccountId;
         @Schema(example = "2")
         public Integer debitAccountType;
         @Schema(example = "4")
