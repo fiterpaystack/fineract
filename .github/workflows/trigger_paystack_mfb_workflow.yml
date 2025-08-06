@@ -9,10 +9,19 @@ jobs:
     name: Trigger Workflow in Paystack-MFB/fineract to fetch upstream changes
     runs-on: ubuntu-latest
     steps:
+      - name: Generate GitHub App token
+        id: generate_token
+        uses: actions/create-github-app-token@v2
+        with:
+          app_id: ${{ vars.APP_ID }}
+          private_key: ${{ secrets.PRIVATE_KEY }}
+          owner: Paystack-MFB
+          permission-actions: write
+
       - name: Trigger workflow in Paystack-MFB/fineract
         uses: benc-uk/workflow-dispatch@v1
         with:
-          token: ${{ secrets.PAYSTACKMFB_GITHUB_PAT }}
+          token: ${{ steps.generate_token.outputs.token }}
           repo: Paystack-MFB/fineract
           workflow: fetch-upstream-origin-changes.yml
           ref: main
