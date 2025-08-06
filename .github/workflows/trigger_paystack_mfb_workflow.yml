@@ -19,6 +19,7 @@ jobs:
           owner: Paystack-MFB
           repositories: fineract
           permission-actions: write
+          permission-workflows: write
 
       - name: Trigger workflow in Paystack-MFB/fineract
         uses: benc-uk/workflow-dispatch@e2e5e9a103e331dad343f381a29e654aea3cf8fc #v1
