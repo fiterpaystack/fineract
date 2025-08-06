@@ -13,9 +13,10 @@ jobs:
         id: generate_token
         uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e #v2
         with:
-          app_id: ${{ vars.APP_ID }}
-          private_key: ${{ secrets.PRIVATE_KEY }}
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.PRIVATE_KEY }}
           owner: Paystack-MFB
+          repositories: fineract
           permission-actions: write
 
       - name: Trigger workflow in Paystack-MFB/fineract
