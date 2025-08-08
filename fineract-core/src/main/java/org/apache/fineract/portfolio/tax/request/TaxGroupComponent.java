@@ -31,7 +31,8 @@ public class TaxGroupComponent implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
-
+    // During updates IDs were missing, causing additions
+    private Long id;
     private Long taxComponentId;
     private String startDate;
     private String endDate;

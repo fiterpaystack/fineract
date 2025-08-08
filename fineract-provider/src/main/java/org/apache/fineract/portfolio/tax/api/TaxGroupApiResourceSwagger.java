@@ -20,6 +20,7 @@ package org.apache.fineract.portfolio.tax.api;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
@@ -35,19 +36,26 @@ final class TaxGroupApiResourceSwagger {
 
         private GetTaxesGroupResponse() {}
 
+        static final class GetTaxesGroupTaxComponent {
+
+            @Schema(example = "7")
+            public Long id;
+            @Schema(example = "tax component 2")
+            public String name;
+            @Schema(example = "10.000000")
+            public Float percentage;
+            public TaxComponentApiResourceSwagger.GetTaxesComponentsResponse.GetTaxesComponentsCreditAccountType creditAccountType;
+            public TaxComponentApiResourceSwagger.GetTaxesComponentsResponse.GetTaxesComponentsCreditAccount creditAccount;
+            public TaxComponentApiResourceSwagger.GetTaxesComponentsResponse.GetTaxesComponentsCreditAccountType debitAccountType;
+            public TaxComponentApiResourceSwagger.GetTaxesComponentsResponse.GetTaxesComponentsCreditAccount debitAccount;
+            @Schema(example = "[2016, 4, 11]")
+            public LocalDate startDate;
+            public Collection<TaxComponentApiResourceSwagger.GetTaxesComponentsResponse.GetTaxesComponentsHistories> taxComponentHistories;
+        }
+
         static final class GetTaxesGroupTaxAssociations {
 
             private GetTaxesGroupTaxAssociations() {}
-
-            static final class GetTaxesGroupTaxComponent {
-
-                private GetTaxesGroupTaxComponent() {}
-
-                @Schema(example = "7")
-                public Long id;
-                @Schema(example = "tax component 2")
-                public String name;
-            }
 
             @Schema(example = "7")
             public Long id;
@@ -63,6 +71,7 @@ final class TaxGroupApiResourceSwagger {
         @Schema(example = "tax group 1")
         public String name;
         public Set<GetTaxesGroupTaxAssociations> taxAssociations;
+        public Set<GetTaxesGroupTaxComponent> taxComponents;
     }
 
     @Schema(description = "PostTaxesGroupRequest")
@@ -152,7 +161,6 @@ final class TaxGroupApiResourceSwagger {
 
             @Schema(example = "[6]")
             public List<Long> addComponents;
-            public Set<PutTaxesGroupModifiedComponents> modifiedComponents;
             @Schema(example = "tax group 2")
             public String name;
         }

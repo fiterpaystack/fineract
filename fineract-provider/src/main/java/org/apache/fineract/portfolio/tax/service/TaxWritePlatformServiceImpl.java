@@ -88,6 +88,13 @@ public class TaxWritePlatformServiceImpl implements TaxWritePlatformService {
         this.validator.validateTaxGroupEndDateAndTaxComponent(taxGroup, groupMappings);
         Map<String, Object> changes = taxGroup.update(command, groupMappings);
         this.validator.validateTaxGroup(taxGroup);
+
+        taxGroup.getTaxGroupMappings().forEach(t -> {
+            if (t.getTaxGroup() == null) {
+                t.setTaxGroup(taxGroup);
+            }
+        });
+
         this.taxGroupRepository.saveAndFlush(taxGroup);
         return new CommandProcessingResultBuilder() //
                 .withEntityId(id) //

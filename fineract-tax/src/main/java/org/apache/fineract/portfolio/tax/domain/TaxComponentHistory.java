@@ -20,14 +20,19 @@ package org.apache.fineract.portfolio.tax.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import lombok.Getter;
 import org.apache.fineract.infrastructure.core.domain.AbstractAuditableCustom;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 
 @Entity
 @Table(name = "m_tax_component_history")
+@Getter
 public class TaxComponentHistory extends AbstractAuditableCustom {
 
     @Column(name = "percentage", scale = 6, precision = 19, nullable = false)
@@ -39,19 +44,25 @@ public class TaxComponentHistory extends AbstractAuditableCustom {
     @Column(name = "end_date", nullable = false)
     private LocalDate endDate;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tax_component_id", nullable = false)
+    private TaxComponent taxComponent;
+
     protected TaxComponentHistory() {
 
     }
 
-    private TaxComponentHistory(final BigDecimal percentage, final LocalDate startDate, final LocalDate endDate) {
+    private TaxComponentHistory(final BigDecimal percentage, final LocalDate startDate, final LocalDate endDate,
+            final TaxComponent taxComponent) {
         this.percentage = percentage;
         this.startDate = startDate;
         this.endDate = endDate;
+        this.taxComponent = taxComponent;
     }
 
     public static TaxComponentHistory createTaxComponentHistory(final BigDecimal percentage, final LocalDate startDate,
-            final LocalDate endDate) {
-        return new TaxComponentHistory(percentage, startDate, endDate);
+            final LocalDate endDate, final TaxComponent taxComponent) {
+        return new TaxComponentHistory(percentage, startDate, endDate, taxComponent);
     }
 
     public LocalDate startDate() {
@@ -64,10 +75,6 @@ public class TaxComponentHistory extends AbstractAuditableCustom {
 
     public boolean occursOnDayFromAndUpToAndIncluding(final LocalDate target) {
         return DateUtils.isAfter(target, startDate()) && (endDate == null || !DateUtils.isAfter(target, endDate()));
-    }
-
-    public BigDecimal getPercentage() {
-        return this.percentage;
     }
 
 }

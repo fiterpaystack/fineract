@@ -27,12 +27,13 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.accounting.glaccount.domain.GLAccountType;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
@@ -63,8 +64,8 @@ public class TaxValidator {
     public static final String COMPONENT_START_DATE = "component.start.date";
     private static final Set<String> SUPPORTED_TAX_COMPONENT_CREATE_PARAMETERS = new HashSet<>(
             Arrays.asList(DATE_FORMAT, LOCALE, TaxApiConstants.nameParamName, TaxApiConstants.percentageParamName,
-                    TaxApiConstants.startDateParamName, TaxApiConstants.debitAccountTypeParamName, TaxApiConstants.debitAcountIdParamName,
-                    TaxApiConstants.creditAccountTypeParamName, TaxApiConstants.creditAcountIdParamName));
+                    TaxApiConstants.startDateParamName, TaxApiConstants.debitAccountTypeParamName, TaxApiConstants.debitAccountIdParamName,
+                    TaxApiConstants.creditAccountTypeParamName, TaxApiConstants.creditAccountIdParamName));
     private static final Set<String> SUPPORTED_TAX_COMPONENT_UPDATE_PARAMETERS = new HashSet<>(Arrays.asList(DATE_FORMAT, LOCALE,
             TaxApiConstants.nameParamName, TaxApiConstants.percentageParamName, TaxApiConstants.startDateParamName));
     private static final Set<String> SUPPORTED_TAX_GROUP_PARAMETERS = new HashSet<>(
@@ -111,11 +112,11 @@ public class TaxValidator {
                 .isOneOfTheseValues(GLAccountType.ASSET.getValue(), GLAccountType.LIABILITY.getValue(), GLAccountType.EQUITY.getValue(),
                         GLAccountType.INCOME.getValue(), GLAccountType.EXPENSE.getValue());
 
-        final Long debitAccountId = this.fromApiJsonHelper.extractLongNamed(TaxApiConstants.debitAcountIdParamName, element);
-        baseDataValidator.reset().parameter(TaxApiConstants.debitAcountIdParamName).value(debitAccountId).longGreaterThanZero();
+        final Long debitAccountId = this.fromApiJsonHelper.extractLongNamed(TaxApiConstants.debitAccountIdParamName, element);
+        baseDataValidator.reset().parameter(TaxApiConstants.debitAccountIdParamName).value(debitAccountId).longGreaterThanZero();
         if (debitAccountType != null || debitAccountId != null) {
             baseDataValidator.reset().parameter(TaxApiConstants.debitAccountTypeParamName).value(debitAccountType).notBlank();
-            baseDataValidator.reset().parameter(TaxApiConstants.debitAcountIdParamName).value(debitAccountId).notBlank();
+            baseDataValidator.reset().parameter(TaxApiConstants.debitAccountIdParamName).value(debitAccountId).notBlank();
         }
 
         final Integer creditAccountType = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(TaxApiConstants.creditAccountTypeParamName,
@@ -124,10 +125,10 @@ public class TaxValidator {
                 .isOneOfTheseValues(GLAccountType.ASSET.getValue(), GLAccountType.LIABILITY.getValue(), GLAccountType.EQUITY.getValue(),
                         GLAccountType.INCOME.getValue(), GLAccountType.EXPENSE.getValue());
 
-        final Long creditAccountId = this.fromApiJsonHelper.extractLongNamed(TaxApiConstants.creditAcountIdParamName, element);
-        baseDataValidator.reset().parameter(TaxApiConstants.creditAcountIdParamName).value(creditAccountId).longGreaterThanZero();
+        final Long creditAccountId = this.fromApiJsonHelper.extractLongNamed(TaxApiConstants.creditAccountIdParamName, element);
+        baseDataValidator.reset().parameter(TaxApiConstants.creditAccountIdParamName).value(creditAccountId).longGreaterThanZero();
         if (creditAccountType != null || creditAccountId != null) {
-            baseDataValidator.reset().parameter(TaxApiConstants.creditAcountIdParamName).value(creditAccountId).notBlank();
+            baseDataValidator.reset().parameter(TaxApiConstants.creditAccountIdParamName).value(creditAccountId).notBlank();
             baseDataValidator.reset().parameter(TaxApiConstants.creditAccountTypeParamName).value(creditAccountType).notBlank();
         }
         throwExceptionIfValidationWarningsExist(dataValidationErrors);
@@ -328,43 +329,75 @@ public class TaxValidator {
     }
 
     private void validateOverlappingComponents(final Set<TaxGroupMappings> taxMappings, final DataValidatorBuilder baseDataValidator) {
-        for (TaxGroupMappings groupMappingsOne : taxMappings) {
-            final List<TaxGroupMappings> mappings = new ArrayList<>(taxMappings);
-            mappings.remove(groupMappingsOne);
-            for (TaxGroupMappings groupMappings : mappings) {
-                if (groupMappingsOne.getTaxComponent().equals(groupMappings.getTaxComponent())) {
-                    if (groupMappingsOne.endDate() == null && groupMappings.endDate() == null) {
-                        baseDataValidator.reset().parameter(COMPONENT).failWithCode(DATES_ARE_OVERLAPPING);
-                    } else if (DateUtils.isAfter(groupMappingsOne.startDate(), groupMappings.startDate())) {
-                        baseDataValidator.reset().parameter(COMPONENT_START_DATE).value(groupMappingsOne.startDate())
-                                .validateDateAfter(groupMappings.endDate());
-                    } else {
-                        baseDataValidator.reset().parameter(COMPONENT_START_DATE).value(groupMappings.startDate())
-                                .validateDateAfter(groupMappingsOne.endDate());
-                    }
-                }
+        // Group mappings by tax component
+        Map<TaxComponent, List<TaxGroupMappings>> mappingsByComponent = taxMappings.stream()
+                .collect(Collectors.groupingBy(TaxGroupMappings::getTaxComponent));
+
+        // Only check within same component groups
+        mappingsByComponent.values().forEach(componentMappings -> {
+            if (componentMappings.size() > 1) {
+                validateComponentGroup(componentMappings, baseDataValidator);
+            }
+        });
+    }
+
+    private void validateComponentGroup(List<TaxGroupMappings> componentMappings, DataValidatorBuilder baseDataValidator) {
+        for (int i = 0; i < componentMappings.size() - 1; i++) {
+            for (int j = i + 1; j < componentMappings.size(); j++) {
+                validatePair(componentMappings.get(i), componentMappings.get(j), baseDataValidator);
             }
         }
     }
 
+    private void validatePair(TaxGroupMappings groupMappingsOne, TaxGroupMappings groupMappings, DataValidatorBuilder baseDataValidator) {
+        // Both have no end date - definitely overlapping
+        if (groupMappingsOne.endDate() == null && groupMappings.endDate() == null) {
+            baseDataValidator.reset().parameter(COMPONENT).failWithCode(DATES_ARE_OVERLAPPING);
+        }
+        // Same start date - special handling needed
+        else if (groupMappingsOne.startDate().equals(groupMappings.startDate())) {
+            // If both have the same start date and at least one has an end date,
+            // this might be an update scenario or a real overlap
+            // Only fail if both have end dates (which would be a duplicate range)
+            if (groupMappingsOne.endDate() != null && groupMappings.endDate() != null) {
+                baseDataValidator.reset().parameter(COMPONENT).failWithCode(DATES_ARE_OVERLAPPING);
+            }
+            // If one has null end date and the other has an end date, this could be valid
+            // (like updating an open-ended mapping to have an end date)
+        }
+        // Check which one starts first
+        else if (DateUtils.isAfter(groupMappingsOne.startDate(), groupMappings.startDate())) {
+            // groupMappingsOne starts later, so its start date should be after groupMappings' end date
+            baseDataValidator.reset().parameter(COMPONENT_START_DATE).value(groupMappingsOne.startDate())
+                    .validateDateAfter(groupMappings.endDate());
+        } else {
+            // groupMappings starts later, so its start date should be after groupMappingsOne's end date
+            baseDataValidator.reset().parameter(COMPONENT_START_DATE).value(groupMappings.startDate())
+                    .validateDateAfter(groupMappingsOne.endDate());
+        }
+    }
+
     private void validateGroupTotal(final Set<TaxGroupMappings> taxMappings, final DataValidatorBuilder baseDataValidator,
-            final String paramenter) {
-        for (TaxGroupMappings groupMappingsOne : taxMappings) {
-            Collection<LocalDate> dates = groupMappingsOne.getTaxComponent().allStartDates();
-            for (LocalDate date : dates) {
-                LocalDate applicableDate = date.plusDays(1);
-                BigDecimal total = BigDecimal.ZERO;
-                for (TaxGroupMappings groupMappings : taxMappings) {
-                    if (groupMappings.occursOnDayFromAndUpToAndIncluding(applicableDate)) {
-                        BigDecimal applicablePercentage = groupMappings.getTaxComponent().getApplicablePercentage(applicableDate);
-                        if (applicablePercentage != null) {
-                            total = total.add(applicablePercentage);
-                        }
-                    }
-                }
-                baseDataValidator.reset().parameter(paramenter).value(total).notGreaterThanMax(BigDecimal.valueOf(100));
+            final String parameter) {
+        // Collect all unique dates to check only once
+        Set<LocalDate> allUniqueDates = taxMappings.stream().flatMap(mapping -> mapping.getTaxComponent().allStartDates().stream())
+                .collect(Collectors.toSet());
+
+        // Check total percentage for each unique date
+        for (LocalDate startDate : allUniqueDates) {
+            LocalDate applicableDate = startDate.plusDays(1);
+            BigDecimal totalPercentage = calculateTotalPercentageOnDate(taxMappings, applicableDate);
+
+            if (totalPercentage.compareTo(BigDecimal.valueOf(100)) > 0) {
+                baseDataValidator.reset().parameter(parameter).value(totalPercentage).notGreaterThanMax(BigDecimal.valueOf(100));
             }
         }
+    }
+
+    private BigDecimal calculateTotalPercentageOnDate(Set<TaxGroupMappings> taxMappings, LocalDate date) {
+        return taxMappings.stream().filter(mapping -> mapping.occursOnDayFromAndUpToAndIncluding(date))
+                .map(mapping -> mapping.getTaxComponent().getApplicablePercentage(date)).filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private void throwExceptionIfValidationWarningsExist(final List<ApiParameterError> dataValidationErrors) {

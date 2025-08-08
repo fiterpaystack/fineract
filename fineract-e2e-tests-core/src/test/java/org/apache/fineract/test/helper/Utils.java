@@ -21,6 +21,8 @@ package org.apache.fineract.test.helper;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class Utils {
 
@@ -69,5 +71,39 @@ public final class Utils {
             }
             return result;
         }
+    }
+
+    /**
+     * Splits a string by the given delimiter, trims each part, and omits empty strings.
+     *
+     * @param input
+     *            the string to split
+     * @param delimiter
+     *            the delimiter to split by
+     * @return a list of non-empty, trimmed strings
+     */
+    public static List<String> splitAndTrim(String input, String delimiter) {
+        if (input == null || delimiter == null) {
+            return new ArrayList<>();
+        }
+        List<String> result = new ArrayList<>();
+        int start = 0;
+        int delimLen = delimiter.length();
+        while (true) {
+            int idx = input.indexOf(delimiter, start);
+            if (idx == -1) {
+                String part = input.substring(start).trim();
+                if (!part.isEmpty()) {
+                    result.add(part);
+                }
+                break;
+            }
+            String part = input.substring(start, idx).trim();
+            if (!part.isEmpty()) {
+                result.add(part);
+            }
+            start = idx + delimLen;
+        }
+        return result;
     }
 }
