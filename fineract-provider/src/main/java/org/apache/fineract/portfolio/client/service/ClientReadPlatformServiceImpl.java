@@ -212,8 +212,13 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             final String hierarchy = this.context.officeHierarchy();
             final String hierarchySearchString = hierarchy + "%";
 
-            final Client client = clientRepositoryWrapper.getClientByClientIdAndHierarchy(clientId, hierarchySearchString);
-            final ClientData clientData = clientMapper.map(client);
+            /*final Client client = clientRepositoryWrapper.getClientByClientIdAndHierarchy(clientId, hierarchySearchString);
+            final ClientData clientData = clientMapper.map(client);*/
+
+            final String sql = "select " + this.clientToDataMapper.schema()
+                    + " where ( o.hierarchy like ? or transferToOffice.hierarchy like ?) and c.id = ?";
+            final ClientData clientData = this.jdbcTemplate.queryForObject(sql, this.clientToDataMapper, // NOSONAR
+                    hierarchySearchString, hierarchySearchString, clientId);
 
             // Get client collaterals
             final Collection<ClientCollateralManagement> clientCollateralManagements = this.clientCollateralManagementRepositoryWrapper
