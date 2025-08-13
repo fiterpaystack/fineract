@@ -50,7 +50,8 @@ public enum SavingsAccountTransactionType {
     WITHHOLD_TAX(18, "savingsAccountTransactionType.withholdTax", TransactionEntryType.DEBIT), //
     ESCHEAT(19, "savingsAccountTransactionType.escheat", TransactionEntryType.DEBIT), //
     AMOUNT_HOLD(20, "savingsAccountTransactionType.onHold", TransactionEntryType.DEBIT), //
-    AMOUNT_RELEASE(21, "savingsAccountTransactionType.release", TransactionEntryType.CREDIT); //
+    AMOUNT_RELEASE(21, "savingsAccountTransactionType.release", TransactionEntryType.CREDIT), //
+    VAT_ON_FEES(22, "savingsAccountTransactionType.vat", TransactionEntryType.DEBIT); //
 
     private static final Map<Integer, SavingsAccountTransactionType> BY_ID = Arrays.stream(values())
             .collect(Collectors.toMap(SavingsAccountTransactionType::getValue, v -> v));
@@ -199,5 +200,9 @@ public enum SavingsAccountTransactionType {
     @NotNull
     public static List<SavingsAccountTransactionType> getFiltered(Predicate<SavingsAccountTransactionType> filter) {
         return Arrays.stream(values()).filter(filter).toList();
+    }
+
+    public boolean isVatOnFees() {
+      return this == VAT_ON_FEES;
     }
 }

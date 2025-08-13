@@ -157,7 +157,7 @@ public final class SavingsAccountTransaction extends AbstractAuditableWithUTCDat
         this.refNo = refNo;
     }
 
-    private SavingsAccountTransaction(final SavingsAccount savingsAccount, final Office office, final Integer typeOf,
+    public SavingsAccountTransaction(final SavingsAccount savingsAccount, final Office office, final Integer typeOf,
             final LocalDate transactionLocalDate, final Money amount, final boolean isReversed, final boolean isManualTransaction,
             final Boolean lienTransaction, final String refNo) {
         this(savingsAccount, office, null, typeOf, transactionLocalDate, amount, isReversed, isManualTransaction, lienTransaction, refNo);
@@ -852,7 +852,7 @@ public final class SavingsAccountTransaction extends AbstractAuditableWithUTCDat
         return isWaivePenaltyCharge() && isNotReversed();
     }
 
-    private SavingsAccountChargePaidBy getSavingsAccountChargePaidBy() {
+    public SavingsAccountChargePaidBy getSavingsAccountChargePaidBy() {
         if (!CollectionUtils.isEmpty(this.savingsAccountChargesPaid)) {
             return this.savingsAccountChargesPaid.iterator().next();
         }

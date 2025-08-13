@@ -74,20 +74,20 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AccountTransfersWritePlatformServiceImpl implements AccountTransfersWritePlatformService {
 
-    private final AccountTransfersDataValidator accountTransfersDataValidator;
-    private final AccountTransferAssembler accountTransferAssembler;
-    private final AccountTransferRepository accountTransferRepository;
-    private final SavingsAccountAssembler savingsAccountAssembler;
-    private final SavingsAccountDomainService savingsAccountDomainService;
-    private final LoanAssembler loanAccountAssembler;
-    private final LoanAccountDomainService loanAccountDomainService;
-    private final SavingsAccountWritePlatformService savingsAccountWritePlatformService;
-    private final AccountTransferDetailRepository accountTransferDetailRepository;
-    private final LoanReadPlatformService loanReadPlatformService;
-    private final GSIMRepositoy gsimRepository;
-    private final ConfigurationDomainService configurationDomainService;
-    private final ExternalIdFactory externalIdFactory;
-    private final FineractProperties fineractProperties;
+    protected final AccountTransfersDataValidator accountTransfersDataValidator;
+    protected final AccountTransferAssembler accountTransferAssembler;
+    protected final AccountTransferRepository accountTransferRepository;
+    protected final SavingsAccountAssembler savingsAccountAssembler;
+    protected final SavingsAccountDomainService savingsAccountDomainService;
+    protected final LoanAssembler loanAccountAssembler;
+    protected final LoanAccountDomainService loanAccountDomainService;
+    protected final SavingsAccountWritePlatformService savingsAccountWritePlatformService;
+    protected final AccountTransferDetailRepository accountTransferDetailRepository;
+    protected final LoanReadPlatformService loanReadPlatformService;
+    protected final GSIMRepositoy gsimRepository;
+    protected final ConfigurationDomainService configurationDomainService;
+    protected final ExternalIdFactory externalIdFactory;
+    protected final FineractProperties fineractProperties;
 
     @Transactional
     @Override
@@ -492,15 +492,15 @@ public class AccountTransfersWritePlatformServiceImpl implements AccountTransfer
         return accountTransferDetails;
     }
 
-    private boolean isLoanToSavingsAccountTransfer(final PortfolioAccountType fromAccountType, final PortfolioAccountType toAccountType) {
+    protected boolean isLoanToSavingsAccountTransfer(final PortfolioAccountType fromAccountType, final PortfolioAccountType toAccountType) {
         return fromAccountType.isLoanAccount() && toAccountType.isSavingsAccount();
     }
 
-    private boolean isSavingsToLoanAccountTransfer(final PortfolioAccountType fromAccountType, final PortfolioAccountType toAccountType) {
+    protected boolean isSavingsToLoanAccountTransfer(final PortfolioAccountType fromAccountType, final PortfolioAccountType toAccountType) {
         return fromAccountType.isSavingsAccount() && toAccountType.isLoanAccount();
     }
 
-    private boolean isSavingsToSavingsAccountTransfer(final PortfolioAccountType fromAccountType,
+    protected boolean isSavingsToSavingsAccountTransfer(final PortfolioAccountType fromAccountType,
             final PortfolioAccountType toAccountType) {
         return fromAccountType.isSavingsAccount() && toAccountType.isSavingsAccount();
     }
