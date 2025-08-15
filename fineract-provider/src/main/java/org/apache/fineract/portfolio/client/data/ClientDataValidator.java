@@ -162,10 +162,8 @@ public final class ClientDataValidator {
 
         if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.mobileNoParamName, element)) {
             final String mobileNo = this.fromApiJsonHelper.extractStringNamed(ClientApiConstants.mobileNoParamName, element);
-            baseDataValidator.reset().parameter(ClientApiConstants.mobileNoParamName).value(mobileNo).notNull()
+            baseDataValidator.reset().parameter(ClientApiConstants.mobileNoParamName).value(mobileNo).ignoreIfNull()
                     .notExceedingLengthOf(50);
-        } else {
-            baseDataValidator.reset().parameter(ClientApiConstants.mobileNoParamName).value(null).notNull();
         }
 
         final Boolean active = this.fromApiJsonHelper.extractBooleanNamed(ClientApiConstants.activeParamName, element);
@@ -442,9 +440,7 @@ public final class ClientDataValidator {
         if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.mobileNoParamName, element)) {
             atLeastOneParameterPassedForUpdate = true;
             final String mobileNo = this.fromApiJsonHelper.extractStringNamed(ClientApiConstants.mobileNoParamName, element);
-            baseDataValidator.reset().parameter(ClientApiConstants.mobileNoParamName).value(mobileNo).notNull().notExceedingLengthOf(50);
-        } else {
-            baseDataValidator.reset().parameter(ClientApiConstants.mobileNoParamName).value(null).notNull();
+            baseDataValidator.reset().parameter(ClientApiConstants.mobileNoParamName).value(mobileNo).notExceedingLengthOf(50);
         }
 
         final Boolean active = this.fromApiJsonHelper.extractBooleanNamed(ClientApiConstants.activeParamName, element);
