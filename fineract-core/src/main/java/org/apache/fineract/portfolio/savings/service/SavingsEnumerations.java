@@ -209,6 +209,10 @@ public final class SavingsEnumerations {
                 optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.AMOUNT_RELEASE.getValue().longValue(),
                         SavingsAccountTransactionType.AMOUNT_RELEASE.getCode(), "Release Amount");
             break;
+            case VAT_ON_FEES:
+                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.VAT_ON_FEES.getValue().longValue(),
+                        SavingsAccountTransactionType.VAT_ON_FEES.getCode(), "VAT on Fees");
+            break;
         }
         return optionData;
     }

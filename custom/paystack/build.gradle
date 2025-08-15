@@ -20,6 +20,11 @@
 subprojects {
     apply plugin: 'java'
 
+    if (project.path.startsWith(':custom:paystack')) {
+        apply plugin: 'java'
+        apply from: "${rootDir}/custom/gradle/custom-plugins.gradle"
+    }
+
     ext {
         lombokVersion = '1.18.30'
         springBootVersion = '3.4.4'

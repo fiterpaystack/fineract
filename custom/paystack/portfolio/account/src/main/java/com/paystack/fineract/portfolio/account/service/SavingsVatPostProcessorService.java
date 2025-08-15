@@ -1,13 +1,32 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements. See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership. The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package com.paystack.fineract.portfolio.account.service;
 
+import static org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction.updateTaxDetails;
+
+import com.paystack.fineract.portfolio.account.data.VatApplicationResult;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.organisation.monetary.domain.Money;
@@ -16,96 +35,49 @@ import org.apache.fineract.portfolio.savings.SavingsAccountTransactionType;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountCharge;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
-import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransactionRepository;
 import org.apache.fineract.portfolio.tax.domain.TaxComponent;
 import org.apache.fineract.portfolio.tax.domain.TaxGroup;
 import org.apache.fineract.portfolio.tax.domain.TaxGroupMappings;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import static org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction.updateTaxDetails;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class SavingsVatPostProcessorService {
 
-    private final SavingsAccountTransactionRepository transactionRepository;
-
     /**
-     * Process VAT for a withdrawal fee transaction that was just created
-     * This method is called AFTER the fee transaction has been created
+     * Process VAT for a withdrawal fee transaction that was just created This method is called AFTER the fee
+     * transaction has been created
      */
     @Transactional
-    public List<SavingsAccountTransaction> processVatForFeeTransaction(
-            SavingsAccountTransaction feeTransaction,
-            SavingsAccountCharge charge,
-            SavingsAccount account) {
-
-        List<SavingsAccountTransaction> vatTransactions = new ArrayList<>();
+    public VatApplicationResult processVatForFeeTransaction(BigDecimal amount, LocalDate transactionDate, SavingsAccountCharge charge,
+            SavingsAccount account, boolean isBackdatedTransaction) {
 
         // Check if VAT should be applied
         if (!shouldApplyVat(charge, account)) {
-            return vatTransactions;
+            return new VatApplicationResult();
         }
 
         // Calculate VAT amount
-        BigDecimal vatAmount = calculateVatAmount(feeTransaction.getAmount(), charge);
+        BigDecimal vatAmount = calculateVatAmount(amount, charge);
 
         if (vatAmount.compareTo(BigDecimal.ZERO) > 0) {
             // Create VAT transaction
-            SavingsAccountTransaction vatTxn = createVatTransaction(
-                    account,
-                    feeTransaction,
-                    vatAmount,
-                    feeTransaction.getDateOf(),
-                    charge.getCharge()
-                            .getTaxGroup()
-                            .getTaxGroupMappings()
-                            .stream()
-                            .collect(Collectors.toMap(
-                                    TaxGroupMappings::getTaxComponent,
-                                    mapping -> mapping.getTaxComponent().getPercentage())
-                            )
+            SavingsAccountTransaction vatTxn = createVatTransaction(account, vatAmount, transactionDate,
+                    charge.getCharge().getTaxGroup().getTaxGroupMappings().stream().collect(
+                            Collectors.toMap(TaxGroupMappings::getTaxComponent, mapping -> mapping.getTaxComponent().getPercentage()))
 
             );
 
-            // Save VAT transaction
-            //TODO: Take care of backdated transactions
-            transactionRepository.save(vatTxn);
-            vatTransactions.add(vatTxn);
+            return VatApplicationResult
+                    .success(vatTxn, vatAmount, charge.getCharge().getTaxGroup().getTaxGroupMappings().stream()
+                            .map(t -> t.getTaxComponent().getPercentage()).reduce(BigDecimal.ZERO, BigDecimal::add))
+                    .setBackdatedTransaction(isBackdatedTransaction);
 
-            // Update account balance for VAT
-            updateAccountBalanceForVat(account, vatAmount);
-
-            log.info("Created VAT transaction of {} for fee transaction {}",
-                    vatAmount, feeTransaction.getId());
         }
 
-        return vatTransactions;
-    }
-
-    /**
-     * Batch process VAT for multiple fee transactions
-     * Used when multiple fees are charged during a transfer
-     */
-    @Transactional
-    public List<SavingsAccountTransaction> processVatForMultipleFees(
-            List<FeeTransactionPair> feeTransactions,
-            SavingsAccount account) {
-
-        List<SavingsAccountTransaction> allVatTransactions = new ArrayList<>();
-
-        for (FeeTransactionPair pair : feeTransactions) {
-            List<SavingsAccountTransaction> vatTxns = processVatForFeeTransaction(
-                    pair.transaction(),
-                    pair.charge(),
-                    account
-            );
-            allVatTransactions.addAll(vatTxns);
-        }
-
-        return allVatTransactions;
+        return new VatApplicationResult();
     }
 
     private boolean shouldApplyVat(SavingsAccountCharge charge, SavingsAccount account) {
@@ -122,7 +94,7 @@ public class SavingsVatPostProcessorService {
             return calculateVatFromTaxGroup(feeAmount, chargeDefinition.getTaxGroup());
         }
 
-        return  BigDecimal.ZERO;
+        return BigDecimal.ZERO;
     }
 
     private BigDecimal calculateVatFromTaxGroup(BigDecimal feeAmount, TaxGroup taxGroup) {
@@ -131,9 +103,8 @@ public class SavingsVatPostProcessorService {
         for (TaxGroupMappings mapping : taxGroup.getTaxGroupMappings()) {
             TaxComponent taxComponent = mapping.getTaxComponent();
             if (taxComponent != null && taxComponent.getPercentage() != null) {
-                BigDecimal vatAmount = feeAmount
-                        .multiply(taxComponent.getPercentage())
-                        .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                BigDecimal vatAmount = feeAmount.multiply(taxComponent.getPercentage()).divide(BigDecimal.valueOf(100), 2,
+                        RoundingMode.HALF_UP);
                 totalVat = totalVat.add(vatAmount);
             }
         }
@@ -141,12 +112,8 @@ public class SavingsVatPostProcessorService {
         return totalVat;
     }
 
-    private SavingsAccountTransaction createVatTransaction(
-            SavingsAccount account,
-            SavingsAccountTransaction parentFeeTransaction,
-            BigDecimal vatAmount,
-            LocalDate transactionDate,
-            Map<TaxComponent,BigDecimal> taxDetails) {
+    private SavingsAccountTransaction createVatTransaction(SavingsAccount account, BigDecimal vatAmount, LocalDate transactionDate,
+            Map<TaxComponent, BigDecimal> taxDetails) {
 
         final boolean isReversed = false;
         final boolean isManualTransaction = false;
@@ -157,20 +124,11 @@ public class SavingsVatPostProcessorService {
         // Use reflection or a factory method to create the transaction
         // without modifying SavingsAccountTransaction class
         SavingsAccountTransaction vatTxn = new SavingsAccountTransaction(account, account.office(),
-                SavingsAccountTransactionType.VAT_ON_FEES.getValue(), transactionDate, vatMoney, isReversed, isManualTransaction, lienTransaction,
-                refNo);
+                SavingsAccountTransactionType.VAT_ON_FEES.getValue(), transactionDate, vatMoney, isReversed, isManualTransaction,
+                lienTransaction, refNo);
         updateTaxDetails(taxDetails, vatTxn);
 
         return vatTxn;
-
-    }
-
-    private void updateAccountBalanceForVat(SavingsAccount account, BigDecimal vatAmount) {
-        // The account balance will be updated through the normal transaction processing
-        // This is handled by the existing account update logic
-    }
-
-    public record FeeTransactionPair(SavingsAccountTransaction transaction, SavingsAccountCharge charge) {
 
     }
 }

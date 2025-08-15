@@ -1353,7 +1353,7 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
         }
     }
 
-    private void resetFreeChargeDaysCount(SavingsAccountCharge charge, final BigDecimal transactionAmount, final LocalDate transactionDate,
+    public void resetFreeChargeDaysCount(SavingsAccountCharge charge, final BigDecimal transactionAmount, final LocalDate transactionDate,
             final String refNo) {
         LocalDate resetDate = charge.getResetChargeDate();
 
@@ -1608,7 +1608,7 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
         }
     }
 
-    protected boolean isAccountLocked(final LocalDate transactionDate) {
+    public boolean isAccountLocked(final LocalDate transactionDate) {
         return DateUtils.isBefore(transactionDate, getLockedInUntilDate());
     }
 
@@ -2428,7 +2428,7 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
         }
     }
 
-    private LocalDate findLatestAnnualFeeTransactionDueDate() {
+    public LocalDate findLatestAnnualFeeTransactionDueDate() {
         LocalDate nextDueDate = null;
 
         LocalDate lastAnnualFeeTransactionDate = null;
@@ -2807,7 +2807,7 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
         return actualChanges;
     }
 
-    protected void validateActivityNotBeforeClientOrGroupTransferDate(final SavingsEvent event, final LocalDate activityDate) {
+    public void validateActivityNotBeforeClientOrGroupTransferDate(final SavingsEvent event, final LocalDate activityDate) {
         if (this.client != null) {
             final LocalDate clientOfficeJoiningDate = this.client.getOfficeJoiningDate();
             if (DateUtils.isBefore(activityDate, clientOfficeJoiningDate)) {
@@ -3846,5 +3846,9 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
         return transactions.stream()
                 .map(transaction -> transaction.toSavingsAccountTransactionDetailsForPostingPeriod(this.currency, this.allowOverdraft))
                 .toList();
+    }
+
+    public void setSubStatusNone() {
+        this.sub_status = SavingsAccountSubStatusEnum.NONE.getValue();
     }
 }

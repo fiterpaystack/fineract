@@ -16,12 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-description = 'CredibleX Fineract Account'
 
-group = 'com.paystack.fineract.account'
+package com.paystack.fineract.portfolio.account.domain;
 
-base {
-    archivesName = 'paystack-fineract-account'
+import java.util.Optional;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface PaystackSavingsAccountRepository extends JpaRepository<PaystackSavingsAccount, Long> {
+
+    Optional<PaystackSavingsAccount> findBySavingsAccount(SavingsAccount savingsAccount);
 }
-
-apply from: 'dependencies.gradle'

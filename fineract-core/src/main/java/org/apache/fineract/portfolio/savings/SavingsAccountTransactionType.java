@@ -203,6 +203,6 @@ public enum SavingsAccountTransactionType {
     }
 
     public boolean isVatOnFees() {
-      return this == VAT_ON_FEES;
+        return this == VAT_ON_FEES;
     }
 }

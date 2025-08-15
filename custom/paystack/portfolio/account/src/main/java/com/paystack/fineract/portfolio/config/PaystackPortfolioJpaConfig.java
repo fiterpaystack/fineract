@@ -16,12 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-description = 'CredibleX Fineract Account'
 
-group = 'com.paystack.fineract.account'
+package com.paystack.fineract.portfolio.config;
 
-base {
-    archivesName = 'paystack-fineract-account'
+import java.util.Set;
+import org.apache.fineract.infrastructure.core.config.jpa.EntityManagerFactoryCustomizer;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+
+@Configuration
+@EnableJpaRepositories(basePackages = "com.paystack.fineract.portfolio.account.domain")
+public class PaystackPortfolioJpaConfig implements EntityManagerFactoryCustomizer {
+
+    @Override
+    public Set<String> additionalPackagesToScan() {
+        return Set.of("com.paystack.fineract.portfolio.account.domain");
+    }
 }
-
-apply from: 'dependencies.gradle'

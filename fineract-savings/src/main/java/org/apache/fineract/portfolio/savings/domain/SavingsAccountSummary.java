@@ -179,6 +179,11 @@ public final class SavingsAccountSummary {
                         this.accountBalance = Money.of(currency, this.accountBalance).minus(transactionAmount).getAmount();
                     }
                 break;
+                case VAT_ON_FEES:
+                    if (transaction.isVatonFeesAndNotReversed() && transaction.isNotReversed()) {
+                        this.accountBalance = Money.of(currency, this.accountBalance).minus(transactionAmount).getAmount();
+                    }
+                break;
                 default:
                 break;
             }
@@ -187,6 +192,7 @@ public final class SavingsAccountSummary {
             Money interestTotal = Money.zero(currency);
             Money withHoldTaxTotal = Money.zero(currency);
             Money overdraftInterestTotal = Money.zero(currency);
+            Money vatOnFeesTotal;
             this.totalDeposits = wrapper.calculateTotalDeposits(currency, savingsAccountTransactions);
             this.totalWithdrawals = wrapper.calculateTotalWithdrawals(currency, savingsAccountTransactions);
 
@@ -195,6 +201,7 @@ public final class SavingsAccountSummary {
             interestTotal = map.get("interestTotal");
             withHoldTaxTotal = map.get("withHoldTax");
             overdraftInterestTotal = map.get("overdraftInterestTotal");
+            vatOnFeesTotal = map.get("vatOnFees");
             this.totalInterestPosted = interestTotal.getAmountDefaultedToNullIfZero();
             this.totalOverdraftInterestDerived = overdraftInterestTotal.getAmountDefaultedToNullIfZero();
             this.totalWithholdTax = withHoldTaxTotal.getAmountDefaultedToNullIfZero();
@@ -202,7 +209,7 @@ public final class SavingsAccountSummary {
             this.accountBalance = getRunningBalanceOnPivotDate();
             this.accountBalance = Money.of(currency, this.accountBalance).plus(Money.of(currency, this.totalDeposits))
                     .plus(this.totalInterestPosted).minus(this.totalWithdrawals).minus(this.totalWithholdTax)
-                    .minus(this.totalOverdraftInterestDerived).getAmount();
+                    .minus(this.totalOverdraftInterestDerived).minus(vatOnFeesTotal.getAmountDefaultedToNullIfZero()).getAmount();
         }
     }
 
@@ -212,6 +219,7 @@ public final class SavingsAccountSummary {
             Money withHoldTaxTotal, MonetaryCurrency currency) {
         boolean isUpdated = false;
         HashMap<String, Money> map = new HashMap<>();
+        Money vatOnFeesTotal = Money.zero(currency);
         for (int i = savingsAccountTransactions.size() - 1; i >= 0; i--) {
             final SavingsAccountTransaction savingsAccountTransaction = savingsAccountTransactions.get(i);
             if (savingsAccountTransaction.isInterestPostingAndNotReversed() && !savingsAccountTransaction.isReversalTransaction()
@@ -241,12 +249,17 @@ public final class SavingsAccountSummary {
                 if (savingsAccountTransaction.isWithHoldTaxAndNotReversed() && !savingsAccountTransaction.isReversalTransaction()) {
                     withHoldTaxTotal = withHoldTaxTotal.plus(savingsAccountTransaction.getAmount(currency));
                 }
+
+                if (savingsAccountTransaction.isVatonFeesAndNotReversed() && !savingsAccountTransaction.isReversalTransaction()) {
+                    vatOnFeesTotal = vatOnFeesTotal.plus(savingsAccountTransaction.getAmount(currency));
+                }
             }
         }
         if (backdatedTxnsAllowedTill) {
             map.put("interestTotal", interestTotal);
             map.put("withHoldTax", withHoldTaxTotal);
             map.put("overdraftInterestTotal", overdraftInterestTotal);
+            map.put("vatOnFeesTotal", vatOnFeesTotal);
         }
         return map;
     }

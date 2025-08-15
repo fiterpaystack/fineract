@@ -25,5 +25,11 @@ dependencies {
     implementation(project(':fineract-charge'))
     implementation(project(':fineract-tax'))
 
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa") {
+        exclude group: 'org.hibernate'
+    }
 
+    implementation('org.eclipse.persistence:org.eclipse.persistence.jpa') {
+        exclude group: 'org.hibernate'
+    }
 }

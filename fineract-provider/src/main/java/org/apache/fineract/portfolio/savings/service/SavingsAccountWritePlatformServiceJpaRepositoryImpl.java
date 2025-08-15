@@ -140,10 +140,10 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
 
     private final PlatformSecurityContext context;
     private final SavingsAccountDataValidator fromApiJsonDeserializer;
-    private final SavingsAccountRepositoryWrapper savingAccountRepositoryWrapper;
+    protected final SavingsAccountRepositoryWrapper savingAccountRepositoryWrapper;
     private final StaffRepositoryWrapper staffRepository;
-    private final SavingsAccountTransactionRepository savingsAccountTransactionRepository;
-    private final SavingsAccountAssembler savingAccountAssembler;
+    protected final SavingsAccountTransactionRepository savingsAccountTransactionRepository;
+    protected final SavingsAccountAssembler savingAccountAssembler;
     private final SavingsAccountTransactionDataValidator savingsAccountTransactionDataValidator;
     private final SavingsAccountChargeDataValidator savingsAccountChargeDataValidator;
     private final PaymentDetailWritePlatformService paymentDetailWritePlatformService;
@@ -156,8 +156,8 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
     private final SavingsAccountChargeRepositoryWrapper savingsAccountChargeRepository;
     private final HolidayRepositoryWrapper holidayRepository;
     private final WorkingDaysRepositoryWrapper workingDaysRepository;
-    private final ConfigurationDomainService configurationDomainService;
-    private final DepositAccountOnHoldTransactionRepository depositAccountOnHoldTransactionRepository;
+    protected final ConfigurationDomainService configurationDomainService;
+    protected final DepositAccountOnHoldTransactionRepository depositAccountOnHoldTransactionRepository;
     private final EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService;
     private final AppUserRepositoryWrapper appuserRepository;
     private final StandingInstructionRepository standingInstructionRepository;
@@ -338,7 +338,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
                 .build();
     }
 
-    private Long saveTransactionToGenerateTransactionId(final SavingsAccountTransaction transaction) {
+    protected Long saveTransactionToGenerateTransactionId(final SavingsAccountTransaction transaction) {
         this.savingsAccountTransactionRepository.saveAndFlush(transaction);
         return transaction.getId();
     }
@@ -1378,7 +1378,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
     }
 
     @Transactional
-    private SavingsAccountTransaction payCharge(final SavingsAccountCharge savingsAccountCharge, final LocalDate transactionDate,
+    protected SavingsAccountTransaction payCharge(final SavingsAccountCharge savingsAccountCharge, final LocalDate transactionDate,
             final BigDecimal amountPaid, final DateTimeFormatter formatter, final boolean backdatedTxnsAllowedTill) {
         final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
                 .isSavingsInterestPostingAtCurrentPeriodEnd();
@@ -1431,7 +1431,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         return chargeTransaction;
     }
 
-    private void updateExistingTransactionsDetails(SavingsAccount account, Set<Long> existingTransactionIds,
+    protected void updateExistingTransactionsDetails(SavingsAccount account, Set<Long> existingTransactionIds,
             Set<Long> existingReversedTransactionIds) {
         existingTransactionIds.addAll(account.findExistingTransactionIds());
         existingReversedTransactionIds.addAll(account.findExistingReversedTransactionIds());
@@ -1449,7 +1449,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         existingReversedTransactionIds.addAll(account.findCurrentReversedTransactionIdsWithPivotDateConfig());
     }
 
-    private void postJournalEntries(final SavingsAccount savingsAccount, final Set<Long> existingTransactionIds,
+    protected void postJournalEntries(final SavingsAccount savingsAccount, final Set<Long> existingTransactionIds,
             final Set<Long> existingReversedTransactionIds, final boolean backdatedTxnsAllowedTill) {
 
         boolean isAccountTransfer = false;

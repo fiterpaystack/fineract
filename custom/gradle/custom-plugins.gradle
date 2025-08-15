@@ -1,0 +1,47 @@
+// This file configures code quality plugins for custom modules
+
+// Only apply to Java projects
+if (project.plugins.hasPlugin('java')) {
+    apply plugin: 'checkstyle'
+    apply plugin: 'pmd'
+    apply plugin: 'com.github.spotbugs'
+
+    checkstyle {
+        toolVersion = '10.12.0'
+        configFile = rootProject.file('config/checkstyle/checkstyle.xml')
+        maxWarnings = 0
+        ignoreFailures = false
+    }
+
+    tasks.withType(Checkstyle).configureEach {
+        reports {
+            xml.required = false
+            html.required = true
+        }
+    }
+
+    pmd {
+        toolVersion = '6.55.0'
+        ruleSets = [
+            "category/java/bestpractices.xml"
+        ]
+        ignoreFailures = false
+        def customRuleset = rootProject.file('custom/config/pmd/ruleset.xml')
+        if (customRuleset.exists()) {
+            ruleSetFiles = rootProject.files(customRuleset)
+        }
+    }
+
+    spotbugs {
+        toolVersion = '4.7.3'
+        def excludeFile = rootProject.file('config/spotbugs/exclude.xml')
+        if (excludeFile.exists()) {
+            excludeFilter = excludeFile
+        }
+    }
+
+    dependencies {
+        testImplementation 'org.junit.jupiter:junit-jupiter'
+        testImplementation 'org.mockito:mockito-core'
+    }
+}
