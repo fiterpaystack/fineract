@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.crediblex.fineract.portfolio.client;
+package com.paystack.fineract.portfolio.client;
 
 import java.util.Collections;
 import org.apache.fineract.commands.service.CommandProcessingService;
