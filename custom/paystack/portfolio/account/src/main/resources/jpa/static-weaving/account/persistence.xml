@@ -28,7 +28,7 @@
     <!--  You can find the runtime configuration in the JPAConfig class  -->
     <persistence-unit name="jpa-pu" transaction-type="RESOURCE_LOCAL">
         <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
-        <!-- Pastack classes -->
+        <!-- Paystack classes -->
         <class>com.paystack.fineract.portfolio.account.domain.PaystackSavingsAccount</class>
 
         <exclude-unlisted-classes>false</exclude-unlisted-classes>

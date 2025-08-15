@@ -201,7 +201,7 @@ public final class SavingsAccountSummary {
             interestTotal = map.get("interestTotal");
             withHoldTaxTotal = map.get("withHoldTax");
             overdraftInterestTotal = map.get("overdraftInterestTotal");
-            vatOnFeesTotal = map.get("vatOnFees");
+            vatOnFeesTotal = map.get("vatOnFeesTotal");
             this.totalInterestPosted = interestTotal.getAmountDefaultedToNullIfZero();
             this.totalOverdraftInterestDerived = overdraftInterestTotal.getAmountDefaultedToNullIfZero();
             this.totalWithholdTax = withHoldTaxTotal.getAmountDefaultedToNullIfZero();

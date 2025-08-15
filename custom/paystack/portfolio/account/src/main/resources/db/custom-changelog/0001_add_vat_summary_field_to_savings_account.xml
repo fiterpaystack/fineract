@@ -91,7 +91,7 @@
 
         <!-- Rollback configuration -->
         <rollback>
-            <dropTable tableName="m_savings_account_ext" cascadeConstraints="true"/>
+            <dropTable tableName="ps_m_savings_account" cascadeConstraints="true"/>
         </rollback>
     </changeSet>
 
