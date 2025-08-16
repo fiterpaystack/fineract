@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.paystack.fineract.tier.service.service;
+package com.paystack.fineract.tier.service.api;
 
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;

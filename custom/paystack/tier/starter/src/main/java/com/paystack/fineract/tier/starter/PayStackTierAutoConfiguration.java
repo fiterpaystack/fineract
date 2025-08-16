@@ -23,11 +23,6 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.ComponentScans;
 
 @AutoConfiguration
-@ComponentScans({ @ComponentScan("com.paystack.fineract.tier.service.api"),
-        @ComponentScan("com.paystack.fineract.tier.service.data"),
-        @ComponentScan("com.paystack.fineract.tier.service.domain"),
-        @ComponentScan("com.paystack.fineract.tier.service.exception"),
-        @ComponentScan("com.paystack.fineract.tier.service.handler"),
-        @ComponentScan("com.paystack.fineract.tier.service.service") })
+@ComponentScans({ @ComponentScan("com.paystack.fineract.tier.service") })
 public class PayStackTierAutoConfiguration {
 }

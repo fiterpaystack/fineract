@@ -21,10 +21,12 @@ dependencies {
     implementation(project(':fineract-core'))
     implementation(project(':fineract-provider'))
     compileOnly('org.springframework.boot:spring-boot-autoconfigure')
-
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation ('org.springframework.boot:spring-boot-starter-data-jpa') {
         exclude group: 'org.hibernate'
+    }
+    implementation('org.eclipse.persistence:org.eclipse.persistence.jpa') {
+        exclude group: 'org.eclipse.persistence', module: 'jakarta.persistence'
     }
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-security'
@@ -33,11 +35,11 @@ dependencies {
         exclude group: 'junit', module: 'junit'
     }
 
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
     implementation 'jakarta.ws.rs:jakarta.ws.rs-api'
     implementation 'org.apache.commons:commons-lang3'
-    implementation('org.eclipse.persistence:org.eclipse.persistence.jpa') {
-        exclude group: 'org.eclipse.persistence', module: 'jakarta.persistence'
-    }
 
     implementation 'io.swagger.core.v3:swagger-annotations-jakarta'
     implementation 'com.google.code.gson:gson:2.10.1'
