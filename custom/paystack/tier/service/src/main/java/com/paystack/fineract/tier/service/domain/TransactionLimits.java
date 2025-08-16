@@ -40,7 +40,7 @@ public class TransactionLimits {
     @Column(name = "max_daily_withdrawal_amount", nullable = false, precision = 19, scale = 2)
     private BigDecimal maxDailyWithdrawalAmount;
 
-    @Column(name = "max_on_hold_amount", nullable = false, precision = 19, scale = 2)
-    private BigDecimal maxOnHoldAmount;
+    @Column(name = "balance_cumulative", nullable = false, precision = 19, scale = 2)
+    private BigDecimal balanceCumulative;
 
 }

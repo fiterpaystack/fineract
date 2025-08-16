@@ -101,7 +101,7 @@ public class SavingsAccountGlobalTransactionLimitReadPlatformServiceImpl
             return " stls.id, stls.name, stls.description, stls.is_active as isActive, "
                     + " stls.is_global_limit as isGlobalLimit,stls.is_merchant_limit as isMerchantLimit, stls.max_single_withdrawal_amount as maxSingleWithdrawalAmount, "
                     + " stls.max_single_deposit_amount as maxSingleDepositAmount, stls.max_daily_withdrawal_amount as maxDailyWithdrawalAmount, "
-                    + " stls.max_on_hold_amount as maxOnHoldAmount, stls.max_client_specific_daily_withdrawal_amount as maxClientSpecificDailyWithdrawalAmount, "
+                    + " stls.balance_cumulative as balanceCumulative, stls.max_client_specific_daily_withdrawal_amount as maxClientSpecificDailyWithdrawalAmount, "
                     + " stls.max_client_specific_single_withdrawal_amount as maxClientSpecificSingleWithdrawalAmount "
                     + " FROM m_savings_global_transaction_limits_setting stls ";
         }
@@ -118,14 +118,14 @@ public class SavingsAccountGlobalTransactionLimitReadPlatformServiceImpl
             final BigDecimal maxSingleWithdrawalAmount = rs.getBigDecimal("maxSingleWithdrawalAmount");
             final BigDecimal maxSingleDepositAmount = rs.getBigDecimal("maxSingleDepositAmount");
             final BigDecimal maxDailyWithdrawalAmount = rs.getBigDecimal("maxDailyWithdrawalAmount");
-            final BigDecimal maxOnHoldAmount = rs.getBigDecimal("maxOnHoldAmount");
+            final BigDecimal balanceCumulative = rs.getBigDecimal("balanceCumulative");
             final BigDecimal maxClientSpecificDailyWithdrawalAmount = rs.getBigDecimal("maxClientSpecificDailyWithdrawalAmount");
             final BigDecimal maxClientSpecificSingleWithdrawalAmount = rs.getBigDecimal("maxClientSpecificSingleWithdrawalAmount");
 
             return SavingsAccountTransactionLimitsSettingData.builder().id(id).name(name).description(description).isActive(isActive)
                     .isGlobalLimit(isGlobalLimit).maxSingleWithdrawalAmount(maxSingleWithdrawalAmount)
                     .maxSingleDepositAmount(maxSingleDepositAmount).maxDailyWithdrawalAmount(maxDailyWithdrawalAmount)
-                    .maxOnHoldAmount(maxOnHoldAmount).maxClientSpecificDailyWithdrawalAmount(maxClientSpecificDailyWithdrawalAmount)
+                    .balanceCumulative(balanceCumulative).maxClientSpecificDailyWithdrawalAmount(maxClientSpecificDailyWithdrawalAmount)
                     .maxClientSpecificSingleWithdrawalAmount(maxClientSpecificSingleWithdrawalAmount).isMerchantLimit(isMerchantLimit)
                     .build();
         }

@@ -208,19 +208,19 @@ public class SavingsAccountTransactionLimitWritePlatformServiceImpl implements S
             limits.setMaxSingleWithdrawalAmount(newValue);
         }
 
-        if (command.isChangeInBigDecimalParameterNamed(SavingsAccountTransactionLimitApiConstant.MAX_ON_HOLD_AMOUNT_PARAM_NAME,
-                limits.getMaxOnHoldAmount())) {
+        if (command.isChangeInBigDecimalParameterNamed(SavingsAccountTransactionLimitApiConstant.BALANCE_CUMULATIVE_PARAM_NAME,
+                limits.getBalanceCumulative())) {
             final BigDecimal newValue = command
-                    .bigDecimalValueOfParameterNamed(SavingsAccountTransactionLimitApiConstant.MAX_ON_HOLD_AMOUNT_PARAM_NAME);
-            changes.put(SavingsAccountTransactionLimitApiConstant.MAX_ON_HOLD_AMOUNT_PARAM_NAME, newValue);
-            limits.setMaxOnHoldAmount(newValue);
+                    .bigDecimalValueOfParameterNamed(SavingsAccountTransactionLimitApiConstant.BALANCE_CUMULATIVE_PARAM_NAME);
+            changes.put(SavingsAccountTransactionLimitApiConstant.BALANCE_CUMULATIVE_PARAM_NAME, newValue);
+            limits.setBalanceCumulative(newValue);
         }
 
         savingsAccountGlobalTransactionLimitSetting.setTransactionLimits(limits);
 
         if (command.isChangeInBigDecimalParameterNamed(
                 SavingsAccountTransactionLimitApiConstant.MAX_CLIENT_SPECIFIC_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME,
-                limits.getMaxOnHoldAmount())) {
+                savingsAccountGlobalTransactionLimitSetting.getMaxClientSpecificDailyWithdrawalAmount())) {
             final BigDecimal newValue = command.bigDecimalValueOfParameterNamed(
                     SavingsAccountTransactionLimitApiConstant.MAX_CLIENT_SPECIFIC_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME);
             changes.put(SavingsAccountTransactionLimitApiConstant.MAX_CLIENT_SPECIFIC_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME, newValue);
@@ -229,7 +229,7 @@ public class SavingsAccountTransactionLimitWritePlatformServiceImpl implements S
 
         if (command.isChangeInBigDecimalParameterNamed(
                 SavingsAccountTransactionLimitApiConstant.MAX_CLIENT_SPECIFIC_SINGLE_WITHDRAWAL_AMOUNT_PARAM_NAME,
-                limits.getMaxOnHoldAmount())) {
+                savingsAccountGlobalTransactionLimitSetting.getMaxClientSpecificSingleWithdrawalAmount())) {
             final BigDecimal newValue = command.bigDecimalValueOfParameterNamed(
                     SavingsAccountTransactionLimitApiConstant.MAX_CLIENT_SPECIFIC_SINGLE_WITHDRAWAL_AMOUNT_PARAM_NAME);
             changes.put(SavingsAccountTransactionLimitApiConstant.MAX_CLIENT_SPECIFIC_SINGLE_WITHDRAWAL_AMOUNT_PARAM_NAME, newValue);

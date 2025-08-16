@@ -34,7 +34,7 @@ public final class SavingsAccountTransactionLimitApiConstant {
     public static final String MAX_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME = "maxDailyWithdrawalAmount";
     public static final String MAX_CLIENT_SPECIFIC_SINGLE_WITHDRAWAL_AMOUNT_PARAM_NAME = "maxClientSpecificSingleWithdrawalAmount";
     public static final String MAX_CLIENT_SPECIFIC_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME = "maxClientSpecificDailyWithdrawalAmount";
-    public static final String MAX_ON_HOLD_AMOUNT_PARAM_NAME = "maxOnHoldAmount";
+    public static final String BALANCE_CUMULATIVE_PARAM_NAME = "balanceCumulative";
     public static final String IS_ACTIVE_PARAM_NAME = "isActive";
     public static final String IS_GLOBAL_LIMIT_PARAM_NAME = "isGlobalLimit";
     public static final String IS_MERCHANT_LIMIT_PARAM_NAME = "isMerchantLimit";
@@ -44,7 +44,7 @@ public final class SavingsAccountTransactionLimitApiConstant {
     public static final String CLASSIFICATION_CODE_NAME = "clientClassification";
 
     public static final Set<String> CREATE_REQUEST_DATA_PARAMETERS = Set.of(NAME_PARAM_NAME, MAX_SINGLE_WITHDRAWAL_AMOUNT_PARAM_NAME,
-            MAX_SINGLE_DEPOSIT_AMOUNT_PARAM_NAME, MAX_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME, MAX_ON_HOLD_AMOUNT_PARAM_NAME,
+            MAX_SINGLE_DEPOSIT_AMOUNT_PARAM_NAME, MAX_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME, BALANCE_CUMULATIVE_PARAM_NAME,
             IS_ACTIVE_PARAM_NAME, IS_GLOBAL_LIMIT_PARAM_NAME, DESCRIPTION_PARAM_NAME,
             MAX_CLIENT_SPECIFIC_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME, MAX_CLIENT_SPECIFIC_SINGLE_WITHDRAWAL_AMOUNT_PARAM_NAME, "locale",
             "dateFormat", "isMerchantLimit");

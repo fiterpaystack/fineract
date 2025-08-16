@@ -69,7 +69,7 @@ public class SavingsAccountGlobalTransactionLimitSetting extends AbstractAuditab
         final BigDecimal maxSingleWithdrawalAmount = command.bigDecimalValueOfParameterNamed("maxSingleWithdrawalAmount");
         final BigDecimal maxSingleDepositAmount = command.bigDecimalValueOfParameterNamed("maxSingleDepositAmount");
         final BigDecimal maxDailyWithdrawalAmount = command.bigDecimalValueOfParameterNamed("maxDailyWithdrawalAmount");
-        final BigDecimal maxOnHoldAmount = command.bigDecimalValueOfParameterNamed("maxOnHoldAmount");
+        final BigDecimal balanceCumulative = command.bigDecimalValueOfParameterNamed("balanceCumulative");
         final BigDecimal maxClientSpecificSingleWithdrawalAmount = command
                 .bigDecimalValueOfParameterNamed("maxClientSpecificSingleWithdrawalAmount");
         final BigDecimal maxClientSpecificDailyWithdrawalAmount = command
@@ -80,7 +80,7 @@ public class SavingsAccountGlobalTransactionLimitSetting extends AbstractAuditab
         final String description = command.stringValueOfParameterNamed("description");
 
         final TransactionLimits limits = TransactionLimits.builder().maxDailyWithdrawalAmount(maxDailyWithdrawalAmount)
-                .maxOnHoldAmount(maxOnHoldAmount).maxSingleDepositAmount(maxSingleDepositAmount)
+                .balanceCumulative(balanceCumulative).maxSingleDepositAmount(maxSingleDepositAmount)
                 .maxSingleWithdrawalAmount(maxSingleWithdrawalAmount).build();
 
         return new SavingsAccountGlobalTransactionLimitSetting(name, limits, maxClientSpecificSingleWithdrawalAmount,

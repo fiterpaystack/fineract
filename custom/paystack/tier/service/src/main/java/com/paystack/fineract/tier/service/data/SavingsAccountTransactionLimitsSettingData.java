@@ -30,7 +30,7 @@ public class SavingsAccountTransactionLimitsSettingData {
     private final BigDecimal maxSingleWithdrawalAmount;
     private final BigDecimal maxSingleDepositAmount;
     private final BigDecimal maxDailyWithdrawalAmount;
-    private final BigDecimal maxOnHoldAmount;
+    private final BigDecimal balanceCumulative;
     private final BigDecimal maxClientSpecificSingleWithdrawalAmount;
     private final BigDecimal maxClientSpecificDailyWithdrawalAmount;
     private final Boolean isActive;
@@ -41,6 +41,6 @@ public class SavingsAccountTransactionLimitsSettingData {
     public TransactionLimitData getTransactionLimits() {
         return TransactionLimitData.builder().maxSingleWithdrawalAmount(maxSingleWithdrawalAmount)
                 .maxSingleDepositAmount(maxSingleDepositAmount).maxDailyWithdrawalAmount(maxDailyWithdrawalAmount)
-                .maxOnHoldAmount(maxOnHoldAmount).build();
+                .maxOnHoldAmount(balanceCumulative).build();
     }
 }

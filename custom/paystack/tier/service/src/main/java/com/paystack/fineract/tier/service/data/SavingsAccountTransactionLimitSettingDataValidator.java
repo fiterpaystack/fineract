@@ -63,24 +63,24 @@ public class SavingsAccountTransactionLimitSettingDataValidator {
         final String name = this.fromApiJsonHelper.extractStringNamed(SavingsAccountTransactionLimitApiConstant.NAME_PARAM_NAME, element);
         baseDataValidator.reset().parameter(nameParamName).value(name).notBlank().notExceedingLengthOf(255);
 
-        final BigDecimal maxSingleWithdrawalAmount = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(
+        /*final BigDecimal maxSingleWithdrawalAmount = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(
                 SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_WITHDRAWAL_AMOUNT_PARAM_NAME, element);
         baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_WITHDRAWAL_AMOUNT_PARAM_NAME)
-                .value(maxSingleWithdrawalAmount).notNull().zeroOrPositiveAmount();
+                .value(maxSingleWithdrawalAmount).notNull().zeroOrPositiveAmount();*/
 
         final BigDecimal maxSingleDepositAmount = this.fromApiJsonHelper
                 .extractBigDecimalWithLocaleNamed(SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_DEPOSIT_AMOUNT_PARAM_NAME, element);
         baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_DEPOSIT_AMOUNT_PARAM_NAME)
                 .value(maxSingleDepositAmount).notNull().zeroOrPositiveAmount();
 
-        final BigDecimal maxDailyWithdrawalAmount = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(
+        /*final BigDecimal maxDailyWithdrawalAmount = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(
                 SavingsAccountTransactionLimitApiConstant.MAX_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME, element);
         baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.MAX_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME)
-                .value(maxDailyWithdrawalAmount).notNull().zeroOrPositiveAmount();
+                .value(maxDailyWithdrawalAmount).notNull().zeroOrPositiveAmount();*/
 
-        final BigDecimal maxOnHoldAmount = this.fromApiJsonHelper
-                .extractBigDecimalWithLocaleNamed(SavingsAccountTransactionLimitApiConstant.MAX_ON_HOLD_AMOUNT_PARAM_NAME, element);
-        baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.MAX_ON_HOLD_AMOUNT_PARAM_NAME).value(maxOnHoldAmount)
+        final BigDecimal balanceCumulative = this.fromApiJsonHelper
+                .extractBigDecimalWithLocaleNamed(SavingsAccountTransactionLimitApiConstant.BALANCE_CUMULATIVE_PARAM_NAME, element);
+        baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.BALANCE_CUMULATIVE_PARAM_NAME).value(balanceCumulative)
                 .notNull().zeroOrPositiveAmount();
 
         final Boolean isActive = this.fromApiJsonHelper.extractBooleanNamed(SavingsAccountTransactionLimitApiConstant.IS_ACTIVE_PARAM_NAME,
@@ -88,10 +88,10 @@ public class SavingsAccountTransactionLimitSettingDataValidator {
         baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.IS_ACTIVE_PARAM_NAME).value(isActive).notNull()
                 .validateForBooleanValue();
 
-        final Boolean isGlobalLimit = this.fromApiJsonHelper
+        /*final Boolean isGlobalLimit = this.fromApiJsonHelper
                 .extractBooleanNamed(SavingsAccountTransactionLimitApiConstant.IS_GLOBAL_LIMIT_PARAM_NAME, element);
         baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.IS_GLOBAL_LIMIT_PARAM_NAME).value(isGlobalLimit)
-                .notNull().validateForBooleanValue();
+                .notNull().validateForBooleanValue();*/
 
         final String description = this.fromApiJsonHelper
                 .extractStringNamed(SavingsAccountTransactionLimitApiConstant.DESCRIPTION_PARAM_NAME, element);
@@ -122,12 +122,12 @@ public class SavingsAccountTransactionLimitSettingDataValidator {
             baseDataValidator.reset().parameter(nameParamName).value(name).notBlank().notExceedingLengthOf(255);
         }
 
-        if (fromApiJsonHelper.parameterExists(SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_WITHDRAWAL_AMOUNT_PARAM_NAME, element)) {
+        /*if (fromApiJsonHelper.parameterExists(SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_WITHDRAWAL_AMOUNT_PARAM_NAME, element)) {
             final BigDecimal maxSingleWithdrawalAmount = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(
                     SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_WITHDRAWAL_AMOUNT_PARAM_NAME, element);
             baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_WITHDRAWAL_AMOUNT_PARAM_NAME)
                     .value(maxSingleWithdrawalAmount).notNull().zeroOrPositiveAmount();
-        }
+        }*/
 
         if (fromApiJsonHelper.parameterExists(SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_DEPOSIT_AMOUNT_PARAM_NAME, element)) {
             final BigDecimal maxSingleDepositAmount = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(
@@ -136,18 +136,18 @@ public class SavingsAccountTransactionLimitSettingDataValidator {
                     .value(maxSingleDepositAmount).notNull().zeroOrPositiveAmount();
         }
 
-        if (fromApiJsonHelper.parameterExists(SavingsAccountTransactionLimitApiConstant.MAX_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME, element)) {
+        /*if (fromApiJsonHelper.parameterExists(SavingsAccountTransactionLimitApiConstant.MAX_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME, element)) {
             final BigDecimal maxDailyWithdrawalAmount = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(
                     SavingsAccountTransactionLimitApiConstant.MAX_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME, element);
             baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.MAX_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME)
                     .value(maxDailyWithdrawalAmount).notNull().zeroOrPositiveAmount();
-        }
+        }*/
 
-        if (fromApiJsonHelper.parameterExists(SavingsAccountTransactionLimitApiConstant.MAX_ON_HOLD_AMOUNT_PARAM_NAME, element)) {
-            final BigDecimal maxOnHoldAmount = this.fromApiJsonHelper
-                    .extractBigDecimalWithLocaleNamed(SavingsAccountTransactionLimitApiConstant.MAX_ON_HOLD_AMOUNT_PARAM_NAME, element);
-            baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.MAX_ON_HOLD_AMOUNT_PARAM_NAME)
-                    .value(maxOnHoldAmount).notNull().zeroOrPositiveAmount();
+        if (fromApiJsonHelper.parameterExists(SavingsAccountTransactionLimitApiConstant.BALANCE_CUMULATIVE_PARAM_NAME, element)) {
+            final BigDecimal balanceCumulative = this.fromApiJsonHelper
+                    .extractBigDecimalWithLocaleNamed(SavingsAccountTransactionLimitApiConstant.BALANCE_CUMULATIVE_PARAM_NAME, element);
+            baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.BALANCE_CUMULATIVE_PARAM_NAME)
+                    .value(balanceCumulative).notNull().zeroOrPositiveAmount();
         }
 
         if (fromApiJsonHelper.parameterExists(SavingsAccountTransactionLimitApiConstant.IS_ACTIVE_PARAM_NAME, element)) {
@@ -157,12 +157,12 @@ public class SavingsAccountTransactionLimitSettingDataValidator {
                     .validateForBooleanValue();
         }
 
-        if (fromApiJsonHelper.parameterExists(SavingsAccountTransactionLimitApiConstant.IS_GLOBAL_LIMIT_PARAM_NAME, element)) {
+        /*if (fromApiJsonHelper.parameterExists(SavingsAccountTransactionLimitApiConstant.IS_GLOBAL_LIMIT_PARAM_NAME, element)) {
             final Boolean isGlobalLimit = this.fromApiJsonHelper
                     .extractBooleanNamed(SavingsAccountTransactionLimitApiConstant.IS_GLOBAL_LIMIT_PARAM_NAME, element);
             baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.IS_GLOBAL_LIMIT_PARAM_NAME).value(isGlobalLimit)
                     .validateForBooleanValue();
-        }
+        }*/
 
         if (fromApiJsonHelper.parameterExists(SavingsAccountTransactionLimitApiConstant.DESCRIPTION_PARAM_NAME, element)) {
             final String description = this.fromApiJsonHelper

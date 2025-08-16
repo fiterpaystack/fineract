@@ -26,6 +26,7 @@
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <changeSet id="1" author="paystack">
+        <validCheckSum>ANY</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="m_savings_global_transaction_limits_setting"/>
@@ -38,28 +39,21 @@
             <column name="name" type="VARCHAR(255)">
                 <constraints nullable="false"/>
             </column>
-            <column name="max_single_withdrawal_amount" type="NUMERIC(19,2)">
-                <constraints nullable="false"/>
-            </column>
             <column name="max_single_deposit_amount" type="NUMERIC(19,2)">
                 <constraints nullable="false"/>
             </column>
-            <column name="max_daily_withdrawal_amount" type="NUMERIC(19,2)">
+            <column name="balance_cumulative" type="NUMERIC(19,2)">
                 <constraints nullable="false"/>
             </column>
-            <column name="max_client_specific_single_withdrawal_amount" type="NUMERIC(19,2)">
-                <constraints nullable="false"/>
-            </column>
-            <column name="max_client_specific_daily_withdrawal_amount" type="NUMERIC(19,2)">
-                <constraints nullable="false"/>
-            </column>
-            <column name="max_on_hold_amount" type="NUMERIC(19,2)">
-                <constraints nullable="false"/>
-            </column>
+            <column name="max_single_withdrawal_amount" type="NUMERIC(19,2)"/>
+            <column name="max_daily_withdrawal_amount" type="NUMERIC(19,2)"/>
+            <column name="max_client_specific_single_withdrawal_amount" type="NUMERIC(19,2)"/>
+            <column name="max_client_specific_daily_withdrawal_amount" type="NUMERIC(19,2)"/>
+
             <column name="is_active" type="BOOLEAN">
                 <constraints nullable="false"/>
             </column>
-            <column name="is_global_limit" type="BOOLEAN">
+            <column name="is_global_limit" type="BOOLEAN" defaultValueBoolean="false">
                 <constraints nullable="false"/>
             </column>
             <column name="description" type="TEXT">
