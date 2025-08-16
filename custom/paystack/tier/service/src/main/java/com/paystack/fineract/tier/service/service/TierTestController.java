@@ -16,12 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-description = 'Paystack Fineract Pentaho Report Starter'
+package com.paystack.fineract.tier.service.service;
 
-group = 'com.paystack.fineract.infrastructure'
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import org.springframework.stereotype.Component;
 
-base {
-    archivesName = 'paystack-fineract-report-starter'
+@Path("/v1/tier")
+@Component
+public class TierTestController {
+    @GET
+    @Path("/str")
+    public String sayHelloStr(){
+        return "Hello tier............";
+    }
 }
-
-apply from: 'dependencies.gradle'

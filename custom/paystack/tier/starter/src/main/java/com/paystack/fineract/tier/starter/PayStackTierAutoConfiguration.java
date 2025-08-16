@@ -16,12 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-description = 'Paystack Fineract Pentaho Report Starter'
+package com.paystack.fineract.tier.starter;
 
-group = 'com.paystack.fineract.infrastructure'
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.ComponentScans;
 
-base {
-    archivesName = 'paystack-fineract-report-starter'
+@AutoConfiguration
+@ComponentScans({ @ComponentScan("com.paystack.fineract.tier.service.api"),
+        @ComponentScan("com.paystack.fineract.tier.service.data"),
+        @ComponentScan("com.paystack.fineract.tier.service.domain"),
+        @ComponentScan("com.paystack.fineract.tier.service.exception"),
+        @ComponentScan("com.paystack.fineract.tier.service.handler"),
+        @ComponentScan("com.paystack.fineract.tier.service.service") })
+public class PayStackTierAutoConfiguration {
 }
-
-apply from: 'dependencies.gradle'

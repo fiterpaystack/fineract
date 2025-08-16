@@ -3876,4 +3876,34 @@ public class CommandWrapperBuilder {
         this.href = "/loans/" + loanId + "/transactions/template?command=buyDownFee";
         return this;
     }
+
+    public CommandWrapperBuilder createSavingsTransactionLimitSetting() {
+        this.actionName = "CREATE";
+        this.entityName = "TRANSACTIONLIMIT";
+        this.href = "/savings/transactionlimits";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateSavingsTransactionLimitSetting(final Long id) {
+        this.actionName = "UPDATE";
+        this.entityName = "TRANSACTIONLIMIT";
+        this.entityId = id;
+        this.href = "/savings/transactionlimits/" + id;
+        return this;
+    }
+
+    public CommandWrapperBuilder createClientClassificationLimitMapping() {
+        this.actionName = "CREATE";
+        this.entityName = "TRANSACTIONLIMITCLASSIFICATION";
+        this.href = "/savings/transactionlimits/classificationmapping";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateClientClassificationLimitMapping(final Long id) {
+        this.actionName = "UPDATE";
+        this.entityName = "TRANSACTIONLIMITCLASSIFICATION";
+        this.entityId = id;
+        this.href = "/savings/transactionlimits/classificationmapping/" + id;
+        return this;
+    }
 }

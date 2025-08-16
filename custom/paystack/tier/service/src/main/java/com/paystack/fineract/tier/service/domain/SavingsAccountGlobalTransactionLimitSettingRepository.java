@@ -16,12 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-description = 'Paystack Fineract Pentaho Report Starter'
 
-group = 'com.paystack.fineract.infrastructure'
+package com.paystack.fineract.tier.service.domain;
 
-base {
-    archivesName = 'paystack-fineract-report-starter'
+import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface SavingsAccountGlobalTransactionLimitSettingRepository
+        extends JpaRepository<SavingsAccountGlobalTransactionLimitSetting, Long> {
+
+    Optional<SavingsAccountGlobalTransactionLimitSetting> findByIsGlobalLimitAndIsActiveAndIsMerchantLimit(boolean isGlobalLimit,
+            boolean isEnabled, boolean isMerchantLimit);
+
 }
-
-apply from: 'dependencies.gradle'
