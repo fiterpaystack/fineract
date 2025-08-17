@@ -51,14 +51,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainService {
 
-    private final PlatformSecurityContext context;
-    private final SavingsAccountRepositoryWrapper savingsAccountRepository;
+    protected final PlatformSecurityContext context;
+    protected final SavingsAccountRepositoryWrapper savingsAccountRepository;
     private final SavingsAccountTransactionRepository savingsAccountTransactionRepository;
     private final ApplicationCurrencyRepositoryWrapper applicationCurrencyRepositoryWrapper;
     private final JournalEntryWritePlatformService journalEntryWritePlatformService;
-    private final ConfigurationDomainService configurationDomainService;
-    private final DepositAccountOnHoldTransactionRepository depositAccountOnHoldTransactionRepository;
-    private final BusinessEventNotifierService businessEventNotifierService;
+    protected final ConfigurationDomainService configurationDomainService;
+    protected final DepositAccountOnHoldTransactionRepository depositAccountOnHoldTransactionRepository;
+    protected final BusinessEventNotifierService businessEventNotifierService;
 
     @Autowired
     public SavingsAccountDomainServiceJpa(final SavingsAccountRepositoryWrapper savingsAccountRepository,
@@ -235,28 +235,28 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
                 savingsAccountTransactionType, backdatedTxnsAllowedTill);
     }
 
-    private void updateExistingTransactionsDetails(SavingsAccount account, Set<Long> existingTransactionIds,
+    protected void updateExistingTransactionsDetails(SavingsAccount account, Set<Long> existingTransactionIds,
             Set<Long> existingReversedTransactionIds) {
         existingTransactionIds.addAll(account.findExistingTransactionIds());
         existingReversedTransactionIds.addAll(account.findExistingReversedTransactionIds());
     }
 
-    private Long saveTransactionToGenerateTransactionId(final SavingsAccountTransaction transaction) {
+    protected Long saveTransactionToGenerateTransactionId(final SavingsAccountTransaction transaction) {
         this.savingsAccountTransactionRepository.saveAndFlush(transaction);
         return transaction.getId();
     }
 
-    private void saveUpdatedTransactionsOfSavingsAccount(final List<SavingsAccountTransaction> savingsAccountTransactions) {
+    protected void saveUpdatedTransactionsOfSavingsAccount(final List<SavingsAccountTransaction> savingsAccountTransactions) {
         this.savingsAccountTransactionRepository.saveAll(savingsAccountTransactions);
     }
 
-    private void updateTransactionDetailsWithPivotConfig(final SavingsAccount account, Set<Long> existingTransactionIds,
+    protected void updateTransactionDetailsWithPivotConfig(final SavingsAccount account, Set<Long> existingTransactionIds,
             Set<Long> existingReversedTransactionIds) {
         existingTransactionIds.addAll(account.findCurrentTransactionIdsWithPivotDateConfig());
         existingReversedTransactionIds.addAll(account.findCurrentReversedTransactionIdsWithPivotDateConfig());
     }
 
-    private void postJournalEntries(final SavingsAccount savingsAccount, final Set<Long> existingTransactionIds,
+    protected void postJournalEntries(final SavingsAccount savingsAccount, final Set<Long> existingTransactionIds,
             final Set<Long> existingReversedTransactionIds, boolean isAccountTransfer, final boolean backdatedTxnsAllowedTill) {
 
         final Map<String, Object> accountingBridgeData = savingsAccount.deriveAccountingBridgeData(savingsAccount.getCurrency().getCode(),
