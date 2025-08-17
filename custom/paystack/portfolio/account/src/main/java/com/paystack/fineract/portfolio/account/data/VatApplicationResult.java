@@ -53,10 +53,6 @@ public class VatApplicationResult {
     private boolean hasErrors = false;
     private String errorMessage;
 
-    // Audit fields
-    private String processedBy;
-    private LocalDate processedDate;
-
     /**
      * Create a successful VAT application result
      */
@@ -69,25 +65,8 @@ public class VatApplicationResult {
         result.vatPercentage = vatPercentage;
         result.vatTransactionId = vatTransaction.getId();
         result.transactionDate = vatTransaction.getDateOf();
-        result.processedDate = LocalDate.now();
 
         return result;
-    }
-
-    // Convenience methods
-    public boolean isSuccessful() {
-        return vatApplied && !hasErrors;
-    }
-
-    public boolean requiresBalanceUpdate() {
-        return vatApplied || backdatedTransaction;
-    }
-
-    public BigDecimal getTotalChargeWithVat() {
-        if (parentFeeTransaction != null) {
-            return parentFeeTransaction.getAmount().add(vatAmount);
-        }
-        return vatAmount;
     }
 
     public VatApplicationResult setBackdatedTransaction(boolean backdated) {
