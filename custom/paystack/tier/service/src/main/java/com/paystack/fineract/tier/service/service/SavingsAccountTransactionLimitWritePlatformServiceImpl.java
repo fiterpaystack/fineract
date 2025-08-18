@@ -59,54 +59,11 @@ public class SavingsAccountTransactionLimitWritePlatformServiceImpl implements S
         SavingsAccountGlobalTransactionLimitSetting savingsAccountGlobalTransactionLimitSetting = SavingsAccountGlobalTransactionLimitSetting
                 .fromJson(command);
 
-        if (savingsAccountGlobalTransactionLimitSetting.getIsGlobalLimit() != null
-                && savingsAccountGlobalTransactionLimitSetting.getIsGlobalLimit()) {
-            updateExistingGlobalLimitValues(savingsAccountGlobalTransactionLimitSetting,
-                    savingsAccountGlobalTransactionLimitSetting.getIsMerchantLimit());
-        }
-
         SavingsAccountGlobalTransactionLimitSetting savingsAccountGlobalTransactionLimitSettingResponse = savingsAccountTransactionLimitsSettingRepository
                 .saveAndFlush(savingsAccountGlobalTransactionLimitSetting);
 
         return new CommandProcessingResultBuilder().withCommandId(command.commandId())
                 .withEntityId(savingsAccountGlobalTransactionLimitSettingResponse.getId()).build();
-    }
-
-    private void updateCurrentlyActiveGlobalLimitToInactive(SavingsAccountGlobalTransactionLimitSetting currentGlobalLimit,
-            Boolean isMerchantLimit) {
-
-        if (currentGlobalLimit != null && currentGlobalLimit.getIsGlobalLimit() != null && currentGlobalLimit.getIsGlobalLimit()) {
-            currentGlobalLimit.setIsGlobalLimit(false);
-            currentGlobalLimit.setIsMerchantLimit(false);
-        } else {
-            Optional<SavingsAccountGlobalTransactionLimitSetting> savingsAccountGlobalTransactionLimitSetting = savingsAccountTransactionLimitsSettingRepository
-                    .findByIsGlobalLimitAndIsActiveAndIsMerchantLimit(true, true, isMerchantLimit);
-
-            if (savingsAccountGlobalTransactionLimitSetting.isPresent()) {
-
-                savingsAccountGlobalTransactionLimitSetting.get().setIsGlobalLimit(false);
-                savingsAccountGlobalTransactionLimitSetting.get().setIsMerchantLimit(false);
-                savingsAccountTransactionLimitsSettingRepository.save(savingsAccountGlobalTransactionLimitSetting.get());
-            }
-        }
-    }
-
-    private void updateExistingGlobalLimitValues(SavingsAccountGlobalTransactionLimitSetting currentGlobalLimit, Boolean isMerchantLimit) {
-
-        Optional<SavingsAccountGlobalTransactionLimitSetting> savingsAccountGlobalTransactionLimitSetting = savingsAccountTransactionLimitsSettingRepository
-                .findByIsGlobalLimitAndIsActiveAndIsMerchantLimit(true, true, isMerchantLimit);
-
-        if (savingsAccountGlobalTransactionLimitSetting.isPresent()) {
-
-            savingsAccountGlobalTransactionLimitSetting.get().setIsGlobalLimit(false);
-            savingsAccountGlobalTransactionLimitSetting.get().setIsMerchantLimit(false);
-            savingsAccountTransactionLimitsSettingRepository.save(savingsAccountGlobalTransactionLimitSetting.get());
-        }
-
-        if (currentGlobalLimit != null) {
-            currentGlobalLimit.setIsGlobalLimit(true);
-            currentGlobalLimit.setIsMerchantLimit(isMerchantLimit);
-        }
     }
 
     @Override
@@ -117,45 +74,6 @@ public class SavingsAccountTransactionLimitWritePlatformServiceImpl implements S
         SavingsAccountGlobalTransactionLimitSetting savingsAccountGlobalTransactionLimitSetting = savingsAccountTransactionLimitsSettingRepository
                 .findById(transactionLimitId)
                 .orElseThrow(() -> new SavingsAccountTransactionLimitSettingNotFoundException(transactionLimitId));
-
-        boolean currentGlobalLimitSetting = savingsAccountGlobalTransactionLimitSetting.getIsGlobalLimit();
-        boolean currentMerchantLimitSetting = savingsAccountGlobalTransactionLimitSetting.getIsMerchantLimit();
-
-        if (command.parameterExists(SavingsAccountTransactionLimitApiConstant.IS_GLOBAL_LIMIT_PARAM_NAME)
-                && command.isChangeInBooleanParameterNamed(SavingsAccountTransactionLimitApiConstant.IS_GLOBAL_LIMIT_PARAM_NAME,
-                        currentGlobalLimitSetting)) {
-
-            Boolean merchantLimit = command
-                    .booleanPrimitiveValueOfParameterNamed(SavingsAccountTransactionLimitApiConstant.IS_MERCHANT_LIMIT_PARAM_NAME);
-
-            if (!command.booleanPrimitiveValueOfParameterNamed(SavingsAccountTransactionLimitApiConstant.IS_GLOBAL_LIMIT_PARAM_NAME)) {
-                updateCurrentlyActiveGlobalLimitToInactive(savingsAccountGlobalTransactionLimitSetting, merchantLimit);
-            } else {
-                updateExistingGlobalLimitValues(savingsAccountGlobalTransactionLimitSetting, merchantLimit);
-            }
-        }
-
-        if (command.parameterExists(SavingsAccountTransactionLimitApiConstant.IS_MERCHANT_LIMIT_PARAM_NAME)
-                && command.isChangeInBooleanParameterNamed(SavingsAccountTransactionLimitApiConstant.IS_MERCHANT_LIMIT_PARAM_NAME,
-                        currentMerchantLimitSetting)) {
-
-            boolean merchantLimit = command
-                    .booleanPrimitiveValueOfParameterNamed(SavingsAccountTransactionLimitApiConstant.IS_MERCHANT_LIMIT_PARAM_NAME);
-
-            if (merchantLimit) {
-                updateExistingGlobalLimitValues(savingsAccountGlobalTransactionLimitSetting, true);
-            } else {
-                updateCurrentlyActiveGlobalLimitToInactive(savingsAccountGlobalTransactionLimitSetting, false);
-            }
-        }
-
-        if (command.parameterExists(SavingsAccountTransactionLimitApiConstant.IS_ACTIVE_PARAM_NAME)
-                && !command.booleanPrimitiveValueOfParameterNamed(SavingsAccountTransactionLimitApiConstant.IS_ACTIVE_PARAM_NAME)
-                && savingsAccountGlobalTransactionLimitSetting.getIsGlobalLimit()) {
-
-            throw new GlobalSavingsAccountTransactionLimitSettingException(
-                    "Global transaction limit setting cannot be inactive at any time");
-        }
 
         final Map<String, Object> changes = new LinkedHashMap<>(9);
 
@@ -184,28 +102,12 @@ public class SavingsAccountTransactionLimitWritePlatformServiceImpl implements S
 
         final TransactionLimits limits = savingsAccountGlobalTransactionLimitSetting.getTransactionLimits();
 
-        if (command.isChangeInBigDecimalParameterNamed(SavingsAccountTransactionLimitApiConstant.MAX_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME,
-                limits.getMaxDailyWithdrawalAmount())) {
-            final BigDecimal newValue = command
-                    .bigDecimalValueOfParameterNamed(SavingsAccountTransactionLimitApiConstant.MAX_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME);
-            changes.put(SavingsAccountTransactionLimitApiConstant.MAX_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME, newValue);
-            limits.setMaxDailyWithdrawalAmount(newValue);
-        }
-
         if (command.isChangeInBigDecimalParameterNamed(SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_DEPOSIT_AMOUNT_PARAM_NAME,
                 limits.getMaxSingleDepositAmount())) {
             final BigDecimal newValue = command
                     .bigDecimalValueOfParameterNamed(SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_DEPOSIT_AMOUNT_PARAM_NAME);
             changes.put(SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_DEPOSIT_AMOUNT_PARAM_NAME, newValue);
             limits.setMaxSingleDepositAmount(newValue);
-        }
-
-        if (command.isChangeInBigDecimalParameterNamed(SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_WITHDRAWAL_AMOUNT_PARAM_NAME,
-                limits.getMaxSingleWithdrawalAmount())) {
-            final BigDecimal newValue = command
-                    .bigDecimalValueOfParameterNamed(SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_WITHDRAWAL_AMOUNT_PARAM_NAME);
-            changes.put(SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_WITHDRAWAL_AMOUNT_PARAM_NAME, newValue);
-            limits.setMaxSingleWithdrawalAmount(newValue);
         }
 
         if (command.isChangeInBigDecimalParameterNamed(SavingsAccountTransactionLimitApiConstant.BALANCE_CUMULATIVE_PARAM_NAME,
@@ -217,24 +119,6 @@ public class SavingsAccountTransactionLimitWritePlatformServiceImpl implements S
         }
 
         savingsAccountGlobalTransactionLimitSetting.setTransactionLimits(limits);
-
-        if (command.isChangeInBigDecimalParameterNamed(
-                SavingsAccountTransactionLimitApiConstant.MAX_CLIENT_SPECIFIC_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME,
-                savingsAccountGlobalTransactionLimitSetting.getMaxClientSpecificDailyWithdrawalAmount())) {
-            final BigDecimal newValue = command.bigDecimalValueOfParameterNamed(
-                    SavingsAccountTransactionLimitApiConstant.MAX_CLIENT_SPECIFIC_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME);
-            changes.put(SavingsAccountTransactionLimitApiConstant.MAX_CLIENT_SPECIFIC_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME, newValue);
-            savingsAccountGlobalTransactionLimitSetting.setMaxClientSpecificDailyWithdrawalAmount(newValue);
-        }
-
-        if (command.isChangeInBigDecimalParameterNamed(
-                SavingsAccountTransactionLimitApiConstant.MAX_CLIENT_SPECIFIC_SINGLE_WITHDRAWAL_AMOUNT_PARAM_NAME,
-                savingsAccountGlobalTransactionLimitSetting.getMaxClientSpecificSingleWithdrawalAmount())) {
-            final BigDecimal newValue = command.bigDecimalValueOfParameterNamed(
-                    SavingsAccountTransactionLimitApiConstant.MAX_CLIENT_SPECIFIC_SINGLE_WITHDRAWAL_AMOUNT_PARAM_NAME);
-            changes.put(SavingsAccountTransactionLimitApiConstant.MAX_CLIENT_SPECIFIC_SINGLE_WITHDRAWAL_AMOUNT_PARAM_NAME, newValue);
-            savingsAccountGlobalTransactionLimitSetting.setMaxClientSpecificSingleWithdrawalAmount(newValue);
-        }
 
         savingsAccountTransactionLimitsSettingRepository.save(savingsAccountGlobalTransactionLimitSetting);
 

@@ -29,8 +29,6 @@ public interface SavingsAccountGlobalTransactionLimitReadPlatformService {
 
     SavingsAccountTransactionLimitsSettingData retrieveOne(Long id);
 
-    Optional<SavingsAccountTransactionLimitsSettingData> retrieveGlobalSetting(boolean isMerchant);
-
     Collection<SavingsAccountTransactionLimitsSettingData> retrieveAll();
 
     Collection<SavingsClientClassificationLimitMappingData> getLimitClassificationMappings();

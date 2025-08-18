@@ -45,15 +45,7 @@
             <column name="balance_cumulative" type="NUMERIC(19,2)">
                 <constraints nullable="false"/>
             </column>
-            <column name="max_single_withdrawal_amount" type="NUMERIC(19,2)"/>
-            <column name="max_daily_withdrawal_amount" type="NUMERIC(19,2)"/>
-            <column name="max_client_specific_single_withdrawal_amount" type="NUMERIC(19,2)"/>
-            <column name="max_client_specific_daily_withdrawal_amount" type="NUMERIC(19,2)"/>
-
             <column name="is_active" type="BOOLEAN">
-                <constraints nullable="false"/>
-            </column>
-            <column name="is_global_limit" type="BOOLEAN" defaultValueBoolean="false">
                 <constraints nullable="false"/>
             </column>
             <column name="description" type="TEXT">
@@ -72,12 +64,4 @@
             </column>
         </createTable>
     </changeSet>
-    <changeSet id="2" author="paystack">
-        <addColumn tableName="m_savings_global_transaction_limits_setting">
-            <column name="is_merchant_limit" type="BOOLEAN" defaultValueBoolean="false">
-                <constraints nullable="false"/>
-            </column>
-        </addColumn>
-    </changeSet>
-
 </databaseChangeLog>

@@ -28,11 +28,6 @@ import lombok.Data;
 public class TransactionLimitData {
 
     private final Long id;
-    private final BigDecimal maxSingleWithdrawalAmount;
     private final BigDecimal maxSingleDepositAmount;
-    private final BigDecimal maxDailyWithdrawalAmount;
-    private final BigDecimal maxOnHoldAmount;
-    private final String period;
-    private final String transactionType;
-    private final String scope;
+    private final BigDecimal balanceCumulative;
 }

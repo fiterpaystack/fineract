@@ -63,20 +63,10 @@ public class SavingsAccountTransactionLimitSettingDataValidator {
         final String name = this.fromApiJsonHelper.extractStringNamed(SavingsAccountTransactionLimitApiConstant.NAME_PARAM_NAME, element);
         baseDataValidator.reset().parameter(nameParamName).value(name).notBlank().notExceedingLengthOf(255);
 
-        /*final BigDecimal maxSingleWithdrawalAmount = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(
-                SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_WITHDRAWAL_AMOUNT_PARAM_NAME, element);
-        baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_WITHDRAWAL_AMOUNT_PARAM_NAME)
-                .value(maxSingleWithdrawalAmount).notNull().zeroOrPositiveAmount();*/
-
         final BigDecimal maxSingleDepositAmount = this.fromApiJsonHelper
                 .extractBigDecimalWithLocaleNamed(SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_DEPOSIT_AMOUNT_PARAM_NAME, element);
         baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_DEPOSIT_AMOUNT_PARAM_NAME)
                 .value(maxSingleDepositAmount).notNull().zeroOrPositiveAmount();
-
-        /*final BigDecimal maxDailyWithdrawalAmount = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(
-                SavingsAccountTransactionLimitApiConstant.MAX_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME, element);
-        baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.MAX_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME)
-                .value(maxDailyWithdrawalAmount).notNull().zeroOrPositiveAmount();*/
 
         final BigDecimal balanceCumulative = this.fromApiJsonHelper
                 .extractBigDecimalWithLocaleNamed(SavingsAccountTransactionLimitApiConstant.BALANCE_CUMULATIVE_PARAM_NAME, element);
@@ -87,11 +77,6 @@ public class SavingsAccountTransactionLimitSettingDataValidator {
                 element);
         baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.IS_ACTIVE_PARAM_NAME).value(isActive).notNull()
                 .validateForBooleanValue();
-
-        /*final Boolean isGlobalLimit = this.fromApiJsonHelper
-                .extractBooleanNamed(SavingsAccountTransactionLimitApiConstant.IS_GLOBAL_LIMIT_PARAM_NAME, element);
-        baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.IS_GLOBAL_LIMIT_PARAM_NAME).value(isGlobalLimit)
-                .notNull().validateForBooleanValue();*/
 
         final String description = this.fromApiJsonHelper
                 .extractStringNamed(SavingsAccountTransactionLimitApiConstant.DESCRIPTION_PARAM_NAME, element);
@@ -122,26 +107,12 @@ public class SavingsAccountTransactionLimitSettingDataValidator {
             baseDataValidator.reset().parameter(nameParamName).value(name).notBlank().notExceedingLengthOf(255);
         }
 
-        /*if (fromApiJsonHelper.parameterExists(SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_WITHDRAWAL_AMOUNT_PARAM_NAME, element)) {
-            final BigDecimal maxSingleWithdrawalAmount = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(
-                    SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_WITHDRAWAL_AMOUNT_PARAM_NAME, element);
-            baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_WITHDRAWAL_AMOUNT_PARAM_NAME)
-                    .value(maxSingleWithdrawalAmount).notNull().zeroOrPositiveAmount();
-        }*/
-
         if (fromApiJsonHelper.parameterExists(SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_DEPOSIT_AMOUNT_PARAM_NAME, element)) {
             final BigDecimal maxSingleDepositAmount = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(
                     SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_DEPOSIT_AMOUNT_PARAM_NAME, element);
             baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.MAX_SINGLE_DEPOSIT_AMOUNT_PARAM_NAME)
                     .value(maxSingleDepositAmount).notNull().zeroOrPositiveAmount();
         }
-
-        /*if (fromApiJsonHelper.parameterExists(SavingsAccountTransactionLimitApiConstant.MAX_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME, element)) {
-            final BigDecimal maxDailyWithdrawalAmount = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(
-                    SavingsAccountTransactionLimitApiConstant.MAX_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME, element);
-            baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.MAX_DAILY_WITHDRAWAL_AMOUNT_PARAM_NAME)
-                    .value(maxDailyWithdrawalAmount).notNull().zeroOrPositiveAmount();
-        }*/
 
         if (fromApiJsonHelper.parameterExists(SavingsAccountTransactionLimitApiConstant.BALANCE_CUMULATIVE_PARAM_NAME, element)) {
             final BigDecimal balanceCumulative = this.fromApiJsonHelper
@@ -156,13 +127,6 @@ public class SavingsAccountTransactionLimitSettingDataValidator {
             baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.IS_ACTIVE_PARAM_NAME).value(isActive).notNull()
                     .validateForBooleanValue();
         }
-
-        /*if (fromApiJsonHelper.parameterExists(SavingsAccountTransactionLimitApiConstant.IS_GLOBAL_LIMIT_PARAM_NAME, element)) {
-            final Boolean isGlobalLimit = this.fromApiJsonHelper
-                    .extractBooleanNamed(SavingsAccountTransactionLimitApiConstant.IS_GLOBAL_LIMIT_PARAM_NAME, element);
-            baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.IS_GLOBAL_LIMIT_PARAM_NAME).value(isGlobalLimit)
-                    .validateForBooleanValue();
-        }*/
 
         if (fromApiJsonHelper.parameterExists(SavingsAccountTransactionLimitApiConstant.DESCRIPTION_PARAM_NAME, element)) {
             final String description = this.fromApiJsonHelper

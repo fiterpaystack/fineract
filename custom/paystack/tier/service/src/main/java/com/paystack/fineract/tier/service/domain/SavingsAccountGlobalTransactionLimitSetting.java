@@ -45,20 +45,8 @@ public class SavingsAccountGlobalTransactionLimitSetting extends AbstractAuditab
     @Embedded
     private TransactionLimits transactionLimits;
 
-    @Column(name = "max_client_specific_single_withdrawal_amount")
-    private BigDecimal maxClientSpecificSingleWithdrawalAmount;
-
-    @Column(name = "max_client_specific_daily_withdrawal_amount")
-    private BigDecimal maxClientSpecificDailyWithdrawalAmount;
-
     @Column(name = "is_active")
     private Boolean isActive;
-
-    @Column(name = "is_global_limit")
-    private Boolean isGlobalLimit;
-
-    @Column(name = "is_merchant_limit")
-    private Boolean isMerchantLimit;
 
     @Column(name = "description")
     private String description;
@@ -66,24 +54,14 @@ public class SavingsAccountGlobalTransactionLimitSetting extends AbstractAuditab
     public static SavingsAccountGlobalTransactionLimitSetting fromJson(JsonCommand command) {
 
         final String name = command.stringValueOfParameterNamed("name");
-        final BigDecimal maxSingleWithdrawalAmount = command.bigDecimalValueOfParameterNamed("maxSingleWithdrawalAmount");
         final BigDecimal maxSingleDepositAmount = command.bigDecimalValueOfParameterNamed("maxSingleDepositAmount");
-        final BigDecimal maxDailyWithdrawalAmount = command.bigDecimalValueOfParameterNamed("maxDailyWithdrawalAmount");
         final BigDecimal balanceCumulative = command.bigDecimalValueOfParameterNamed("balanceCumulative");
-        final BigDecimal maxClientSpecificSingleWithdrawalAmount = command
-                .bigDecimalValueOfParameterNamed("maxClientSpecificSingleWithdrawalAmount");
-        final BigDecimal maxClientSpecificDailyWithdrawalAmount = command
-                .bigDecimalValueOfParameterNamed("maxClientSpecificDailyWithdrawalAmount");
         final Boolean isActive = command.booleanPrimitiveValueOfParameterNamed("isActive");
-        final Boolean isGlobalLimit = command.booleanPrimitiveValueOfParameterNamed("isGlobalLimit");
-        final Boolean isMerchantLimit = command.booleanPrimitiveValueOfParameterNamed("isMerchantLimit");
         final String description = command.stringValueOfParameterNamed("description");
 
-        final TransactionLimits limits = TransactionLimits.builder().maxDailyWithdrawalAmount(maxDailyWithdrawalAmount)
-                .balanceCumulative(balanceCumulative).maxSingleDepositAmount(maxSingleDepositAmount)
-                .maxSingleWithdrawalAmount(maxSingleWithdrawalAmount).build();
+        final TransactionLimits limits = TransactionLimits.builder()
+                .balanceCumulative(balanceCumulative).maxSingleDepositAmount(maxSingleDepositAmount).build();
 
-        return new SavingsAccountGlobalTransactionLimitSetting(name, limits, maxClientSpecificSingleWithdrawalAmount,
-                maxClientSpecificDailyWithdrawalAmount, isActive, isGlobalLimit, isMerchantLimit, description);
+        return new SavingsAccountGlobalTransactionLimitSetting(name, limits, isActive, description);
     }
 }

@@ -27,7 +27,6 @@ import org.springframework.stereotype.Repository;
 public interface SavingsAccountGlobalTransactionLimitSettingRepository
         extends JpaRepository<SavingsAccountGlobalTransactionLimitSetting, Long> {
 
-    Optional<SavingsAccountGlobalTransactionLimitSetting> findByIsGlobalLimitAndIsActiveAndIsMerchantLimit(boolean isGlobalLimit,
-            boolean isEnabled, boolean isMerchantLimit);
+    Optional<SavingsAccountGlobalTransactionLimitSetting> findByIsActive(boolean isEnabled);
 
 }

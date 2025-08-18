@@ -31,14 +31,8 @@ import lombok.Data;
 @lombok.NoArgsConstructor
 public class TransactionLimits {
 
-    @Column(name = "max_single_withdrawal_amount", nullable = false, precision = 19, scale = 2)
-    private BigDecimal maxSingleWithdrawalAmount;
-
     @Column(name = "max_single_deposit_amount", nullable = false, precision = 19, scale = 2)
     private BigDecimal maxSingleDepositAmount;
-
-    @Column(name = "max_daily_withdrawal_amount", nullable = false, precision = 19, scale = 2)
-    private BigDecimal maxDailyWithdrawalAmount;
 
     @Column(name = "balance_cumulative", nullable = false, precision = 19, scale = 2)
     private BigDecimal balanceCumulative;
