@@ -138,18 +138,18 @@ import org.springframework.util.CollectionUtils;
 @RequiredArgsConstructor
 public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements SavingsAccountWritePlatformService {
 
-    private final PlatformSecurityContext context;
+    protected final PlatformSecurityContext context;
     private final SavingsAccountDataValidator fromApiJsonDeserializer;
     protected final SavingsAccountRepositoryWrapper savingAccountRepositoryWrapper;
     private final StaffRepositoryWrapper staffRepository;
     protected final SavingsAccountTransactionRepository savingsAccountTransactionRepository;
     protected final SavingsAccountAssembler savingAccountAssembler;
-    private final SavingsAccountTransactionDataValidator savingsAccountTransactionDataValidator;
+    protected final SavingsAccountTransactionDataValidator savingsAccountTransactionDataValidator;
     private final SavingsAccountChargeDataValidator savingsAccountChargeDataValidator;
-    private final PaymentDetailWritePlatformService paymentDetailWritePlatformService;
+    protected final PaymentDetailWritePlatformService paymentDetailWritePlatformService;
     private final JournalEntryWritePlatformService journalEntryWritePlatformService;
-    private final SavingsAccountDomainService savingsAccountDomainService;
-    private final NoteRepository noteRepository;
+    protected final SavingsAccountDomainService savingsAccountDomainService;
+    protected final NoteRepository noteRepository;
     private final AccountTransfersReadPlatformService accountTransfersReadPlatformService;
     private final AccountAssociationsReadPlatformService accountAssociationsReadPlatformService;
     private final ChargeRepositoryWrapper chargeRepository;
@@ -162,7 +162,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
     private final AppUserRepositoryWrapper appuserRepository;
     private final StandingInstructionRepository standingInstructionRepository;
     private final BusinessEventNotifierService businessEventNotifierService;
-    private final GSIMRepositoy gsimRepository;
+    protected final GSIMRepositoy gsimRepository;
     private final SavingsAccountInterestPostingService savingsAccountInterestPostingService;
     private final ErrorHandler errorHandler;
 
@@ -850,7 +850,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         throw new PlatformApiDataValidationException(dataValidationErrors);
     }
 
-    private void checkClientOrGroupActive(final SavingsAccount account) {
+    protected void checkClientOrGroupActive(final SavingsAccount account) {
         final Client client = account.getClient();
         if (client != null) {
             if (client.isNotActive()) {

@@ -223,6 +223,14 @@ public class Charge extends AbstractPersistableCustom<Long> {
                         .failWithCodeNoParameterAddedToErrorCode("not.allowed.charge.calculation.type.for.savings");
             }
 
+            // Special validation for DEPOSIT_FEE charges
+            if (ChargeTimeType.fromInt(getChargeTimeType()).isDepositFee()) {
+                if (!isAllowedDepositsChargeCalculationType()) {
+                    baseDataValidator.reset().parameter("chargeCalculationType").value(this.chargeCalculation)
+                            .failWithCodeNoParameterAddedToErrorCode("not.allowed.charge.calculation.type.for.deposits");
+                }
+            }
+
             if (!(ChargeTimeType.fromInt(getChargeTimeType()).isWithdrawalFee()
                     || ChargeTimeType.fromInt(getChargeTimeType()).isSavingsNoActivityFee())
                     && ChargeCalculationType.fromInt(getChargeCalculation()).isPercentageOfAmount()) {
@@ -330,6 +338,10 @@ public class Charge extends AbstractPersistableCustom<Long> {
 
     public boolean isAllowedSavingsChargeCalculationType() {
         return ChargeCalculationType.fromInt(this.chargeCalculation).isAllowedSavingsChargeCalculationType();
+    }
+
+    public boolean isAllowedDepositsChargeCalculationType() {
+        return ChargeCalculationType.fromInt(this.chargeCalculation).isAllowedDepositsChargeCalculationType();
     }
 
     public boolean isAllowedClientChargeCalculationType() {

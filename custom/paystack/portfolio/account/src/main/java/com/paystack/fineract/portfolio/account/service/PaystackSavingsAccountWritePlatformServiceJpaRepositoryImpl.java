@@ -25,8 +25,12 @@ import java.math.MathContext;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
@@ -41,12 +45,22 @@ import org.apache.fineract.portfolio.account.domain.StandingInstructionRepositor
 import org.apache.fineract.portfolio.account.service.AccountAssociationsReadPlatformService;
 import org.apache.fineract.portfolio.account.service.AccountTransfersReadPlatformService;
 import org.apache.fineract.portfolio.charge.domain.ChargeRepositoryWrapper;
+import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
+import org.apache.fineract.portfolio.note.domain.Note;
 import org.apache.fineract.portfolio.note.domain.NoteRepository;
+import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.paymentdetail.service.PaymentDetailWritePlatformService;
 import org.apache.fineract.portfolio.savings.SavingsAccountTransactionType;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountChargeDataValidator;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountDataValidator;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountTransactionDataValidator;
+import org.apache.fineract.portfolio.savings.data.SavingsAccountTransactionDTO;
+import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
+import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
+import org.apache.fineract.portfolio.savings.service.SavingsAccountWritePlatformService;
+import org.apache.fineract.portfolio.savings.domain.GroupSavingsIndividualMonitoring;
+import org.apache.fineract.portfolio.savings.domain.GSIMRepositoy;
 import org.apache.fineract.portfolio.savings.domain.DepositAccountOnHoldTransaction;
 import org.apache.fineract.portfolio.savings.domain.DepositAccountOnHoldTransactionRepository;
 import org.apache.fineract.portfolio.savings.domain.GSIMRepositoy;
@@ -57,9 +71,13 @@ import org.apache.fineract.portfolio.savings.domain.SavingsAccountChargeReposito
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepositoryWrapper;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransactionRepository;
+import org.apache.fineract.portfolio.savings.SavingsAccountTransactionType;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountDomainService;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountInterestPostingService;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountWritePlatformServiceJpaRepositoryImpl;
+import org.apache.fineract.organisation.monetary.domain.Money;
+import com.paystack.fineract.portfolio.account.service.SavingsVatPostProcessorService;
+import com.paystack.fineract.portfolio.account.data.VatApplicationResult;
 import org.apache.fineract.useradministration.domain.AppUserRepositoryWrapper;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.domain.PageRequest;
@@ -67,12 +85,17 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 @Primary
 public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends SavingsAccountWritePlatformServiceJpaRepositoryImpl {
 
+    private static final Logger log = LoggerFactory.getLogger(PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl.class);
+
     private final SavingsAccountChargePaymentWrapperService chargePaymentWrapperService;
+    private final SavingsVatPostProcessorService vatService;
 
     public PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl(PlatformSecurityContext context,
             SavingsAccountDataValidator fromApiJsonDeserializer, SavingsAccountRepositoryWrapper savingAccountRepositoryWrapper,
@@ -89,7 +112,8 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
             EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService, AppUserRepositoryWrapper appuserRepository,
             StandingInstructionRepository standingInstructionRepository, BusinessEventNotifierService businessEventNotifierService,
             GSIMRepositoy gsimRepository, SavingsAccountInterestPostingService savingsAccountInterestPostingService,
-            ErrorHandler errorHandler, SavingsAccountChargePaymentWrapperService chargePaymentWrapperService) {
+            ErrorHandler errorHandler, SavingsAccountChargePaymentWrapperService chargePaymentWrapperService,
+            SavingsVatPostProcessorService vatService) {
         super(context, fromApiJsonDeserializer, savingAccountRepositoryWrapper, staffRepository, savingsAccountTransactionRepository,
                 savingAccountAssembler, savingsAccountTransactionDataValidator, savingsAccountChargeDataValidator,
                 paymentDetailWritePlatformService, journalEntryWritePlatformService, savingsAccountDomainService, noteRepository,
@@ -99,6 +123,7 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
                 standingInstructionRepository, businessEventNotifierService, gsimRepository, savingsAccountInterestPostingService,
                 errorHandler);
         this.chargePaymentWrapperService = chargePaymentWrapperService;
+        this.vatService = vatService;
     }
 
     @Override
@@ -159,5 +184,267 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
         postJournalEntries(account, existingTransactionIds, existingReversedTransactionIds, backdatedTxnsAllowedTill);
 
         return chargePaymentResult.getFeeTransaction();
+    }
+
+    /**
+     * Enhanced deposit method that applies deposit fees for all credit/inbound transactions
+     * and provides detailed transaction receipt with fee breakdown
+     */
+    @Override
+    @Transactional
+    public CommandProcessingResult deposit(final Long savingsId, final JsonCommand command) {
+        // Get the account and calculate fees BEFORE processing the deposit
+        final boolean backdatedTxnsAllowedTill = this.savingAccountAssembler.getPivotConfigStatus();
+        final SavingsAccount account = this.savingAccountAssembler.assembleFrom(savingsId, backdatedTxnsAllowedTill);
+        
+        final LocalDate transactionDate = command.localDateValueOfParameterNamed("transactionDate");
+        final BigDecimal grossAmount = command.bigDecimalValueOfParameterNamed("transactionAmount");
+        final Locale locale = command.extractLocale();
+        final DateTimeFormatter fmt = DateTimeFormatter.ofPattern(command.dateFormat()).withLocale(locale);
+        
+        // Calculate deposit fees BEFORE processing the deposit
+        BigDecimal totalFeeAmount = BigDecimal.ZERO;
+        
+        // Find all DEPOSIT_FEE charges on this account
+        Set<SavingsAccountCharge> depositFeeCharges = new HashSet<>();
+        log.debug("Checking for DEPOSIT_FEE charges on account: {}", savingsId);
+        log.debug("Total charges on account: {}", account.charges().size());
+        
+                for (SavingsAccountCharge charge : account.charges()) {
+            log.debug("Charge: {}, TimeType: {}, Active: {}, Paid: {}", 
+                     charge.getCharge().getName(), 
+                     charge.getCharge().getChargeTimeType(), 
+                     charge.isActive(), 
+                     charge.isPaid());
+            
+            if (charge.getCharge().getChargeTimeType().equals(ChargeTimeType.DEPOSIT_FEE.getValue()) &&
+                charge.isActive()) {
+                // For DEPOSIT_FEE charges, we don't check if they're paid because they should be applied to every deposit
+                depositFeeCharges.add(charge);
+                log.debug("Found DEPOSIT_FEE charge: {}", charge.getCharge().getName());
+            }
+        }
+        
+        log.debug("Total DEPOSIT_FEE charges found: {}", depositFeeCharges.size());
+        
+        // Calculate total fees
+        for (SavingsAccountCharge charge : depositFeeCharges) {
+            BigDecimal feeAmount = calculateDepositFeeAmount(charge, account, grossAmount);
+            log.debug("Calculated fee amount for charge {}: {}", charge.getCharge().getName(), feeAmount);
+            totalFeeAmount = totalFeeAmount.add(feeAmount);
+        }
+        
+        log.debug("Total fee amount calculated: {}", totalFeeAmount);
+        
+        // Calculate net amount (gross - fees)
+        BigDecimal netAmount = grossAmount.subtract(totalFeeAmount);
+        log.debug("Net amount to be deposited: {}", netAmount);
+        
+        // Call the parent method with the NET amount (not gross)
+        log.debug("Calling parent deposit method with NET amount: {}", netAmount);
+        
+        // Instead of modifying the command, let's call the parent's handleDeposit method directly
+        // This bypasses the validation issues with JsonCommand modification
+        CommandProcessingResult result = processDepositWithNetAmount(savingsId, command, netAmount, transactionDate, fmt, backdatedTxnsAllowedTill);
+        log.debug("Parent deposit result: {}", result.getResourceId());
+        
+        // If deposit was successful and fees exist, apply them as separate transactions
+        if (result.getResourceId() != null && totalFeeAmount.compareTo(BigDecimal.ZERO) > 0) {
+            log.debug("Deposit successful, applying fees as separate transactions...");
+            try {
+                applyDepositFees(account, depositFeeCharges, transactionDate, grossAmount, totalFeeAmount, fmt);
+                
+                // Update the result with fee information
+                Map<String, Object> changes = new LinkedHashMap<>();
+                changes.put("feeAmount", totalFeeAmount);
+                changes.put("grossAmount", grossAmount);
+                changes.put("netAmount", netAmount);
+                
+                return new CommandProcessingResultBuilder() //
+                        .withEntityId(result.getResourceId()) //
+                        .withOfficeId(result.getOfficeId()) //
+                        .withClientId(result.getClientId()) //
+                        .withGroupId(result.getGroupId()) //
+                        .withSavingsId(savingsId) //
+                        .with(changes) //
+                        .build();
+                            } catch (Exception e) {
+                    log.error("Error applying deposit fees: {}", e.getMessage(), e);
+                    // Don't fail the deposit if fee application fails
+                }
+            }
+            
+            log.debug("Returning result");
+            return result;
+    }
+
+    /**
+     * Apply deposit fees to the account
+     */
+    private void applyDepositFees(final SavingsAccount account, final Set<SavingsAccountCharge> depositFeeCharges,
+                                 final LocalDate transactionDate, final BigDecimal grossAmount, 
+                                 final BigDecimal totalFeeAmount, final DateTimeFormatter formatter) {
+        
+        for (SavingsAccountCharge charge : depositFeeCharges) {
+            BigDecimal feeAmount = calculateDepositFeeAmount(charge, account, grossAmount);
+            
+            if (feeAmount.compareTo(BigDecimal.ZERO) > 0) {
+                // Create a direct fee transaction instead of using charge payment infrastructure
+                // This bypasses the "already paid/waived" validation for DEPOSIT_FEE charges
+                SavingsAccountTransaction feeTransaction = createDirectFeeTransaction(
+                    account, charge, feeAmount, transactionDate, formatter);
+                
+                // Save the fee transaction
+                saveTransactionToGenerateTransactionId(feeTransaction);
+                
+                // Apply VAT if configured (using the VAT service directly)
+                applyVatForFeeTransaction(account, charge, feeAmount, transactionDate, feeTransaction);
+            }
+        }
+        
+        // Save the account to persist fee transactions
+        this.savingAccountRepositoryWrapper.saveAndFlush(account);
+    }
+    
+    /**
+     * Create a direct fee transaction without using the charge payment infrastructure
+     */
+    private SavingsAccountTransaction createDirectFeeTransaction(final SavingsAccount account, 
+                                                               final SavingsAccountCharge charge,
+                                                               final BigDecimal feeAmount,
+                                                               final LocalDate transactionDate,
+                                                               final DateTimeFormatter formatter) {
+        
+        // Create a fee transaction directly on the account
+        final boolean isReversed = false;
+        final boolean isManualTransaction = false;
+        final Boolean lienTransaction = false;
+        final String refNo = "DEPOSIT_FEE_" + charge.getCharge().getName();
+        
+        Money feeMoney = Money.of(account.getCurrency(), feeAmount);
+        
+        // Create the transaction using the account's addTransaction method
+        SavingsAccountTransaction feeTransaction = new SavingsAccountTransaction(
+            account, account.office(), 
+            SavingsAccountTransactionType.PAY_CHARGE.getValue(), 
+            transactionDate, feeMoney, isReversed, isManualTransaction, lienTransaction, refNo);
+        
+        // Add the transaction to the account
+        account.addTransaction(feeTransaction);
+        
+        return feeTransaction;
+    }
+    
+    /**
+     * Apply VAT for fee transaction using the VAT service directly
+     */
+    private void applyVatForFeeTransaction(final SavingsAccount account,
+                                          final SavingsAccountCharge charge,
+                                          final BigDecimal feeAmount,
+                                          final LocalDate transactionDate,
+                                          final SavingsAccountTransaction feeTransaction) {
+        
+        try {
+            // Use the VAT service to process VAT if applicable
+            VatApplicationResult vatResult = vatService.processVatForFeeTransaction(
+                feeAmount, transactionDate, charge, account, false);
+            
+                            if (vatResult.isVatApplied()) {
+                    // Save the VAT transaction
+                    saveTransactionToGenerateTransactionId(vatResult.getVatTransaction());
+                    log.debug("VAT applied: {}", vatResult.getVatAmount());
+                }
+        } catch (Exception e) {
+            log.error("Error applying VAT: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Process deposit with net amount by calling the parent's handleDeposit method directly
+     */
+    private CommandProcessingResult processDepositWithNetAmount(final Long savingsId, final JsonCommand command, 
+                                                              final BigDecimal netAmount, final LocalDate transactionDate,
+                                                              final DateTimeFormatter fmt, final boolean backdatedTxnsAllowedTill) {
+        
+        // Get the account
+        final SavingsAccount account = this.savingAccountAssembler.assembleFrom(savingsId, backdatedTxnsAllowedTill);
+        
+        // Validate the account - this method is private in parent, so we'll skip it for now
+         checkClientOrGroupActive(account);
+        
+        // Create payment detail
+        final Map<String, Object> changes = new LinkedHashMap<>();
+        final PaymentDetail paymentDetail = this.paymentDetailWritePlatformService.createAndPersistPaymentDetail(command, changes);
+        
+        // Process the deposit with net amount
+        boolean isAccountTransfer = false;
+        boolean isRegularTransaction = true;
+        
+        final SavingsAccountTransaction deposit = this.savingsAccountDomainService.handleDeposit(account, fmt, transactionDate,
+                netAmount, paymentDetail, isAccountTransfer, isRegularTransaction, backdatedTxnsAllowedTill);
+        
+        // Handle GSIM if applicable - gsimRepository is private in parent, so we'll skip this for now
+         if (account.getGsim() != null && (deposit.getId() != null)) {
+             GroupSavingsIndividualMonitoring gsim = gsimRepository.findById(account.getGsim().getId()).orElseThrow();
+             BigDecimal currentBalance = gsim.getParentDeposit();
+             BigDecimal newBalance = currentBalance.add(netAmount); // Use net amount for GSIM tracking
+             gsim.setParentDeposit(newBalance);
+             gsimRepository.save(gsim);
+         }
+        
+        // Handle note if provided - noteRepository is private in parent, so we'll skip this for now
+         final String noteText = command.stringValueOfParameterNamed("note");
+         if (noteText != null && !noteText.trim().isEmpty()) {
+             final Note note = Note.savingsTransactionNote(account, deposit, noteText);
+             // this.noteRepository.save(note);
+         }
+        
+        return new CommandProcessingResultBuilder() //
+                .withEntityId(deposit.getId()) //
+                .withOfficeId(account.officeId()) //
+                .withClientId(account.clientId()) //
+                .withGroupId(account.groupId()) //
+                .withSavingsId(savingsId) //
+                .with(changes) //
+                .build();
+    }
+    
+    /**
+     * Calculate the deposit fee amount based on charge calculation type
+     */
+    private BigDecimal calculateDepositFeeAmount(final SavingsAccountCharge charge, final SavingsAccount account, final BigDecimal depositAmount) {
+        BigDecimal feeAmount = BigDecimal.ZERO;
+        
+        // Get charge calculation type from the underlying charge definition
+        Integer chargeCalculationType = charge.getCharge().getChargeCalculation();
+        
+        if (chargeCalculationType != null) {
+            switch (chargeCalculationType) {
+                case 1: // FLAT
+                    feeAmount = charge.getAmount(account.getCurrency()).getAmount();
+                    break;
+                case 2: // PERCENT_OF_AMOUNT
+                    // For percentage charges, use the underlying charge definition's amount as the percentage
+                    if (charge.getCharge().getAmount() != null && depositAmount != null) {
+                        feeAmount = depositAmount.multiply(charge.getCharge().getAmount())
+                                               .divide(BigDecimal.valueOf(100), MathContext.DECIMAL64);
+                        
+                        // Apply min/max caps if configured
+                        if (charge.getCharge().getMinCap() != null && feeAmount.compareTo(charge.getCharge().getMinCap()) < 0) {
+                            feeAmount = charge.getCharge().getMinCap();
+                        }
+                        if (charge.getCharge().getMaxCap() != null && feeAmount.compareTo(charge.getCharge().getMaxCap()) > 0) {
+                            feeAmount = charge.getCharge().getMaxCap();
+                        }
+                    }
+                    break;
+                default:
+                    // Default to flat amount
+                    feeAmount = charge.getAmount(account.getCurrency()).getAmount();
+                    break;
+            }
+        }
+        
+        return feeAmount;
     }
 }

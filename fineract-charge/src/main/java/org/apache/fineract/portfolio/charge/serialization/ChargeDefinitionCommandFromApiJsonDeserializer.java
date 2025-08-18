@@ -255,6 +255,26 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
                 baseDataValidator.reset().parameter(CHARGE_CALCULATION_TYPE).value(chargeCalculationType)
                         .isOneOfTheseValues(ChargeCalculationType.validValuesForShareAccountActivation());
             }
+        } else if (appliesTo.isSavingsCharge()) {
+            // Check if this is a DEPOSIT_FEE charge
+            final Integer chargeTimeType = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(CHARGE_TIME_TYPE, element);
+            baseDataValidator.reset().parameter(CHARGE_TIME_TYPE).value(chargeTimeType).notNull();
+            if (chargeTimeType != null) {
+                baseDataValidator.reset().parameter(CHARGE_TIME_TYPE).value(chargeTimeType)
+                        .isOneOfTheseValues(ChargeTimeType.validSavingsValues());
+            }
+
+            if (chargeCalculationType != null) {
+                baseDataValidator.reset().parameter(CHARGE_CALCULATION_TYPE).value(chargeCalculationType)
+                        .isOneOfTheseValues(ChargeCalculationType.validValuesForSavings());
+            }
+
+            // Special validation for DEPOSIT_FEE charges
+            if (chargeTimeType != null && chargeTimeType.equals(ChargeTimeType.DEPOSIT_FEE.getValue())
+                    && chargeCalculationType != null) {
+                baseDataValidator.reset().parameter(CHARGE_CALCULATION_TYPE).value(chargeCalculationType)
+                        .isOneOfTheseValues(ChargeCalculationType.validValuesForDeposits());
+            }
         }
 
         final String name = this.fromApiJsonHelper.extractStringNamed(NAME, element);
@@ -473,6 +493,9 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
         if (chargeTimeType.equals(ChargeTimeType.TRANCHE_DISBURSEMENT.getValue())) {
             baseDataValidator.reset().parameter(CHARGE_CALCULATION_TYPE).value(chargeCalculationType)
                     .isOneOfTheseValues(ChargeCalculationType.validValuesForTrancheDisbursement());
+        } else if (chargeTimeType.equals(ChargeTimeType.DEPOSIT_FEE.getValue())) {
+            baseDataValidator.reset().parameter(CHARGE_CALCULATION_TYPE).value(chargeCalculationType)
+                    .isOneOfTheseValues(ChargeCalculationType.validValuesForDeposits());
         } else {
             baseDataValidator.reset().parameter(CHARGE_CALCULATION_TYPE).value(chargeCalculationType)
                     .isNotOneOfTheseValues(ChargeCalculationType.PERCENT_OF_DISBURSEMENT_AMOUNT.getValue());

@@ -100,7 +100,8 @@ public class ChargeDropdownReadPlatformServiceImpl implements ChargeDropdownRead
                 // chargeTimeType(ChargeTimeType.SAVINGS_CLOSURE),
                 chargeTimeType(ChargeTimeType.WITHDRAWAL_FEE), chargeTimeType(ChargeTimeType.ANNUAL_FEE),
                 chargeTimeType(ChargeTimeType.MONTHLY_FEE), chargeTimeType(ChargeTimeType.WEEKLY_FEE),
-                chargeTimeType(ChargeTimeType.OVERDRAFT_FEE), chargeTimeType(ChargeTimeType.SAVINGS_NOACTIVITY_FEE));
+                chargeTimeType(ChargeTimeType.OVERDRAFT_FEE), chargeTimeType(ChargeTimeType.SAVINGS_NOACTIVITY_FEE),
+                chargeTimeType(ChargeTimeType.DEPOSIT_FEE));
     }
 
     @Override
@@ -123,5 +124,16 @@ public class ChargeDropdownReadPlatformServiceImpl implements ChargeDropdownRead
     public List<EnumOptionData> retrieveSharesCollectionTimeTypes() {
         return Arrays.asList(chargeTimeType(ChargeTimeType.SHAREACCOUNT_ACTIVATION), chargeTimeType(ChargeTimeType.SHARE_PURCHASE),
                 chargeTimeType(ChargeTimeType.SHARE_REDEEM));
+    }
+
+    @Override
+    public List<EnumOptionData> retrieveDepositsCalculationTypes() {
+        return Arrays.asList(chargeCalculationType(ChargeCalculationType.FLAT),
+                chargeCalculationType(ChargeCalculationType.PERCENT_OF_AMOUNT));
+    }
+
+    @Override
+    public List<EnumOptionData> retrieveDepositsCollectionTimeTypes() {
+        return Arrays.asList(chargeTimeType(ChargeTimeType.DEPOSIT_FEE));
     }
 }
