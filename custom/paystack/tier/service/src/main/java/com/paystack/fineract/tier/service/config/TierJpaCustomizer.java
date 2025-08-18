@@ -16,12 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-description = 'Paystack Fineract Pentaho Report Starter'
+package com.paystack.fineract.tier.service.config;
 
-group = 'com.paystack.fineract.infrastructure'
+import java.util.Set;
+import org.apache.fineract.infrastructure.core.config.jpa.EntityManagerFactoryCustomizer;
+import org.springframework.stereotype.Component;
 
-base {
-    archivesName = 'paystack-fineract-report-starter'
+@Component
+public class TierJpaCustomizer implements EntityManagerFactoryCustomizer {
+
+    @Override
+    public Set<String> additionalPackagesToScan() {
+        return Set.of("com.paystack.fineract.tier");
+    }
 }
-
-apply from: 'dependencies.gradle'

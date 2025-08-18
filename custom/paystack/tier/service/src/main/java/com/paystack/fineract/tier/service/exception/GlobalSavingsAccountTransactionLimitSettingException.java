@@ -16,12 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-description = 'Paystack Fineract Pentaho Report Starter'
 
-group = 'com.paystack.fineract.infrastructure'
+package com.paystack.fineract.tier.service.exception;
 
-base {
-    archivesName = 'paystack-fineract-report-starter'
+import org.apache.fineract.infrastructure.core.exception.AbstractPlatformServiceUnavailableException;
+
+public class GlobalSavingsAccountTransactionLimitSettingException extends AbstractPlatformServiceUnavailableException {
+
+    public GlobalSavingsAccountTransactionLimitSettingException(String message) {
+        super("error.msg.transaction.limit.setting", message);
+    }
 }
-
-apply from: 'dependencies.gradle'

@@ -16,12 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-description = 'Paystack Fineract Pentaho Report Starter'
 
-group = 'com.paystack.fineract.infrastructure'
+package com.paystack.fineract.tier.service.service;
 
-base {
-    archivesName = 'paystack-fineract-report-starter'
+import com.paystack.fineract.tier.service.data.SavingsAccountTransactionLimitsSettingData;
+import com.paystack.fineract.tier.service.data.SavingsClientClassificationLimitMappingData;
+import java.util.Collection;
+
+public interface SavingsAccountGlobalTransactionLimitReadPlatformService {
+
+    SavingsAccountTransactionLimitsSettingData retrieveOne(Long id);
+
+    Collection<SavingsAccountTransactionLimitsSettingData> retrieveAll();
+
+    Collection<SavingsClientClassificationLimitMappingData> getLimitClassificationMappings();
+
+    SavingsClientClassificationLimitMappingData retrieveOneByCodeValueId(Long codeValueId);
+
+    Collection<SavingsAccountTransactionLimitsSettingData> searchForGlobalSettingByName(String name);
+
 }
-
-apply from: 'dependencies.gradle'

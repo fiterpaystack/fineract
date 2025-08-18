@@ -16,12 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-description = 'Paystack Fineract Pentaho Report Starter'
+package com.paystack.fineract.tier.service.config;
 
-group = 'com.paystack.fineract.infrastructure'
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
-base {
-    archivesName = 'paystack-fineract-report-starter'
-}
-
-apply from: 'dependencies.gradle'
+@Configuration
+@EnableJpaRepositories({ "com.paystack.fineract.tier.service.domain", "com.paystack.fineract.tier.service.repository" })
+public class TierJpaConfig {}

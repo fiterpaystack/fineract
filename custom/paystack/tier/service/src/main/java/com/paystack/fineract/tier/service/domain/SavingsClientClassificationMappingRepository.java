@@ -16,12 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-description = 'Paystack Fineract Pentaho Report Starter'
 
-group = 'com.paystack.fineract.infrastructure'
+package com.paystack.fineract.tier.service.domain;
 
-base {
-    archivesName = 'paystack-fineract-report-starter'
+import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface SavingsClientClassificationMappingRepository extends JpaRepository<SavingsClientClassificationLimitMapping, Integer> {
+
+    @Query("SELECT scclm FROM SavingsClientClassificationLimitMapping scclm WHERE scclm.classification.id = ?1")
+    Optional<SavingsClientClassificationLimitMapping> findByClassificationId(Long classificationId);
 }
-
-apply from: 'dependencies.gradle'

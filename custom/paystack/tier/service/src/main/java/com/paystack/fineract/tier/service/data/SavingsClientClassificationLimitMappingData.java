@@ -16,12 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-description = 'Paystack Fineract Pentaho Report Starter'
 
-group = 'com.paystack.fineract.infrastructure'
+package com.paystack.fineract.tier.service.data;
 
-base {
-    archivesName = 'paystack-fineract-report-starter'
+import java.math.BigDecimal;
+
+@lombok.Data
+@lombok.Builder
+public class SavingsClientClassificationLimitMappingData {
+
+    private Long id;
+    private Long classificationId;
+    private String classificationName;
+    private Long limitId;
+    private String limitName;
+    private BigDecimal maxClientSpecificDailyWithdrawalAmount;
+    private BigDecimal maxClientSpecificSingleWithdrawalAmount;
+    private TransactionLimitData limits;
 }
-
-apply from: 'dependencies.gradle'

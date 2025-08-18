@@ -16,12 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-description = 'Paystack Fineract Pentaho Report Starter'
 
-group = 'com.paystack.fineract.infrastructure'
+package com.paystack.fineract.tier.service.domain;
 
-base {
-    archivesName = 'paystack-fineract-report-starter'
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import java.math.BigDecimal;
+import lombok.Data;
+
+@Embeddable
+@Data
+@lombok.Builder
+@lombok.AllArgsConstructor
+@lombok.NoArgsConstructor
+public class TransactionLimits {
+
+    @Column(name = "max_single_deposit_amount", nullable = false, precision = 19, scale = 2)
+    private BigDecimal maxSingleDepositAmount;
+
+    @Column(name = "balance_cumulative", nullable = false, precision = 19, scale = 2)
+    private BigDecimal balanceCumulative;
+
 }
-
-apply from: 'dependencies.gradle'

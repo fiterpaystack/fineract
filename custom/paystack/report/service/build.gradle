@@ -18,7 +18,7 @@
  */
 description = 'Paystack Fineract Pentaho Report Service'
 
-group = 'com.paystack.fineract'
+group = 'com.paystack.fineract.infrastructure.report.service'
 
 base {
     archivesName = 'paystack-fineract-report-service'

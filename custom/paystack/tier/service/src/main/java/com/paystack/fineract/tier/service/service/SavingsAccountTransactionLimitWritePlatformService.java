@@ -16,12 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-description = 'Paystack Fineract Pentaho Report Starter'
 
-group = 'com.paystack.fineract.infrastructure'
+package com.paystack.fineract.tier.service.service;
 
-base {
-    archivesName = 'paystack-fineract-report-starter'
+import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
+
+public interface SavingsAccountTransactionLimitWritePlatformService {
+
+    CommandProcessingResult create(JsonCommand command);
+
+    CommandProcessingResult update(Long transactionLimitId, JsonCommand command);
+
+    CommandProcessingResult createClassificationLimitMapping(JsonCommand jsonCommand);
+
+    CommandProcessingResult updateClassificationLimitMapping(Integer limitMappingId, JsonCommand jsonCommand);
 }
-
-apply from: 'dependencies.gradle'
