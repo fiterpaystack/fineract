@@ -24,5 +24,4 @@ import org.springframework.context.annotation.ComponentScans;
 
 @AutoConfiguration
 @ComponentScans({ @ComponentScan("com.paystack.fineract.tier.service") })
-public class PayStackTierAutoConfiguration {
-}
+public class PayStackTierAutoConfiguration {}

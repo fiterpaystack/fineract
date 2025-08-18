@@ -19,18 +19,15 @@
 
 package com.paystack.fineract.tier.service.service;
 
+import com.paystack.fineract.tier.service.data.SavingsAccountTransactionLimitsSettingData;
+import com.paystack.fineract.tier.service.data.SavingsClientClassificationLimitMappingData;
+import com.paystack.fineract.tier.service.data.TransactionLimitData;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
-import java.util.Optional;
-
-import com.paystack.fineract.tier.service.data.SavingsAccountTransactionLimitsSettingData;
-import com.paystack.fineract.tier.service.data.SavingsClientClassificationLimitMappingData;
-import com.paystack.fineract.tier.service.data.TransactionLimitData;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -101,8 +98,7 @@ public class SavingsAccountGlobalTransactionLimitReadPlatformServiceImpl
             final BigDecimal balanceCumulative = rs.getBigDecimal("balanceCumulative");
 
             return SavingsAccountTransactionLimitsSettingData.builder().id(id).name(name).description(description).isActive(isActive)
-                    .maxSingleDepositAmount(maxSingleDepositAmount).balanceCumulative(balanceCumulative)
-                    .build();
+                    .maxSingleDepositAmount(maxSingleDepositAmount).balanceCumulative(balanceCumulative).build();
         }
     }
 
@@ -149,8 +145,7 @@ public class SavingsAccountGlobalTransactionLimitReadPlatformServiceImpl
                 final BigDecimal maxSingleDepositAmount = rs.getBigDecimal("maxSingleDepositAmount");
                 final BigDecimal balanceCumulative = rs.getBigDecimal("balanceCumulative");
 
-                builder.limits(TransactionLimitData.builder()
-                        .maxSingleDepositAmount(maxSingleDepositAmount)
+                builder.limits(TransactionLimitData.builder().maxSingleDepositAmount(maxSingleDepositAmount)
                         .balanceCumulative(balanceCumulative).build());
             }
 

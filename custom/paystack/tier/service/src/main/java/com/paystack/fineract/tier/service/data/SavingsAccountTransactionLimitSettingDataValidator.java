@@ -23,13 +23,12 @@ import static org.apache.fineract.portfolio.savings.SavingsApiConstants.namePara
 
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
+import com.paystack.fineract.tier.service.api.SavingsAccountTransactionLimitApiConstant;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import com.paystack.fineract.tier.service.api.SavingsAccountTransactionLimitApiConstant;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
@@ -70,8 +69,8 @@ public class SavingsAccountTransactionLimitSettingDataValidator {
 
         final BigDecimal balanceCumulative = this.fromApiJsonHelper
                 .extractBigDecimalWithLocaleNamed(SavingsAccountTransactionLimitApiConstant.BALANCE_CUMULATIVE_PARAM_NAME, element);
-        baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.BALANCE_CUMULATIVE_PARAM_NAME).value(balanceCumulative)
-                .notNull().zeroOrPositiveAmount();
+        baseDataValidator.reset().parameter(SavingsAccountTransactionLimitApiConstant.BALANCE_CUMULATIVE_PARAM_NAME)
+                .value(balanceCumulative).notNull().zeroOrPositiveAmount();
 
         final Boolean isActive = this.fromApiJsonHelper.extractBooleanNamed(SavingsAccountTransactionLimitApiConstant.IS_ACTIVE_PARAM_NAME,
                 element);

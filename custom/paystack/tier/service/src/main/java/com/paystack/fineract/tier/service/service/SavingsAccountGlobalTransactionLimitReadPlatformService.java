@@ -21,9 +21,7 @@ package com.paystack.fineract.tier.service.service;
 
 import com.paystack.fineract.tier.service.data.SavingsAccountTransactionLimitsSettingData;
 import com.paystack.fineract.tier.service.data.SavingsClientClassificationLimitMappingData;
-
 import java.util.Collection;
-import java.util.Optional;
 
 public interface SavingsAccountGlobalTransactionLimitReadPlatformService {
 

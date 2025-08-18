@@ -59,8 +59,8 @@ public class SavingsAccountGlobalTransactionLimitSetting extends AbstractAuditab
         final Boolean isActive = command.booleanPrimitiveValueOfParameterNamed("isActive");
         final String description = command.stringValueOfParameterNamed("description");
 
-        final TransactionLimits limits = TransactionLimits.builder()
-                .balanceCumulative(balanceCumulative).maxSingleDepositAmount(maxSingleDepositAmount).build();
+        final TransactionLimits limits = TransactionLimits.builder().balanceCumulative(balanceCumulative)
+                .maxSingleDepositAmount(maxSingleDepositAmount).build();
 
         return new SavingsAccountGlobalTransactionLimitSetting(name, limits, isActive, description);
     }

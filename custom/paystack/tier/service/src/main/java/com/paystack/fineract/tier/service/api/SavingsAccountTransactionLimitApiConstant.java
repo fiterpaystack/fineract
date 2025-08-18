@@ -38,7 +38,6 @@ public final class SavingsAccountTransactionLimitApiConstant {
     public static final String CLASSIFICATION_CODE_NAME = "clientClassification";
 
     public static final Set<String> CREATE_REQUEST_DATA_PARAMETERS = Set.of(NAME_PARAM_NAME, MAX_SINGLE_DEPOSIT_AMOUNT_PARAM_NAME,
-            BALANCE_CUMULATIVE_PARAM_NAME, LIMIT_ID_PARAM_NAME,
-            IS_ACTIVE_PARAM_NAME, DESCRIPTION_PARAM_NAME, "locale", "dateFormat");
+            BALANCE_CUMULATIVE_PARAM_NAME, LIMIT_ID_PARAM_NAME, IS_ACTIVE_PARAM_NAME, DESCRIPTION_PARAM_NAME, "locale", "dateFormat");
 
 }
