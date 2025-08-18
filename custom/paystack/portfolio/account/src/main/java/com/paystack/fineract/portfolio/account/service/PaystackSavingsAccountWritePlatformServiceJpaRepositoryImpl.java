@@ -71,6 +71,7 @@ import org.apache.fineract.portfolio.savings.domain.SavingsAccountChargeReposito
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepositoryWrapper;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransactionRepository;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountChargePaidBy;
 import org.apache.fineract.portfolio.savings.SavingsAccountTransactionType;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountDomainService;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountInterestPostingService;
@@ -202,91 +203,112 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
         final Locale locale = command.extractLocale();
         final DateTimeFormatter fmt = DateTimeFormatter.ofPattern(command.dateFormat()).withLocale(locale);
         
-        // Calculate deposit fees BEFORE processing the deposit
-        BigDecimal totalFeeAmount = BigDecimal.ZERO;
-        
         // Find all DEPOSIT_FEE charges on this account
         Set<SavingsAccountCharge> depositFeeCharges = new HashSet<>();
-        log.debug("Checking for DEPOSIT_FEE charges on account: {}", savingsId);
-        log.debug("Total charges on account: {}", account.charges().size());
+        System.out.println("Checking for DEPOSIT_FEE charges on account: " + savingsId);
+        System.out.println("Total charges on account: " + account.charges().size());
         
                 for (SavingsAccountCharge charge : account.charges()) {
-            log.debug("Charge: {}, TimeType: {}, Active: {}, Paid: {}", 
-                     charge.getCharge().getName(), 
-                     charge.getCharge().getChargeTimeType(), 
-                     charge.isActive(), 
-                     charge.isPaid());
+            System.out.println("Charge: " + charge.getCharge().getName() + 
+                     ", TimeType: " + charge.getCharge().getChargeTimeType() + 
+                     ", Active: " + charge.isActive() + 
+                     ", Paid: " + charge.isPaid());
             
             if (charge.getCharge().getChargeTimeType().equals(ChargeTimeType.DEPOSIT_FEE.getValue()) &&
                 charge.isActive()) {
                 // For DEPOSIT_FEE charges, we don't check if they're paid because they should be applied to every deposit
                 depositFeeCharges.add(charge);
-                log.debug("Found DEPOSIT_FEE charge: {}", charge.getCharge().getName());
+                System.out.println("Found DEPOSIT_FEE charge: " + charge.getCharge().getName());
             }
         }
         
-        log.debug("Total DEPOSIT_FEE charges found: {}", depositFeeCharges.size());
+        System.out.println("Total DEPOSIT_FEE charges found: " + depositFeeCharges.size());
         
-        // Calculate total fees
+        // For DEPOSIT_FEE charges, the user wants to see the GROSS amount credited to their account
+        // and then the fee debited separately. So if they deposit 5000, they should see:
+        // - Deposit: 5000 credit (gross amount)
+        // - Pay Charge: 1000 debit (fee amount)
+        // - Net effect: balance increases by 4000 (5000 - 1000)
+        
+        BigDecimal totalFeeAmount = BigDecimal.ZERO;
+        
+        // Calculate fees based on the gross amount
         for (SavingsAccountCharge charge : depositFeeCharges) {
             BigDecimal feeAmount = calculateDepositFeeAmount(charge, account, grossAmount);
-            log.debug("Calculated fee amount for charge {}: {}", charge.getCharge().getName(), feeAmount);
+            System.out.println("Calculated fee amount for charge " + charge.getCharge().getName() + ": " + feeAmount);
             totalFeeAmount = totalFeeAmount.add(feeAmount);
         }
         
-        log.debug("Total fee amount calculated: {}", totalFeeAmount);
+        // Use gross amount for deposit (what user wants to see credited)
+        BigDecimal depositAmount = grossAmount;
         
-        // Calculate net amount (gross - fees)
-        BigDecimal netAmount = grossAmount.subtract(totalFeeAmount);
-        log.debug("Net amount to be deposited: {}", netAmount);
+        System.out.println("Final calculation - Gross amount: " + grossAmount + ", Deposit amount: " + depositAmount + ", Total fee amount: " + totalFeeAmount);
         
-        // Call the parent method with the NET amount (not gross)
-        log.debug("Calling parent deposit method with NET amount: {}", netAmount);
+        // Call the parent method with the GROSS amount (what user wants to see credited)
+        System.out.println("Calling parent deposit method with GROSS amount: " + depositAmount);
         
         // Instead of modifying the command, let's call the parent's handleDeposit method directly
         // This bypasses the validation issues with JsonCommand modification
-        CommandProcessingResult result = processDepositWithNetAmount(savingsId, command, netAmount, transactionDate, fmt, backdatedTxnsAllowedTill);
-        log.debug("Parent deposit result: {}", result.getResourceId());
+        System.out.println("Account balance before deposit: " + account.getAccountBalance());
+        CommandProcessingResult result = processDepositWithNetAmount(savingsId, command, depositAmount, transactionDate, fmt, backdatedTxnsAllowedTill);
+        System.out.println("Parent deposit result: " + result.getResourceId());
+        System.out.println("Account balance after deposit: " + account.getAccountBalance());
         
-        // If deposit was successful and fees exist, apply them as separate transactions
-        if (result.getResourceId() != null && totalFeeAmount.compareTo(BigDecimal.ZERO) > 0) {
-            log.debug("Deposit successful, applying fees as separate transactions...");
-            try {
-                applyDepositFees(account, depositFeeCharges, transactionDate, grossAmount, totalFeeAmount, fmt);
-                
-                // Update the result with fee information
-                Map<String, Object> changes = new LinkedHashMap<>();
-                changes.put("feeAmount", totalFeeAmount);
-                changes.put("grossAmount", grossAmount);
-                changes.put("netAmount", netAmount);
-                
-                return new CommandProcessingResultBuilder() //
-                        .withEntityId(result.getResourceId()) //
-                        .withOfficeId(result.getOfficeId()) //
-                        .withClientId(result.getClientId()) //
-                        .withGroupId(result.getGroupId()) //
-                        .withSavingsId(savingsId) //
-                        .with(changes) //
-                        .build();
-                            } catch (Exception e) {
-                    log.error("Error applying deposit fees: {}", e.getMessage(), e);
+                    // If deposit was successful and fees exist, apply them as separate transactions
+            if (result.getResourceId() != null && totalFeeAmount.compareTo(BigDecimal.ZERO) > 0) {
+                System.out.println("Deposit successful, applying fees as separate transactions...");
+                try {
+                    // Get existing transaction IDs BEFORE creating fee transactions
+                    Set<Long> existingTransactionIds = new HashSet<>();
+                    Set<Long> existingReversedTransactionIds = new HashSet<>();
+                    updateExistingTransactionsDetails(account, existingTransactionIds, existingReversedTransactionIds);
+                    
+                    // Now create the fee transactions
+                    applyDepositFees(account, depositFeeCharges, transactionDate, grossAmount, totalFeeAmount, fmt, backdatedTxnsAllowedTill);
+                    
+                    // Post journal entries for the fee transactions
+                    postJournalEntries(account, existingTransactionIds, existingReversedTransactionIds, backdatedTxnsAllowedTill);
+                    
+                    System.out.println("Account balance after fee application: " + account.getAccountBalance());
+                    
+                    // Update the result with fee information
+                    Map<String, Object> changes = new LinkedHashMap<>();
+                    changes.put("feeAmount", totalFeeAmount);
+                    changes.put("grossAmount", grossAmount);
+                    changes.put("depositAmount", depositAmount);
+                    
+                    return new CommandProcessingResultBuilder() //
+                            .withEntityId(result.getResourceId()) //
+                            .withOfficeId(result.getOfficeId()) //
+                            .withClientId(result.getClientId()) //
+                            .withGroupId(result.getGroupId()) //
+                            .withSavingsId(savingsId) //
+                            .with(changes) //
+                            .build();
+                } catch (Exception e) {
+                    System.err.println("Error applying deposit fees: " + e.getMessage());
+                    e.printStackTrace();
                     // Don't fail the deposit if fee application fails
                 }
             }
             
-            log.debug("Returning result");
+            System.out.println("Returning result");
             return result;
     }
 
     /**
      * Apply deposit fees to the account
      */
-    private void applyDepositFees(final SavingsAccount account, final Set<SavingsAccountCharge> depositFeeCharges,
-                                 final LocalDate transactionDate, final BigDecimal grossAmount, 
-                                 final BigDecimal totalFeeAmount, final DateTimeFormatter formatter) {
+        private void applyDepositFees(final SavingsAccount account, final Set<SavingsAccountCharge> depositFeeCharges,
+                                  final LocalDate transactionDate, final BigDecimal grossAmount,
+                                  final BigDecimal totalFeeAmount, final DateTimeFormatter formatter, final boolean backdatedTxnsAllowedTill) {
+        
+        System.out.println("Applying deposit fees - Account balance before fees: " + account.getAccountBalance());
+        System.out.println("Total fee amount to apply: " + totalFeeAmount);
         
         for (SavingsAccountCharge charge : depositFeeCharges) {
             BigDecimal feeAmount = calculateDepositFeeAmount(charge, account, grossAmount);
+            System.out.println("Processing fee for charge: " + charge.getCharge().getName() + " - Amount: " + feeAmount);
             
             if (feeAmount.compareTo(BigDecimal.ZERO) > 0) {
                 // Create a direct fee transaction instead of using charge payment infrastructure
@@ -294,16 +316,24 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
                 SavingsAccountTransaction feeTransaction = createDirectFeeTransaction(
                     account, charge, feeAmount, transactionDate, formatter);
                 
+                System.out.println("Created fee transaction ID: " + feeTransaction.getId());
+                System.out.println("Fee transaction amount: " + feeTransaction.getAmount());
+                
                 // Save the fee transaction
                 saveTransactionToGenerateTransactionId(feeTransaction);
                 
                 // Apply VAT if configured (using the VAT service directly)
                 applyVatForFeeTransaction(account, charge, feeAmount, transactionDate, feeTransaction);
+            } else {
+                System.out.println("Skipping fee application - calculated amount is zero or negative");
             }
         }
         
-        // Save the account to persist fee transactions
-        this.savingAccountRepositoryWrapper.saveAndFlush(account);
+                             // Save the account to persist fee transactions and update balances
+                     this.savingAccountRepositoryWrapper.saveAndFlush(account);
+                     
+                     // The saveAndFlush should trigger proper balance updates
+        System.out.println("Account balance after fees: " + account.getAccountBalance());
     }
     
     /**
@@ -315,6 +345,8 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
                                                                final LocalDate transactionDate,
                                                                final DateTimeFormatter formatter) {
         
+        System.out.println("Creating direct fee transaction - Amount: " + feeAmount + ", Charge: " + charge.getCharge().getName());
+        
         // Create a fee transaction directly on the account
         final boolean isReversed = false;
         final boolean isManualTransaction = false;
@@ -322,6 +354,7 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
         final String refNo = "DEPOSIT_FEE_" + charge.getCharge().getName();
         
         Money feeMoney = Money.of(account.getCurrency(), feeAmount);
+        System.out.println("Fee money: " + feeMoney);
         
         // Create the transaction using the account's addTransaction method
         SavingsAccountTransaction feeTransaction = new SavingsAccountTransaction(
@@ -329,8 +362,20 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
             SavingsAccountTransactionType.PAY_CHARGE.getValue(), 
             transactionDate, feeMoney, isReversed, isManualTransaction, lienTransaction, refNo);
         
+        System.out.println("Created fee transaction - Type: " + feeTransaction.getTransactionType() + 
+                 ", Date: " + feeTransaction.getTransactionDate() + ", Amount: " + feeTransaction.getAmount());
+        
+        // Link this transaction to the specific charge so accounting can post GL (expects exactly one charge payment)
+        final SavingsAccountChargePaidBy chargePaidBy = SavingsAccountChargePaidBy.instance(feeTransaction, charge, feeAmount);
+        feeTransaction.getSavingsAccountChargesPaid().add(chargePaidBy);
+        System.out.println("Linked charge payment - Charge: " + charge.getCharge().getName() + ", Amount: " + feeAmount);
+
         // Add the transaction to the account
         account.addTransaction(feeTransaction);
+        System.out.println("Added fee transaction to account");
+        
+        // Update the charge to reflect the payment (for DEPOSIT_FEE charges, we don't mark them as fully paid)
+        charge.pay(account.getCurrency(), Money.of(account.getCurrency(), feeAmount));
         
         return feeTransaction;
     }
@@ -352,10 +397,11 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
                             if (vatResult.isVatApplied()) {
                     // Save the VAT transaction
                     saveTransactionToGenerateTransactionId(vatResult.getVatTransaction());
-                    log.debug("VAT applied: {}", vatResult.getVatAmount());
+                    System.out.println("VAT applied: " + vatResult.getVatAmount());
                 }
         } catch (Exception e) {
-            log.error("Error applying VAT: {}", e.getMessage(), e);
+            System.err.println("Error applying VAT: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -418,33 +464,47 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
         // Get charge calculation type from the underlying charge definition
         Integer chargeCalculationType = charge.getCharge().getChargeCalculation();
         
+        System.out.println("Calculating fee for charge: " + charge.getCharge().getName() + " (ID: " + charge.getId() + ")");
+        System.out.println("Charge calculation type: " + chargeCalculationType);
+        System.out.println("Deposit amount: " + depositAmount);
+        
         if (chargeCalculationType != null) {
             switch (chargeCalculationType) {
                 case 1: // FLAT
                     feeAmount = charge.getAmount(account.getCurrency()).getAmount();
+                    System.out.println("FLAT charge - Fee amount: " + feeAmount);
                     break;
                 case 2: // PERCENT_OF_AMOUNT
                     // For percentage charges, use the underlying charge definition's amount as the percentage
                     if (charge.getCharge().getAmount() != null && depositAmount != null) {
-                        feeAmount = depositAmount.multiply(charge.getCharge().getAmount())
+                        BigDecimal percentage = charge.getCharge().getAmount();
+                        System.out.println("PERCENT_OF_AMOUNT charge - Percentage: " + percentage + "%");
+                        
+                        feeAmount = depositAmount.multiply(percentage)
                                                .divide(BigDecimal.valueOf(100), MathContext.DECIMAL64);
+                        
+                        System.out.println("Calculated fee before caps: " + feeAmount);
                         
                         // Apply min/max caps if configured
                         if (charge.getCharge().getMinCap() != null && feeAmount.compareTo(charge.getCharge().getMinCap()) < 0) {
                             feeAmount = charge.getCharge().getMinCap();
+                            System.out.println("Applied min cap: " + feeAmount);
                         }
                         if (charge.getCharge().getMaxCap() != null && feeAmount.compareTo(charge.getCharge().getMaxCap()) > 0) {
                             feeAmount = charge.getCharge().getMaxCap();
+                            System.out.println("Applied max cap: " + feeAmount);
                         }
                     }
                     break;
                 default:
                     // Default to flat amount
                     feeAmount = charge.getAmount(account.getCurrency()).getAmount();
+                    System.out.println("DEFAULT charge - Fee amount: " + feeAmount);
                     break;
             }
         }
         
+        System.out.println("Final calculated fee amount: " + feeAmount);
         return feeAmount;
     }
 }
