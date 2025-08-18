@@ -18,38 +18,6 @@
  */
 package org.apache.fineract.portfolio.savings.data;
 
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.SAVINGS_PRODUCT_RESOURCE_NAME;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.allowOverdraftParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.currencyCodeParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.daysToDormancyParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.daysToEscheatParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.daysToInactiveParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.descriptionParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.digitsAfterDecimalParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.feeAmountParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.feeOnMonthDayParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.inMultiplesOfParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.interestCalculationDaysInYearTypeParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.interestCalculationTypeParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.interestCompoundingPeriodTypeParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.interestPostingPeriodTypeParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.isDormancyTrackingActiveParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.lienAllowedParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.lockinPeriodFrequencyParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.lockinPeriodFrequencyTypeParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.maxAllowedLienLimitParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.minBalanceForInterestCalculationParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.minOverdraftForInterestCalculationParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.minRequiredOpeningBalanceParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.nameParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.nominalAnnualInterestRateOverdraftParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.nominalAnnualInterestRateParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.overdraftLimitParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.shortNameParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.taxGroupIdParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.withHoldTaxParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.withdrawalFeeForTransfersParamName;
-
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
@@ -65,6 +33,7 @@ import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.fineract.accounting.common.AccountingConstants.SavingProductAccountingParams;
 import org.apache.fineract.accounting.common.AccountingValidations;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
@@ -80,6 +49,8 @@ import org.apache.fineract.portfolio.savings.SavingsInterestCalculationType;
 import org.apache.fineract.portfolio.savings.SavingsPostingInterestPeriodType;
 import org.apache.fineract.portfolio.savings.domain.SavingsProduct;
 import org.springframework.stereotype.Component;
+
+import static org.apache.fineract.portfolio.savings.SavingsApiConstants.*;
 
 @Component
 @RequiredArgsConstructor
@@ -109,7 +80,7 @@ public class SavingsProductDataValidator {
             nominalAnnualInterestRateOverdraftParamName, minOverdraftForInterestCalculationParamName,
             SavingsApiConstants.minRequiredBalanceParamName, SavingsApiConstants.enforceMinRequiredBalanceParamName,
             SavingsApiConstants.maxAllowedLienLimitParamName, SavingsApiConstants.lienAllowedParamName,
-            minBalanceForInterestCalculationParamName, withHoldTaxParamName, taxGroupIdParamName));
+            minBalanceForInterestCalculationParamName, withHoldTaxParamName, taxGroupIdParamName, accountNumberPrefixParamName));
 
     public void validateForCreate(final String json) {
 
@@ -270,6 +241,9 @@ public class SavingsProductDataValidator {
             baseDataValidator.reset().parameter(minBalanceForInterestCalculationParamName).value(minBalanceForInterestCalculation)
                     .ignoreIfNull().zeroOrPositiveAmount();
         }
+
+
+
         validateTaxWithHoldingParams(baseDataValidator, element, true);
         validateLienParams(baseDataValidator, element);
         throwExceptionIfValidationWarningsExist(dataValidationErrors);
@@ -438,6 +412,20 @@ public class SavingsProductDataValidator {
             baseDataValidator.reset().parameter(minBalanceForInterestCalculationParamName).value(minBalanceForInterestCalculation)
                     .ignoreIfNull().zeroOrPositiveAmount();
         }
+
+//        final String accountNumberPrefix = this.fromApiJsonHelper.extractStringNamed(accountNumberPrefixParamName, element);
+//        baseDataValidator.reset().parameter(accountNumberPrefixParamName).value(accountNumberPrefix).notBlank();
+//        if (accountNumberPrefix != null) {
+//            boolean isNumeric = NumberUtils.isDigits(accountNumberPrefix);
+//            if (!isNumeric) {
+//                baseDataValidator.reset().parameter(accountNumberPrefixParamName).value(accountNumberPrefix)
+//                        .failWithCodeNoParameterAddedToErrorCode("account.number.prefix.must.be.numeric");
+//            }
+//            if (accountNumberPrefix.length() != 2) {
+//                baseDataValidator.reset().parameter(accountNumberPrefixParamName).value(accountNumberPrefix)
+//                        .failWithCodeNoParameterAddedToErrorCode("account.number.prefix.must.be.exactly.two.digits");
+//            }
+//        }
 
         validateTaxWithHoldingParams(baseDataValidator, element, false);
         validateLienParams(baseDataValidator, element);

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+    <changeSet id="add-account-number-prefix-to-savings-product" author="faheem">
+        <addColumn tableName="m_savings_product">
+            <column name="account_number_prefix" type="varchar(2)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+    <changeSet  author="faheem"  id="create-savings-product-account-number-sequence-table">
+        <createTable tableName="product_account_sequence">
+            <column name="product_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="product_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_number" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addPrimaryKey
+                tableName="product_account_sequence"
+                columnNames="product_type, product_id"
+                constraintName="pk_product_account_sequence"/>
+    </changeSet>
+    <changeSet author="faheem" id="seed-product-account-sequence" runOnChange="true" runAlways="true">
+        <sql>
+            INSERT INTO product_account_sequence (product_type, product_id, last_number)
+            SELECT 'SAVINGS', sp.id, 0
+            FROM m_savings_product sp
+            WHERE NOT EXISTS (
+            SELECT 1 FROM product_account_sequence pas
+            WHERE pas.product_type = 'SAVINGS' AND pas.product_id = sp.id
+            );
+        </sql>
+    </changeSet>
+    <changeSet id="insert-cbn-institution-code" author="faheem">
+        <insert tableName="c_configuration">
+            <column name="name" value="cbn-institution-code"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="description" value="CBN Institution Code for NUBAN generation"/>
+            <column name="value" value="51457"/>
+        </insert>
+    </changeSet>
+    <changeSet id="make-unique-accout-number-prefix" author="faheem">
+        <addUniqueConstraint
+                tableName="m_savings_product"
+                columnNames="account_number_prefix"
+                constraintName="m_savings_product_unique_prefix"/>
+    </changeSet>
+</databaseChangeLog>
