@@ -31,10 +31,12 @@ import org.springframework.stereotype.Service;
 import com.paystack.fineract.portfolio.savings.domain.ProductAccountSequenceRepository;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.apache.fineract.infrastructure.configuration.api.GlobalConfigurationConstants.CBN_INSTITUTION_CODE;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.SAVINGS_ACCOUNT_RESOURCE_NAME;
+import static org.apache.fineract.portfolio.savings.SavingsApiConstants.SAVINGS_PRODUCT_RESOURCE_NAME;
 
 @Service
 @RequiredArgsConstructor
@@ -65,19 +67,19 @@ public class ProductSequenceService {
             }
         }
         if (institutionCode == null || institutionCode.length() != 5) {
-            throwValidationForActiveStatus("error.msg.savings.product.account.number.cbn.institution.code.not.set");
+            throwValidationForActiveStatus("validation.msg.savingsproduct.number.cbn.institution.code.not.set", "CBN Institution Code not available", "institution code");
         }
         // 2. Prepend 9 to make it 6 digits
         String fullInstitutionCode = "9" + institutionCode; // "950547"
         String prefix = savingsProductRepository.findById(productId)
                 .map(SavingsProduct::getAccountNumberPrefix)
                 .orElseThrow(() -> {
-                    throwValidationForActiveStatus("error.msg.savings.product.account.number.prefix.not.set");
+                    throwValidationForActiveStatus("validation.msg.savingsproduct.number.prefix.not.set", "Account number prefix not set for product", "accountnumberprefix");
                     return null; // Unreachable, required for lambda
                 });
 
         if (prefix == null || prefix.length() != 2) {
-            throwValidationForActiveStatus("error.msg.savings.product.account.number.prefix.not.set");
+            throwValidationForActiveStatus("validation.msg.savingsproduct.number.prefix.not.set", "Account number prefix not set for product", "accountnumberprefix");
         }
 
         // Convert sequence to string, pad with leading zeros to ensure at least 1 digit and total length 9
@@ -99,7 +101,7 @@ public class ProductSequenceService {
     private int calculateCustomNubanCheckDigit(String nubanBase) {
         int[] weights = {3,7,3,3,7,3,3,7,3,3,7,3,3,7,3};
         if (nubanBase.length() != weights.length) {
-            throwValidationForActiveStatus("error.msg.savings.product.account.number.invalid.length");
+            throwValidationForActiveStatus("validation.msg.savingsproduct.number.invalid.length", "NUBAN base length is invalid, expected " + weights.length + " digits", "nubanBase");
         }
 
         int sum = 0;
@@ -112,12 +114,9 @@ public class ProductSequenceService {
         return (10 - mod10) % 10;
     }
 
-    private void throwValidationForActiveStatus(final String errorCode) {
-        final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
-        final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors)
-                .resource(SAVINGS_ACCOUNT_RESOURCE_NAME + "create");
-        baseDataValidator.reset().failWithCodeNoParameterAddedToErrorCode(errorCode);
-        throw new PlatformApiDataValidationException(dataValidationErrors);
+    private void throwValidationForActiveStatus(final String errorCode, String errorMessage, String parameter) {
+        ApiParameterError error = ApiParameterError.parameterError(errorCode, errorMessage, parameter);
+        throw new PlatformApiDataValidationException(Collections.singletonList(error));
     }
 
 }

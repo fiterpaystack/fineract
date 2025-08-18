@@ -26,9 +26,4 @@ import org.springframework.context.annotation.ComponentScan;
 @AutoConfiguration
 @ComponentScan("com.paystack.fineract.portfolio.savings")
 public class PayStackSavingsAutoConfiguration {
-    @Bean
-    public Class<?> payStackSavingsAutoConfiguration(AccountNumberGenerator generator) {
-        // Force early initialization
-        return generator.getClass();
-    }
 }

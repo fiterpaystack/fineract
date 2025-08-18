@@ -767,4 +767,8 @@ public class SavingsProduct extends AbstractPersistableCustom<Long> {
         return depositTypeEnum;
     }
 
+    public DepositAccountType depositAccountType() {
+        return DepositAccountType.fromInt(depositTypeEnum);
+    }
+
 }

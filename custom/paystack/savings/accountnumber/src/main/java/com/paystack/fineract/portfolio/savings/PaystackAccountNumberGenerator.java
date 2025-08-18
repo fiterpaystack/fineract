@@ -53,7 +53,7 @@ class PaystackAccountNumberGenerator extends AccountNumberGenerator {
 
     @Override
     public String generate(SavingsAccount account, AccountNumberFormat format) {
-        if (account.depositAccountType().equals(DepositAccountType.SAVINGS_DEPOSIT)) {
+        if (account.savingsProduct().depositAccountType().equals(DepositAccountType.SAVINGS_DEPOSIT)) {
             // Acquire next per-product sequence and build the formatted account number
             Long productId;
             productId = account.savingsProduct().getId();
