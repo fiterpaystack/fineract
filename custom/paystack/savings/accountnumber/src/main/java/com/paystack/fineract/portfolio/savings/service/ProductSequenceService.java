@@ -18,25 +18,17 @@
  */
 package com.paystack.fineract.portfolio.savings.service;
 
+import com.paystack.fineract.portfolio.savings.domain.ProductAccountSequenceRepository;
+import java.util.Collections;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.configuration.api.GlobalConfigurationConstants;
 import org.apache.fineract.infrastructure.configuration.data.GlobalConfigurationPropertyData;
 import org.apache.fineract.infrastructure.configuration.service.ConfigurationReadPlatformService;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
-import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.portfolio.savings.domain.SavingsProduct;
 import org.apache.fineract.portfolio.savings.domain.SavingsProductRepository;
 import org.springframework.stereotype.Service;
-import com.paystack.fineract.portfolio.savings.domain.ProductAccountSequenceRepository;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import static org.apache.fineract.infrastructure.configuration.api.GlobalConfigurationConstants.CBN_INSTITUTION_CODE;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.SAVINGS_ACCOUNT_RESOURCE_NAME;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.SAVINGS_PRODUCT_RESOURCE_NAME;
 
 @Service
 @RequiredArgsConstructor
@@ -54,8 +46,7 @@ public class ProductSequenceService {
     }
 
     /**
-     * Build the account number from product prefix + padded sequence.
-     * Ensures final account number = 10 chars.
+     * Build the account number from product prefix + padded sequence. Ensures final account number = 10 chars.
      */
     public String buildNubanSavingsAccountNo(Long productId, long seq) {
         final GlobalConfigurationPropertyData cbnConfig = this.configurationReadPlatformService
@@ -67,26 +58,27 @@ public class ProductSequenceService {
             }
         }
         if (institutionCode == null || institutionCode.length() != 5) {
-            throwValidationForActiveStatus("validation.msg.savingsproduct.number.cbn.institution.code.not.set", "CBN Institution Code not available", "institution code");
+            throwValidationForActiveStatus("validation.msg.savingsproduct.number.cbn.institution.code.not.set",
+                    "CBN Institution Code not available", "institution code");
         }
         // 2. Prepend 9 to make it 6 digits
         String fullInstitutionCode = "9" + institutionCode; // "950547"
-        String prefix = savingsProductRepository.findById(productId)
-                .map(SavingsProduct::getAccountNumberPrefix)
-                .orElseThrow(() -> {
-                    throwValidationForActiveStatus("validation.msg.savingsproduct.number.prefix.not.set", "Account number prefix not set for product", "accountnumberprefix");
-                    return null; // Unreachable, required for lambda
-                });
+        String prefix = savingsProductRepository.findById(productId).map(SavingsProduct::getAccountNumberPrefix).orElseThrow(() -> {
+            throwValidationForActiveStatus("validation.msg.savingsproduct.number.prefix.not.set",
+                    "Account number prefix not set for product", "accountnumberprefix");
+            return null; // Unreachable, required for lambda
+        });
 
         if (prefix == null || prefix.length() != 2) {
-            throwValidationForActiveStatus("validation.msg.savingsproduct.number.prefix.not.set", "Account number prefix not set for product", "accountnumberprefix");
+            throwValidationForActiveStatus("validation.msg.savingsproduct.number.prefix.not.set",
+                    "Account number prefix not set for product", "accountnumberprefix");
         }
 
         // Convert sequence to string, pad with leading zeros to ensure at least 1 digit and total length 9
         String seqStr = String.valueOf(seq);
         seqStr = String.format("%0" + (9 - prefix.length()) + "d", seq);
 
-        String nineDigitSerial = prefix + seqStr;   // "000000001" style
+        String nineDigitSerial = prefix + seqStr; // "000000001" style
 
         // 4. Combine for check digit calculation
         String nubanBase = fullInstitutionCode + nineDigitSerial; // 6 + 9 = 15 digits
@@ -99,9 +91,10 @@ public class ProductSequenceService {
     }
 
     private int calculateCustomNubanCheckDigit(String nubanBase) {
-        int[] weights = {3,7,3,3,7,3,3,7,3,3,7,3,3,7,3};
+        int[] weights = { 3, 7, 3, 3, 7, 3, 3, 7, 3, 3, 7, 3, 3, 7, 3 };
         if (nubanBase.length() != weights.length) {
-            throwValidationForActiveStatus("validation.msg.savingsproduct.number.invalid.length", "NUBAN base length is invalid, expected " + weights.length + " digits", "nubanBase");
+            throwValidationForActiveStatus("validation.msg.savingsproduct.number.invalid.length",
+                    "NUBAN base length is invalid, expected " + weights.length + " digits", "nubanBase");
         }
 
         int sum = 0;

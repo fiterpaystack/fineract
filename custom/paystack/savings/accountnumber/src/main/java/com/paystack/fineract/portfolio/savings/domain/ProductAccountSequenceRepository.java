@@ -21,7 +21,6 @@ package com.paystack.fineract.portfolio.savings.domain;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
@@ -31,19 +30,19 @@ public class ProductAccountSequenceRepository {
     private final JdbcTemplate jdbcTemplate;
 
     /**
-     * Atomically increments and returns the next sequence number for a given savings product.
-     * Relies on PostgreSQL's ON CONFLICT to be concurrency-safe.
+     * Atomically increments and returns the next sequence number for a given savings product. Relies on PostgreSQL's ON
+     * CONFLICT to be concurrency-safe.
      */
     @Transactional
     public long nextForSavingsProduct(long productId) {
         // product_type is fixed to 'SAVINGS' because this module only scopes savings
         String sql = """
-            INSERT INTO product_account_sequence (product_type, product_id, last_number)
-            VALUES ('SAVINGS', ?, 1)
-            ON CONFLICT (product_type, product_id)
-            DO UPDATE SET last_number = product_account_sequence.last_number + 1
-            RETURNING last_number
-        """;
+                    INSERT INTO product_account_sequence (product_type, product_id, last_number)
+                    VALUES ('SAVINGS', ?, 1)
+                    ON CONFLICT (product_type, product_id)
+                    DO UPDATE SET last_number = product_account_sequence.last_number + 1
+                    RETURNING last_number
+                """;
         Long next = jdbcTemplate.queryForObject(sql, Long.class, productId);
         if (next == null) {
             throw new IllegalStateException("Failed to allocate next account number sequence for savings product " + productId);

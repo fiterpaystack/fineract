@@ -18,6 +18,7 @@
  */
 package com.paystack.fineract.portfolio.savings;
 
+import com.paystack.fineract.portfolio.savings.service.ProductSequenceService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormat;
 import org.apache.fineract.infrastructure.configuration.service.ConfigurationReadPlatformService;
@@ -27,28 +28,22 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanRepository;
 import org.apache.fineract.portfolio.savings.DepositAccountType;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepository;
-import org.apache.fineract.portfolio.shareaccounts.domain.ShareAccount;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
-import com.paystack.fineract.portfolio.savings.service.ProductSequenceService;
 
 @Slf4j
 @Component
 @Primary // ensure this bean is used instead of the default one
-public
-class PaystackAccountNumberGenerator extends AccountNumberGenerator {
+public class PaystackAccountNumberGenerator extends AccountNumberGenerator {
 
     private final ProductSequenceService sequenceService;
 
-    public PaystackAccountNumberGenerator(
-            ConfigurationReadPlatformService configurationReadPlatformService,
-            ClientRepository clientRepository,
-            LoanRepository loanRepository,
-            SavingsAccountRepository savingsAccountRepository,
+    public PaystackAccountNumberGenerator(ConfigurationReadPlatformService configurationReadPlatformService,
+            ClientRepository clientRepository, LoanRepository loanRepository, SavingsAccountRepository savingsAccountRepository,
             ProductSequenceService sequenceService) {
         super(configurationReadPlatformService, clientRepository, loanRepository, savingsAccountRepository);
         this.sequenceService = sequenceService;
-         log.info("ProductScopedSavingsAccountNumberGenerator active: Savings account numbers will be product-scoped");
+        log.info("ProductScopedSavingsAccountNumberGenerator active: Savings account numbers will be product-scoped");
     }
 
     @Override
