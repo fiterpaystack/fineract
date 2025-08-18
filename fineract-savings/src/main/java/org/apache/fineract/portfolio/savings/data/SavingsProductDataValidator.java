@@ -18,6 +18,8 @@
  */
 package org.apache.fineract.portfolio.savings.data;
 
+import static org.apache.fineract.portfolio.savings.SavingsApiConstants.*;
+
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
@@ -33,7 +35,6 @@ import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.fineract.accounting.common.AccountingConstants.SavingProductAccountingParams;
 import org.apache.fineract.accounting.common.AccountingValidations;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
@@ -49,8 +50,6 @@ import org.apache.fineract.portfolio.savings.SavingsInterestCalculationType;
 import org.apache.fineract.portfolio.savings.SavingsPostingInterestPeriodType;
 import org.apache.fineract.portfolio.savings.domain.SavingsProduct;
 import org.springframework.stereotype.Component;
-
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.*;
 
 @Component
 @RequiredArgsConstructor
@@ -242,8 +241,6 @@ public class SavingsProductDataValidator {
                     .ignoreIfNull().zeroOrPositiveAmount();
         }
 
-
-
         validateTaxWithHoldingParams(baseDataValidator, element, true);
         validateLienParams(baseDataValidator, element);
         throwExceptionIfValidationWarningsExist(dataValidationErrors);
@@ -413,19 +410,20 @@ public class SavingsProductDataValidator {
                     .ignoreIfNull().zeroOrPositiveAmount();
         }
 
-//        final String accountNumberPrefix = this.fromApiJsonHelper.extractStringNamed(accountNumberPrefixParamName, element);
-//        baseDataValidator.reset().parameter(accountNumberPrefixParamName).value(accountNumberPrefix).notBlank();
-//        if (accountNumberPrefix != null) {
-//            boolean isNumeric = NumberUtils.isDigits(accountNumberPrefix);
-//            if (!isNumeric) {
-//                baseDataValidator.reset().parameter(accountNumberPrefixParamName).value(accountNumberPrefix)
-//                        .failWithCodeNoParameterAddedToErrorCode("account.number.prefix.must.be.numeric");
-//            }
-//            if (accountNumberPrefix.length() != 2) {
-//                baseDataValidator.reset().parameter(accountNumberPrefixParamName).value(accountNumberPrefix)
-//                        .failWithCodeNoParameterAddedToErrorCode("account.number.prefix.must.be.exactly.two.digits");
-//            }
-//        }
+        // final String accountNumberPrefix = this.fromApiJsonHelper.extractStringNamed(accountNumberPrefixParamName,
+        // element);
+        // baseDataValidator.reset().parameter(accountNumberPrefixParamName).value(accountNumberPrefix).notBlank();
+        // if (accountNumberPrefix != null) {
+        // boolean isNumeric = NumberUtils.isDigits(accountNumberPrefix);
+        // if (!isNumeric) {
+        // baseDataValidator.reset().parameter(accountNumberPrefixParamName).value(accountNumberPrefix)
+        // .failWithCodeNoParameterAddedToErrorCode("account.number.prefix.must.be.numeric");
+        // }
+        // if (accountNumberPrefix.length() != 2) {
+        // baseDataValidator.reset().parameter(accountNumberPrefixParamName).value(accountNumberPrefix)
+        // .failWithCodeNoParameterAddedToErrorCode("account.number.prefix.must.be.exactly.two.digits");
+        // }
+        // }
 
         validateTaxWithHoldingParams(baseDataValidator, element, false);
         validateLienParams(baseDataValidator, element);
