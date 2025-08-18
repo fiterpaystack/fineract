@@ -18,12 +18,9 @@
  */
 package com.paystack.fineract.portfolio.savings.starter;
 
-import org.apache.fineract.portfolio.account.service.AccountNumberGenerator;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 
 @AutoConfiguration
 @ComponentScan("com.paystack.fineract.portfolio.savings")
-public class PayStackSavingsAutoConfiguration {
-}
+public class PayStackSavingsAutoConfiguration {}
