@@ -181,8 +181,7 @@ public class PentahoReportingProcessServiceImpl implements ReportingProcessServi
 
             }
         } catch (Throwable t) {
-            logger.error("Pentaho failed", t);
-            throw new PlatformDataIntegrityException("error.msg.reporting.error", "Pentaho failed: " + t.getMessage());
+            throw new PlatformDataIntegrityException("error.msg.reporting.error", "Pentaho failed: " + t.getMessage(), t);
         }
     }
 
@@ -339,8 +338,7 @@ public class PentahoReportingProcessServiceImpl implements ReportingProcessServi
             }
 
         } catch (Throwable t) {
-            logger.error("error.msg.reporting.error:", t);
-            throw new PlatformDataIntegrityException("error.msg.reporting.error", t.getMessage());
+            throw new PlatformDataIntegrityException("error.msg.reporting.error", t.getMessage(), t);
         }
     }
 
