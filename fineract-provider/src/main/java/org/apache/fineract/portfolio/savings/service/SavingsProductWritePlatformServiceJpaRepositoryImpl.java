@@ -18,6 +18,9 @@
  */
 package org.apache.fineract.portfolio.savings.service;
 
+import static org.apache.fineract.portfolio.savings.SavingsApiConstants.*;
+import static org.apache.fineract.portfolio.savings.SavingsApiConstants.accountNumberPrefixParamName;
+
 import jakarta.persistence.PersistenceException;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,9 +52,6 @@ import org.apache.fineract.portfolio.savings.exception.SavingsProductNotFoundExc
 import org.apache.fineract.portfolio.tax.domain.TaxGroup;
 import org.springframework.dao.DataAccessException;
 import org.springframework.transaction.annotation.Transactional;
-
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.*;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.accountNumberPrefixParamName;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -106,8 +106,7 @@ public class SavingsProductWritePlatformServiceJpaRepositoryImpl implements Savi
         try {
             this.fromApiJsonDataValidator.validateForCreate(command.json());
 
-            final SavingsProduct product = this.savingsProductAssembler.
-                    assemble(command);
+            final SavingsProduct product = this.savingsProductAssembler.assemble(command);
             validateAccountNumberPrefix(command);
 
             this.savingProductRepository.saveAndFlush(product);
@@ -222,6 +221,7 @@ public class SavingsProductWritePlatformServiceJpaRepositoryImpl implements Savi
             }
         }
     }
+
     private void throwValidationErrorForAccountNumberPrefix(final String errorCode) {
         final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
         final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors)
