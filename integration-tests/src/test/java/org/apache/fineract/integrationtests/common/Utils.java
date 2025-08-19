@@ -575,4 +575,10 @@ public final class Utils {
     public static Double getDoubleValue(BigDecimal amount) {
         return amount == null ? null : amount.setScale(2, RoundingMode.HALF_UP).doubleValue();
     }
+
+    public static String randomTwoDigitString() {
+        Random random = new Random();
+        int number = random.nextInt(100); // generates 0–99
+        return String.format("%02d", number);
+    }
 }
