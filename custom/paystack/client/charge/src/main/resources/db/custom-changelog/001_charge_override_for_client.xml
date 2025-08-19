@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <!--
+      Client-specific Charge override table. Holds only the fields impacting calculation
+      and references m_charge fields (amount, min_cap, max_cap) from Charge JPA class.
+      Nulls mean: no override; fallback to m_charge values.
+    -->
+
+    <changeSet author="paystack" id="001_client_charge_override_create">
+        <createTable tableName="m_client_charge_override">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_m_client_charge_override" nullable="false"/>
+            </column>
+            <column name="client_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="charge_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Overrides based on org.apache.fineract.portfolio.charge.domain.Charge (m_charge) -->
+            <column name="amount" type="DECIMAL(19, 6)"/>
+            <column name="min_cap" type="DECIMAL(19, 6)"/>
+            <column name="max_cap" type="DECIMAL(19, 6)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet author="paystack" id="002_client_charge_override_constraints">
+        <addForeignKeyConstraint baseTableName="m_client_charge_override" baseColumnNames="client_id"
+                                 referencedTableName="m_client" referencedColumnNames="id"
+                                 constraintName="fk_client_charge_override_client"/>
+        <addForeignKeyConstraint baseTableName="m_client_charge_override" baseColumnNames="charge_id"
+                                 referencedTableName="m_charge" referencedColumnNames="id"
+                                 constraintName="fk_client_charge_override_charge"/>
+        <addUniqueConstraint tableName="m_client_charge_override" columnNames="client_id, charge_id"
+                             constraintName="uk_client_charge_override_client_charge"/>
+    </changeSet>
+
+    <changeSet author="paystack" id="003_client_charge_override_indexes" context="postgresql" runInTransaction="false">
+        <sql>
+            create index concurrently if not exists m_client_charge_override_idx_charge on m_client_charge_override(charge_id);
+            create index concurrently if not exists m_client_charge_override_idx_client on m_client_charge_override(client_id);
+        </sql>
+    </changeSet>
+
+    <changeSet author="paystack" id="004_client_charge_override_indexes_mysql" context="mysql">
+        <sql>
+            create index m_client_charge_override_idx_charge on m_client_charge_override(charge_id);
+            create index m_client_charge_override_idx_client on m_client_charge_override(client_id);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

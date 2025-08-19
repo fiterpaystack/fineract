@@ -40,7 +40,7 @@ import org.apache.fineract.portfolio.tax.data.TaxGroupData;
 @Getter
 @EqualsAndHashCode(of = "id")
 @Builder(toBuilder = true)
-public final class ChargeData implements Comparable<ChargeData>, Serializable {
+public class ChargeData implements Comparable<ChargeData>, Serializable {
 
     private final Long id;
     private final String name;
