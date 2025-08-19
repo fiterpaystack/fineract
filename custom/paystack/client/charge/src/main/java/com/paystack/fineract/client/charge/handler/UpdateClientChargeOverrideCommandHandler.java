@@ -28,9 +28,7 @@ public class UpdateClientChargeOverrideCommandHandler implements NewCommandSourc
 
     private static ClientChargeOverrideRequest toRequest(JsonCommand command) {
         ClientChargeOverrideRequest r = new ClientChargeOverrideRequest();
-        if (command.hasParameter("clientId")) {
-            r.setClientId(command.longValueOfParameterNamed("clientId"));
-        }
+        r.setClientId(command.getClientId());
         if (command.hasParameter("chargeId")) {
             r.setChargeId(command.longValueOfParameterNamed("chargeId"));
         }
@@ -42,6 +40,10 @@ public class UpdateClientChargeOverrideCommandHandler implements NewCommandSourc
         }
         if (command.hasParameter("maxCap")) {
             r.setMaxCap(command.bigDecimalValueOfParameterNamed("maxCap"));
+        }
+
+        if (command.hasParameter("active")) {
+            r.setActive(command.booleanObjectValueOfParameterNamed("active"));
         }
         return r;
     }

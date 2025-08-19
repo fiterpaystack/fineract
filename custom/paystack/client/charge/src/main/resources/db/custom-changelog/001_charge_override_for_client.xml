@@ -29,7 +29,12 @@
       Nulls mean: no override; fallback to m_charge values.
     -->
 
-    <changeSet author="paystack" id="001_client_charge_override_create">
+    <changeSet author="paystack" id="1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_client_charge_override"/>
+            </not>
+        </preConditions>
         <createTable tableName="m_client_charge_override">
             <column name="id" type="BIGINT" autoIncrement="true">
                 <constraints primaryKey="true" primaryKeyName="pk_m_client_charge_override" nullable="false"/>
@@ -47,7 +52,13 @@
         </createTable>
     </changeSet>
 
-    <changeSet author="paystack" id="002_client_charge_override_constraints">
+    <changeSet author="paystack" id="2">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="m_client_charge_override"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_client_charge_override_client"/>
+            </not>
+        </preConditions>
         <addForeignKeyConstraint baseTableName="m_client_charge_override" baseColumnNames="client_id"
                                  referencedTableName="m_client" referencedColumnNames="id"
                                  constraintName="fk_client_charge_override_client"/>
@@ -58,10 +69,16 @@
                              constraintName="uk_client_charge_override_client_charge"/>
     </changeSet>
 
-    <changeSet author="paystack" id="003_client_charge_override_indexes" context="postgresql" runInTransaction="false">
+    <changeSet author="paystack" id="3" context="postgresql" runInTransaction="false">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="m_client_charge_override"/>
+            <not>
+                <indexExists indexName="m_client_charge_override_idx_charge"/>
+            </not>
+        </preConditions>
         <sql>
-            create index concurrently if not exists m_client_charge_override_idx_charge on m_client_charge_override(charge_id);
-            create index concurrently if not exists m_client_charge_override_idx_client on m_client_charge_override(client_id);
+            create index if not exists m_client_charge_override_idx_charge on m_client_charge_override(charge_id);
+            create index if not exists m_client_charge_override_idx_client on m_client_charge_override(client_id);
         </sql>
     </changeSet>
 
@@ -70,6 +87,35 @@
             create index m_client_charge_override_idx_charge on m_client_charge_override(charge_id);
             create index m_client_charge_override_idx_client on m_client_charge_override(client_id);
         </sql>
+    </changeSet>
+
+    <!-- Add is_active flag to enable/disable overrides without deleting -->
+    <changeSet author="paystack" id="005_client_charge_override_is_active">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_client_charge_override" columnName="is_active"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="m_client_charge_override">
+            <column name="is_active" type="boolean" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- Add standard audit columns to support Spring Data auditing via AbstractAuditableCustom -->
+    <changeSet author="paystack" id="006_client_charge_override_audit_columns">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_client_charge_override" columnName="createdby_id"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="m_client_charge_override">
+            <column name="createdby_id" type="BIGINT" defaultValueComputed="NULL"/>
+            <column name="created_date" type="datetime" defaultValueComputed="NULL"/>
+            <column name="lastmodifiedby_id" type="BIGINT" defaultValueComputed="NULL"/>
+            <column name="lastmodified_date" type="datetime" defaultValueComputed="NULL"/>
+        </addColumn>
     </changeSet>
 
 </databaseChangeLog>

@@ -27,7 +27,7 @@ import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import lombok.Getter;
 import lombok.Setter;
-import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
+import org.apache.fineract.infrastructure.core.domain.AbstractAuditableCustom;
 import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.client.domain.Client;
 
@@ -40,7 +40,7 @@ import org.apache.fineract.portfolio.client.domain.Client;
         @UniqueConstraint(columnNames = { "client_id", "charge_id" }, name = "uk_client_charge_override_client_charge") })
 @Getter
 @Setter
-public class ClientChargeOverride extends AbstractPersistableCustom<Long> {
+public class ClientChargeOverride extends AbstractAuditableCustom {
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "client_id", referencedColumnName = "id", nullable = false)
@@ -60,6 +60,9 @@ public class ClientChargeOverride extends AbstractPersistableCustom<Long> {
     @Column(name = "max_cap", precision = 19, scale = 6)
     private BigDecimal maxCap; // nullable -> fallback to Charge.maxCap
 
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = Boolean.TRUE;
+
     protected ClientChargeOverride() {
         // for JPA
     }
@@ -70,6 +73,7 @@ public class ClientChargeOverride extends AbstractPersistableCustom<Long> {
         this.amount = amount;
         this.minCap = minCap;
         this.maxCap = maxCap;
+        this.isActive = Boolean.TRUE;
     }
 
 }

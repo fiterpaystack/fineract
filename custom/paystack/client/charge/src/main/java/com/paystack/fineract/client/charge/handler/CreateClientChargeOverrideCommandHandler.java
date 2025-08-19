@@ -27,9 +27,7 @@ public class CreateClientChargeOverrideCommandHandler implements NewCommandSourc
 
     private static ClientChargeOverrideRequest toRequest(JsonCommand command) {
         ClientChargeOverrideRequest r = new ClientChargeOverrideRequest();
-        if (command.hasParameter("clientId")) {
-            r.setClientId(command.longValueOfParameterNamed("clientId"));
-        }
+        r.setClientId(command.getClientId());
         if (command.hasParameter("chargeId")) {
             r.setChargeId(command.longValueOfParameterNamed("chargeId"));
         }

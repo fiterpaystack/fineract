@@ -25,7 +25,6 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 public interface ClientChargeOverrideRepository
         extends JpaRepository<ClientChargeOverride, Long>, JpaSpecificationExecutor<ClientChargeOverride> {
 
-    // Use property path navigation for nested IDs
     Optional<ClientChargeOverride> findByClient_IdAndCharge_Id(Long clientId, Long chargeId);
 
 }

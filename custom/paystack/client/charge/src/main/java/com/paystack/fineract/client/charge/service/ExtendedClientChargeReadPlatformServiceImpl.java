@@ -66,7 +66,7 @@ public class ExtendedClientChargeReadPlatformServiceImpl extends ChargeReadPlatf
 
     @Override
     public List<ChargeSearchResult> retrieveTemplateCharges(String searchKeywords) {
-        final String sql = "SELECT c.id AS chargeId, c.name AS name FROM m_charge c where lower(c.name) like :name ORDER BY c.name LIMIT 10";
+        final String sql = "SELECT c.id AS chargeId, c.name AS name FROM m_charge c where c.is_active = true and c.is_deleted = false and lower(c.name) like :name ORDER BY c.name LIMIT 10";
         final String likeSearch = "%" + searchKeywords.toLowerCase() + "%";
 
         return npJdbcTemplate.query(sql, Map.of("name", likeSearch), (ResultSet rs) -> {
@@ -84,8 +84,7 @@ public class ExtendedClientChargeReadPlatformServiceImpl extends ChargeReadPlatf
     @Override
     public ClientChargeResult get(Long id) {
         // Single override by override id
-        String sql = "select " + chargeMapper.chargeSchema() + " inner join m_client_charge_override o on o.charge_id = c.id "
-                + " where c.is_deleted=false and o.id = :id";
+        String sql = "select " + this.schema() + this.fromClause() + " where c.is_deleted=false and o.id = :id";
         MapSqlParameterSource params = new MapSqlParameterSource().addValue("id", id);
         try {
             return this.npJdbcTemplate.queryForObject(sql, params, rowMapper::mapRow);
@@ -99,12 +98,12 @@ public class ExtendedClientChargeReadPlatformServiceImpl extends ChargeReadPlatf
         int lim = (limit == null || limit <= 0) ? DEFAULT_LIMIT : limit;
         int off = (offset == null || offset < 0) ? DEFAULT_OFFSET : offset;
 
-        String baseQuery = chargeMapper.chargeSchema() + " inner join m_client_charge_override o on o.charge_id = c.id ";
+        String baseQuery = this.schema() + this.fromClause();
 
         String where = " where c.is_deleted=false and o.client_id = :clientId ";
 
-        String countSql = "select count(*)" + baseQuery + where;
-        String listSql = "select " + baseQuery + where + " order by c.name limit :limit offset :offset";
+        String countSql = "select count(*) " + fromClause() + where;
+        String listSql = "select " + baseQuery + where + " order by c.name limit :limit offset :offset ";
 
         MapSqlParameterSource params = new MapSqlParameterSource().addValue("clientId", clientId).addValue("limit", lim).addValue("offset",
                 off);
@@ -120,11 +119,36 @@ public class ExtendedClientChargeReadPlatformServiceImpl extends ChargeReadPlatf
         public ClientChargeResult mapRow(ResultSet rs, int rowNum) throws SQLException {
             ChargeData chargeData = chargeMapper.mapRow(rs, rowNum);
 
-            return ClientChargeResult.builder().chargeOverrideId(JdbcSupport.getLong(rs, "overrideId"))
-                    .clientId(JdbcSupport.getLong(rs, "clientId")).chargeId(JdbcSupport.getLong(rs, "chargeId")).chargeData(chargeData)
+            return ClientChargeResult.builder().overrideId(JdbcSupport.getLong(rs, "overrideId"))
+                    .overrideMaxCap(JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "overrideMaxCap"))
+                    .overrideMinCap(JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "overrideMinCap"))
+                    .overrideAmount(JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "overrideAmount"))
+                    .overrideActive(rs.getBoolean("overrideActive")).clientId(JdbcSupport.getLong(rs, "clientId")).chargeData(chargeData)
                     .build();
 
         }
 
+    }
+
+    private String schema() {
+        return " o.id as overrideId,o.client_id as clientId, o.min_cap as overrideMinCap, o.max_cap as overrideMaxCap, o.is_active as overrideActive,o.amount as overrideAmount, "
+                + " c.id as id, c.name as name, c.amount as amount, c.currency_code as currencyCode, "
+                + "c.charge_applies_to_enum as chargeAppliesTo, c.charge_time_enum as chargeTime, "
+                + "c.charge_payment_mode_enum as chargePaymentMode, "
+                + "c.charge_calculation_enum as chargeCalculation, c.is_penalty as penalty, "
+                + "c.is_active as active, c.is_free_withdrawal as isFreeWithdrawal, c.free_withdrawal_charge_frequency as freeWithdrawalChargeFrequency, c.restart_frequency as restartFrequency, c.restart_frequency_enum as restartFrequencyEnum,"
+                + "oc.name as currencyName, oc.decimal_places as currencyDecimalPlaces, "
+                + "oc.currency_multiplesof as inMultiplesOf, oc.display_symbol as currencyDisplaySymbol, "
+                + "oc.internationalized_name_code as currencyNameCode, c.fee_on_day as feeOnDay, c.fee_on_month as feeOnMonth, "
+                + "c.fee_interval as feeInterval, c.fee_frequency as feeFrequency,c.min_cap as minCap,c.max_cap as maxCap, "
+                + "c.income_or_liability_account_id as glAccountId , acc.name as glAccountName, acc.gl_code as glCode, "
+                + "tg.id as taxGroupId, c.is_payment_type as isPaymentType, pt.id as paymentTypeId, pt.value as paymentTypeName, tg.name as taxGroupName ";
+    }
+
+    private String fromClause() {
+        return " from m_charge c " + "join m_organisation_currency oc on c.currency_code = oc.code "
+                + " LEFT JOIN acc_gl_account acc on acc.id = c.income_or_liability_account_id "
+                + " LEFT JOIN m_tax_group tg on tg.id = c.tax_group_id " + " LEFT JOIN m_payment_type pt on pt.id = c.payment_type_id "
+                + " inner join m_client_charge_override o on o.charge_id = c.id ";
     }
 }

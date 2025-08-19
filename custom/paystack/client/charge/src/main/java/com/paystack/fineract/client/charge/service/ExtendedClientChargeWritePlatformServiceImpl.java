@@ -35,7 +35,6 @@ import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
 import org.springframework.stereotype.Service;
 
 @Service
-@Transactional
 @RequiredArgsConstructor
 public class ExtendedClientChargeWritePlatformServiceImpl implements ExtendedClientChargeWritePlatformService {
 
@@ -43,6 +42,7 @@ public class ExtendedClientChargeWritePlatformServiceImpl implements ExtendedCli
     private final ClientRepositoryWrapper clientRepository;
     private final ChargeRepositoryWrapper chargeRepository;
 
+    @Transactional
     @Override
     public ClientChargeOverrideResult create(ClientChargeOverrideRequest request) {
         validateRequest(request);
@@ -64,6 +64,7 @@ public class ExtendedClientChargeWritePlatformServiceImpl implements ExtendedCli
         return ClientChargeOverrideResult.fromEntity(saved);
     }
 
+    @Transactional
     @Override
     public ClientChargeOverrideResult update(Long id, ClientChargeOverrideRequest request) {
         ClientChargeOverride entity = overrideRepository.findById(id)
@@ -84,11 +85,13 @@ public class ExtendedClientChargeWritePlatformServiceImpl implements ExtendedCli
         entity.setAmount(request.getAmount());
         entity.setMinCap(request.getMinCap());
         entity.setMaxCap(request.getMaxCap());
+        entity.setIsActive(request.isActive());
 
-        ClientChargeOverride saved = overrideRepository.save(entity);
+        ClientChargeOverride saved = overrideRepository.saveAndFlush(entity);
         return ClientChargeOverrideResult.fromEntity(saved);
     }
 
+    @Transactional
     @Override
     public void delete(Long id) {
         ClientChargeOverride entity = overrideRepository.findById(id)

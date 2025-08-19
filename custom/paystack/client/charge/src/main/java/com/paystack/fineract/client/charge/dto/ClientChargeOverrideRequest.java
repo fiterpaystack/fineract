@@ -31,4 +31,5 @@ public class ClientChargeOverrideRequest {
     private BigDecimal amount;
     private BigDecimal minCap;
     private BigDecimal maxCap;
+    private boolean active;
 }
