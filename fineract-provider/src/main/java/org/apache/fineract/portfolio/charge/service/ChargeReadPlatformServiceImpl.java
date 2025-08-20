@@ -267,7 +267,7 @@ public class ChargeReadPlatformServiceImpl implements ChargeReadPlatformService 
         return sql;
     }
 
-    private static final class ChargeMapper implements RowMapper<ChargeData> {
+    public static class ChargeMapper implements RowMapper<ChargeData> {
 
         public String chargeSchema() {
             return "c.id as id, c.name as name, c.amount as amount, c.currency_code as currencyCode, "

@@ -104,7 +104,7 @@ dependencies {
     implementation files('libs/libsparkline-9.5.0.0-SNAPSHOT.jar')
     implementation files('libs/libswing-9.5.0.0-SNAPSHOT.jar')
     implementation files('libs/libxml-9.5.0.0-SNAPSHOT.jar')
-    implementation files('libs/pentaho-plugin-1.11.0-20250327.165652-1.jar')
+    //implementation files('libs/pentaho-plugin-1.11.0-20250327.165652-1.jar')
     implementation files('libs/regex-22.2.0.jar')
     implementation files('libs/rsyntaxtextarea-1.3.2.jar')
     implementation files('libs/sac-1.3.jar')

@@ -19,6 +19,9 @@
 
 package com.paystack.fineract.portfolio.account.service;
 
+import static org.apache.fineract.portfolio.client.api.ClientApiConstants.chargeIdParamName;
+
+import com.paystack.fineract.client.charge.service.ClientChargeOverrideReadService;
 import com.paystack.fineract.portfolio.account.data.ChargePaymentResult;
 import com.paystack.fineract.portfolio.account.data.VatApplicationResult;
 import java.math.BigDecimal;
@@ -48,6 +51,7 @@ import org.apache.fineract.organisation.workingdays.domain.WorkingDaysRepository
 import org.apache.fineract.portfolio.account.domain.StandingInstructionRepository;
 import org.apache.fineract.portfolio.account.service.AccountAssociationsReadPlatformService;
 import org.apache.fineract.portfolio.account.service.AccountTransfersReadPlatformService;
+import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.charge.domain.ChargeRepositoryWrapper;
 import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
 import org.apache.fineract.portfolio.note.domain.Note;
@@ -55,6 +59,7 @@ import org.apache.fineract.portfolio.note.domain.NoteRepository;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.paymentdetail.service.PaymentDetailWritePlatformService;
 import org.apache.fineract.portfolio.savings.SavingsAccountTransactionType;
+import org.apache.fineract.portfolio.savings.SavingsApiConstants;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountChargeDataValidator;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountDataValidator;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountTransactionDataValidator;
@@ -91,6 +96,9 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
 
     private final SavingsAccountChargePaymentWrapperService chargePaymentWrapperService;
     private final SavingsVatPostProcessorService vatService;
+    private final ClientChargeOverrideReadService clientChargeOverrideReadService;
+    private final ChargeRepositoryWrapper chargeRepositoryWrapper;
+    private final SavingsAccountChargeRepositoryWrapper savingsAccountChargeRepositoryWrapper;
 
     public PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl(PlatformSecurityContext context,
             SavingsAccountDataValidator fromApiJsonDeserializer, SavingsAccountRepositoryWrapper savingAccountRepositoryWrapper,
@@ -108,7 +116,7 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
             StandingInstructionRepository standingInstructionRepository, BusinessEventNotifierService businessEventNotifierService,
             GSIMRepositoy gsimRepository, SavingsAccountInterestPostingService savingsAccountInterestPostingService,
             ErrorHandler errorHandler, SavingsAccountChargePaymentWrapperService chargePaymentWrapperService,
-            SavingsVatPostProcessorService vatService) {
+            SavingsVatPostProcessorService vatService, ClientChargeOverrideReadService clientChargeOverrideReadService) {
         super(context, fromApiJsonDeserializer, savingAccountRepositoryWrapper, staffRepository, savingsAccountTransactionRepository,
                 savingAccountAssembler, savingsAccountTransactionDataValidator, savingsAccountChargeDataValidator,
                 paymentDetailWritePlatformService, journalEntryWritePlatformService, savingsAccountDomainService, noteRepository,
@@ -119,6 +127,9 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
                 errorHandler);
         this.chargePaymentWrapperService = chargePaymentWrapperService;
         this.vatService = vatService;
+        this.clientChargeOverrideReadService = clientChargeOverrideReadService;
+        this.chargeRepositoryWrapper = chargeRepository;
+        this.savingsAccountChargeRepositoryWrapper = savingsAccountChargeRepository;
     }
 
     @Override
@@ -435,5 +446,45 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
             }
         }
         return feeAmount;
+    }
+
+    @Override
+    @Transactional
+    public CommandProcessingResult addSavingsAccountCharge(final JsonCommand command) {
+        // Call parent to reuse validations and creation
+        CommandProcessingResult result = super.addSavingsAccountCharge(command);
+        Long sacId = result.getResourceId();
+        if (sacId != null) {
+            // Load the created charge and align primary amount based on override precedence
+            SavingsAccountCharge sac = this.savingsAccountChargeRepositoryWrapper.findOneWithNotFoundDetection(sacId);
+            Long clientId = sac.savingsAccount().clientId();
+            Charge chargeDef = this.chargeRepositoryWrapper
+                    .findOneWithNotFoundDetection(command.longValueOfParameterNamed(chargeIdParamName));
+            // Resolve effective primary amount using override -> savings amount (if provided) -> product
+            BigDecimal savingsAmountFromApi = command.bigDecimalValueOfParameterNamed(SavingsApiConstants.amountParamName);
+            BigDecimal effective = clientChargeOverrideReadService.resolvePrimaryAmount(clientId, chargeDef, savingsAmountFromApi);
+            // Update primary value (amount for FLAT, percentage for PERCENT_OF_AMOUNT)
+            sac.update(effective, sac.getDueDate(), null, null);
+            this.savingsAccountChargeRepositoryWrapper.saveAndFlush(sac);
+        }
+        return result;
+    }
+
+    @Override
+    @Transactional
+    public CommandProcessingResult updateSavingsAccountCharge(final JsonCommand command) {
+        // Let parent handle standard validations and updates first
+        CommandProcessingResult result = super.updateSavingsAccountCharge(command);
+        Long sacId = command.getResourceId();
+        if (sacId != null) {
+            SavingsAccountCharge sac = this.savingsAccountChargeRepositoryWrapper.findOneWithNotFoundDetection(sacId);
+            Long clientId = sac.savingsAccount().clientId();
+            Charge chargeDef = sac.getCharge();
+            BigDecimal savingsAmountFromApi = command.bigDecimalValueOfParameterNamed(SavingsApiConstants.amountParamName);
+            BigDecimal effective = clientChargeOverrideReadService.resolvePrimaryAmount(clientId, chargeDef, savingsAmountFromApi);
+            sac.update(effective, sac.getDueDate(), null, null);
+            this.savingsAccountChargeRepositoryWrapper.saveAndFlush(sac);
+        }
+        return result;
     }
 }

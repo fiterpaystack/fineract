@@ -101,6 +101,7 @@ public class SavingsProductHelper {
     private Boolean withgsimID = null;
     private Integer gsimID = null;
     private String nominalAnnualInterestRateOverdraft = null;
+    private String accountNumberPrefix = Utils.randomTwoDigitString();
 
     // TODO: Rewrite to use fineract-client instead!
     // Example: org.apache.fineract.integrationtests.common.loans.LoanTransactionHelper.disburseLoan(java.lang.Long,
@@ -144,6 +145,7 @@ public class SavingsProductHelper {
         map.put("maxAllowedLienLimit", this.maxAllowedLienLimit);
         map.put("withHoldTax", this.withHoldTax.toString());
         map.put("nominalAnnualInterestRateOverdraft", this.nominalAnnualInterestRateOverdraft);
+        map.put("accountNumberPrefix", this.accountNumberPrefix);
 
         if (withHoldTax) {
             map.put("taxGroupId", taxGroupId);

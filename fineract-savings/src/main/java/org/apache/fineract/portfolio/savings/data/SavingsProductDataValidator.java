@@ -19,6 +19,7 @@
 package org.apache.fineract.portfolio.savings.data;
 
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.SAVINGS_PRODUCT_RESOURCE_NAME;
+import static org.apache.fineract.portfolio.savings.SavingsApiConstants.accountNumberPrefixParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.allowOverdraftParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.currencyCodeParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.daysToDormancyParamName;
@@ -109,7 +110,7 @@ public class SavingsProductDataValidator {
             nominalAnnualInterestRateOverdraftParamName, minOverdraftForInterestCalculationParamName,
             SavingsApiConstants.minRequiredBalanceParamName, SavingsApiConstants.enforceMinRequiredBalanceParamName,
             SavingsApiConstants.maxAllowedLienLimitParamName, SavingsApiConstants.lienAllowedParamName,
-            minBalanceForInterestCalculationParamName, withHoldTaxParamName, taxGroupIdParamName));
+            minBalanceForInterestCalculationParamName, withHoldTaxParamName, taxGroupIdParamName, accountNumberPrefixParamName));
 
     public void validateForCreate(final String json) {
 
@@ -270,6 +271,7 @@ public class SavingsProductDataValidator {
             baseDataValidator.reset().parameter(minBalanceForInterestCalculationParamName).value(minBalanceForInterestCalculation)
                     .ignoreIfNull().zeroOrPositiveAmount();
         }
+
         validateTaxWithHoldingParams(baseDataValidator, element, true);
         validateLienParams(baseDataValidator, element);
         throwExceptionIfValidationWarningsExist(dataValidationErrors);
@@ -438,6 +440,21 @@ public class SavingsProductDataValidator {
             baseDataValidator.reset().parameter(minBalanceForInterestCalculationParamName).value(minBalanceForInterestCalculation)
                     .ignoreIfNull().zeroOrPositiveAmount();
         }
+
+        // final String accountNumberPrefix = this.fromApiJsonHelper.extractStringNamed(accountNumberPrefixParamName,
+        // element);
+        // baseDataValidator.reset().parameter(accountNumberPrefixParamName).value(accountNumberPrefix).notBlank();
+        // if (accountNumberPrefix != null) {
+        // boolean isNumeric = NumberUtils.isDigits(accountNumberPrefix);
+        // if (!isNumeric) {
+        // baseDataValidator.reset().parameter(accountNumberPrefixParamName).value(accountNumberPrefix)
+        // .failWithCodeNoParameterAddedToErrorCode("account.number.prefix.must.be.numeric");
+        // }
+        // if (accountNumberPrefix.length() != 2) {
+        // baseDataValidator.reset().parameter(accountNumberPrefixParamName).value(accountNumberPrefix)
+        // .failWithCodeNoParameterAddedToErrorCode("account.number.prefix.must.be.exactly.two.digits");
+        // }
+        // }
 
         validateTaxWithHoldingParams(baseDataValidator, element, false);
         validateLienParams(baseDataValidator, element);

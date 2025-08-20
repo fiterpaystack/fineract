@@ -175,10 +175,12 @@ public class DepositProductAssembler {
             taxGroup = this.taxGroupRepository.findOneWithNotFoundDetection(taxGroupId);
         }
 
+        final String accountNumberPrefix = null;
+
         FixedDepositProduct fixedDepositProduct = FixedDepositProduct.createNew(name, shortName, description, currency, interestRate,
                 interestCompoundingPeriodType, interestPostingPeriodType, interestCalculationType, interestCalculationDaysInYearType,
                 lockinPeriodFrequency, lockinPeriodFrequencyType, accountingRuleType, charges, productTermAndPreClosure, charts,
-                minBalanceForInterestCalculation, withHoldTax, taxGroup);
+                minBalanceForInterestCalculation, withHoldTax, taxGroup, accountNumberPrefix);
 
         // update product reference
         productTermAndPreClosure.updateProductReference(fixedDepositProduct);

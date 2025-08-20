@@ -18,7 +18,9 @@
  */
 package org.apache.fineract.portfolio.savings.service;
 
+import static org.apache.fineract.portfolio.savings.SavingsApiConstants.SAVINGS_ACCOUNT_RESOURCE_NAME;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.SAVINGS_PRODUCT_RESOURCE_NAME;
+import static org.apache.fineract.portfolio.savings.SavingsApiConstants.accountNumberPrefixParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.accountingRuleParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.chargesParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.taxGroupIdParamName;
@@ -31,6 +33,7 @@ import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.fineract.accounting.producttoaccountmapping.service.ProductToGLAccountMappingWritePlatformService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
@@ -86,6 +89,12 @@ public class SavingsProductWritePlatformServiceJpaRepositoryImpl implements Savi
             msg = "Savings product with short name `" + shortName + "` already exists";
             param = "shortName";
             msgArgs = new Object[] { shortName, dae };
+        } else if (checkEx.getMessage().contains("m_savings_product_unique_prefix")) {
+            final String accountNumberPrefix = command.stringValueOfParameterNamed("accountNumberPrefix");
+            msgCode += ".duplicate.accountNumberPrefix";
+            msg = "Savings product with Account number prefix name `" + accountNumberPrefix + "` already exists";
+            param = "accountNumberPrefix";
+            msgArgs = new Object[] { accountNumberPrefix, dae };
         } else {
             msgCode += ".unknown.data.integrity.issue";
             msgArgs = new Object[] { dae };
@@ -102,6 +111,7 @@ public class SavingsProductWritePlatformServiceJpaRepositoryImpl implements Savi
             this.fromApiJsonDataValidator.validateForCreate(command.json());
 
             final SavingsProduct product = this.savingsProductAssembler.assemble(command);
+            validateAccountNumberPrefix(command);
 
             this.savingProductRepository.saveAndFlush(product);
 
@@ -139,7 +149,7 @@ public class SavingsProductWritePlatformServiceJpaRepositoryImpl implements Savi
             this.fromApiJsonDataValidator.validateForUpdate(command.json(), product);
 
             final Map<String, Object> changes = product.update(command);
-
+            validateAccountNumberPrefix(command);
             if (changes.containsKey(chargesParamName)) {
                 final Set<Charge> savingsProductCharges = this.savingsProductAssembler.assembleListOfSavingsProductCharges(command,
                         product.currency().getCode());
@@ -198,6 +208,30 @@ public class SavingsProductWritePlatformServiceJpaRepositoryImpl implements Savi
         return new CommandProcessingResultBuilder() //
                 .withEntityId(product.getId()) //
                 .build();
+    }
+
+    private void validateAccountNumberPrefix(final JsonCommand command) {
+        final String accountNumberPrefix = command.stringValueOfParameterNamed(accountNumberPrefixParamName);
+        if (accountNumberPrefix == null || accountNumberPrefix.isBlank()) {
+            throwValidationErrorForAccountNumberPrefix("account.number.prefix.must.be.provided");
+        }
+        if (accountNumberPrefix != null) {
+            boolean isNumeric = NumberUtils.isDigits(accountNumberPrefix);
+            if (!isNumeric) {
+                throwValidationErrorForAccountNumberPrefix("account.number.prefix.must.be.numeric");
+            }
+            if (accountNumberPrefix.length() != 2) {
+                throwValidationErrorForAccountNumberPrefix("account.number.prefix.must.be.exactly.two.digits");
+            }
+        }
+    }
+
+    private void throwValidationErrorForAccountNumberPrefix(final String errorCode) {
+        final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+        final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors)
+                .resource(SAVINGS_ACCOUNT_RESOURCE_NAME + "create");
+        baseDataValidator.reset().failWithCodeNoParameterAddedToErrorCode(errorCode);
+        throw new PlatformApiDataValidationException(dataValidationErrors);
     }
 
 }

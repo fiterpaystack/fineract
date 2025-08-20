@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="1" author="paystack">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_client_classification_limit_mapping"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_client_classification_limit_mapping">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="code_value_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="FK_classification_code_value" references="m_code_value(id)" unique="true" uniqueConstraintName="UNQ_code_value_classification"/>
+            </column>
+            <column name="limit_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="FK_classification_limits" references="m_savings_global_transaction_limits_setting(id)"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="2" author="paystack">
+        <insert tableName="m_permission">
+            <column name="grouping" value="portfolio"/>
+            <column name="code" value="TRANSACTIONLIMITCLASSIFICATION_CREATE"/>
+            <column name="entity_name" value="TRANSACTIONLIMITCLASSIFICATION"/>
+            <column name="action_name" value="CREATE"/>
+        </insert>
+        <insert tableName="m_permission">
+            <column name="grouping" value="portfolio"/>
+            <column name="code" value="TRANSACTIONLIMITCLASSIFICATION_UPDATE"/>
+            <column name="entity_name" value="TRANSACTIONLIMITCLASSIFICATION"/>
+            <column name="action_name" value="UPDATE"/>
+        </insert>
+        <insert tableName="m_permission">
+            <column name="grouping" value="portfolio"/>
+            <column name="code" value="TRANSACTIONLIMITCLASSIFICATION_READ"/>
+            <column name="entity_name" value="TRANSACTIONLIMITCLASSIFICATION"/>
+            <column name="action_name" value="READ"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>
