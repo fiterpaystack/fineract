@@ -19,6 +19,7 @@
 
 package com.paystack.fineract.portfolio.account.service;
 
+import com.paystack.fineract.client.charge.service.ClientChargeOverrideReadService;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.time.LocalDate;
@@ -39,6 +40,7 @@ import org.apache.fineract.infrastructure.event.business.service.BusinessEventNo
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.organisation.monetary.domain.ApplicationCurrencyRepositoryWrapper;
 import org.apache.fineract.organisation.monetary.domain.Money;
+import org.apache.fineract.portfolio.charge.domain.ChargeCalculationType;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.savings.SavingsTransactionBooleanValues;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountTransactionDTO;
@@ -60,24 +62,27 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Primary
-public class PaystackServiceAccountDomainServiceJpa extends SavingsAccountDomainServiceJpa {
+public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomainServiceJpa {
 
     private final SavingsAccountTransactionSummaryWrapper savingsAccountTransactionSummaryWrapper;
     private final SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService;
+    private final ClientChargeOverrideReadService clientChargeOverrideReadService;
 
-    public PaystackServiceAccountDomainServiceJpa(SavingsAccountRepositoryWrapper savingsAccountRepository,
+    public PaystackSavingsAccountDomainServiceJpa(SavingsAccountRepositoryWrapper savingsAccountRepository,
             SavingsAccountTransactionRepository savingsAccountTransactionRepository,
             ApplicationCurrencyRepositoryWrapper applicationCurrencyRepositoryWrapper,
             JournalEntryWritePlatformService journalEntryWritePlatformService, ConfigurationDomainService configurationDomainService,
             PlatformSecurityContext context, DepositAccountOnHoldTransactionRepository depositAccountOnHoldTransactionRepository,
             BusinessEventNotifierService businessEventNotifierService,
             SavingsAccountTransactionSummaryWrapper savingsAccountTransactionSummaryWrapper,
-            SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService) {
+            SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService,
+            ClientChargeOverrideReadService clientChargeOverrideReadService) {
         super(savingsAccountRepository, savingsAccountTransactionRepository, applicationCurrencyRepositoryWrapper,
                 journalEntryWritePlatformService, configurationDomainService, context, depositAccountOnHoldTransactionRepository,
                 businessEventNotifierService);
         this.savingsAccountTransactionSummaryWrapper = savingsAccountTransactionSummaryWrapper;
         this.savingsAccountChargePaymentWrapperService = savingsAccountChargePaymentWrapperService;
+        this.clientChargeOverrideReadService = clientChargeOverrideReadService;
     }
 
     @Transactional
@@ -233,34 +238,79 @@ public class PaystackServiceAccountDomainServiceJpa extends SavingsAccountDomain
     private void payWithdrawalFee(final BigDecimal transactionAmount, final LocalDate transactionDate, final PaymentDetail paymentDetail,
             final boolean backdatedTxnsAllowedTill, final String refNo, final SavingsAccount account) {
         for (SavingsAccountCharge charge : account.charges()) {
-            if (charge.isWithdrawalFee() && charge.isActive()) {
-
-                if (charge.getFreeWithdrawalCount() == null) {
-                    charge.setFreeWithdrawalCount(0);
-                }
-
-                if (charge.isEnablePaymentType() && charge.isEnableFreeWithdrawal()) { // discount transaction to
-                    // specific paymentType
-                    if (paymentDetail.getPaymentType().getName().equals(charge.getCharge().getPaymentType().getName())) {
-                        account.resetFreeChargeDaysCount(charge, transactionAmount, transactionDate, refNo);
-                    }
-                } else if (charge.isEnablePaymentType()) { // normal charge-transaction to specific paymentType
-                    if (paymentDetail.getPaymentType().getName().equals(charge.getCharge().getPaymentType().getName())) {
-                        charge.updateWithdralFeeAmount(transactionAmount);
-                        savingsAccountChargePaymentWrapperService.payChargeWithVat(account, charge,
-                                charge.getAmountOutstanding(account.getCurrency()), transactionDate, refNo, backdatedTxnsAllowedTill);
-                    }
-                } else if (!charge.isEnablePaymentType() && charge.isEnableFreeWithdrawal()) { // discount transaction
-                    // irrespective of
-                    // PaymentTypes.
-                    account.resetFreeChargeDaysCount(charge, transactionAmount, transactionDate, refNo);
-
-                } else { // normal-withdraw
-                    charge.updateWithdralFeeAmount(transactionAmount);
-                    savingsAccountChargePaymentWrapperService.payChargeWithVat(account, charge,
-                            charge.getAmountOutstanding(account.getCurrency()), transactionDate, refNo, backdatedTxnsAllowedTill);
-                }
+            if (!charge.isWithdrawalFee() || !charge.isActive()) {
+                continue;
             }
+
+            if (charge.getFreeWithdrawalCount() == null) {
+                charge.setFreeWithdrawalCount(0);
+            }
+
+            // Respect free-withdrawal/paymentType rules
+            if (charge.isEnablePaymentType() && charge.isEnableFreeWithdrawal()) {
+                if (paymentDetail.getPaymentType().getName().equals(charge.getCharge().getPaymentType().getName())) {
+                    account.resetFreeChargeDaysCount(charge, transactionAmount, transactionDate, refNo);
+                }
+                continue;
+            }
+            if (charge.isEnablePaymentType()) {
+                if (!paymentDetail.getPaymentType().getName().equals(charge.getCharge().getPaymentType().getName())) {
+                    continue;
+                }
+            } else if (!charge.isEnablePaymentType() && charge.isEnableFreeWithdrawal()) {
+                account.resetFreeChargeDaysCount(charge, transactionAmount, transactionDate, refNo);
+                continue;
+            }
+
+            // Determine calculation type from the underlying Charge
+            Integer calc = charge.getCharge().getChargeCalculation();
+            BigDecimal amountToPay = BigDecimal.ZERO;
+
+            if (calc != null && ChargeCalculationType.fromInt(calc).isPercentageOfAmount()) {
+                // 1) Set the percentage from client override (client -> savings -> product)
+                BigDecimal pctResolved = clientChargeOverrideReadService.resolvePrimaryAmount(account.clientId(), charge.getCharge(), null);
+                charge.update(pctResolved, charge.getDueDate(), null, null);
+
+                // 2) Compute outstanding using the just-updated percentage
+                charge.updateWithdralFeeAmount(transactionAmount);
+                BigDecimal computed = charge.getAmountOutstanding(account.getCurrency()).getAmount();
+
+                // 3) Apply caps from client override (fallback to product)
+                BigDecimal minCap = clientChargeOverrideReadService.resolveMinCap(account.clientId(), charge.getCharge());
+                BigDecimal maxCap = clientChargeOverrideReadService.resolveMaxCap(account.clientId(), charge.getCharge());
+                BigDecimal desired = computed;
+                if (minCap != null && desired.compareTo(minCap) < 0) {
+                    desired = minCap;
+                }
+                if (maxCap != null && desired.compareTo(maxCap) > 0) {
+                    desired = maxCap;
+                }
+
+                // 4) If caps changed the value, adjust percentage so amountOutstanding matches desired
+                if (transactionAmount != null && transactionAmount.compareTo(BigDecimal.ZERO) > 0 && desired.compareTo(computed) != 0) {
+                    BigDecimal pctNeeded = desired.multiply(BigDecimal.valueOf(100L)).divide(transactionAmount,
+                            org.apache.fineract.organisation.monetary.domain.MoneyHelper.getRoundingMode());
+                    charge.update(pctNeeded, charge.getDueDate(), null, null);
+                    charge.updateWithdralFeeAmount(transactionAmount);
+                }
+
+                amountToPay = charge.getAmountOutstanding(account.getCurrency()).getAmount();
+            } else {
+                // FLAT: resolve primary amount and set it before computing outstanding
+                BigDecimal flatResolved = clientChargeOverrideReadService.resolvePrimaryAmount(account.clientId(), charge.getCharge(),
+                        charge.amount());
+                charge.update(flatResolved, charge.getDueDate(), null, null);
+                charge.updateWithdralFeeAmount(transactionAmount);
+                amountToPay = charge.getAmountOutstanding(account.getCurrency()).getAmount();
+            }
+
+            if (amountToPay.compareTo(BigDecimal.ZERO) <= 0) {
+                continue; // nothing to pay
+            }
+
+            Money moneyToPay = org.apache.fineract.organisation.monetary.domain.Money.of(account.getCurrency(), amountToPay);
+            savingsAccountChargePaymentWrapperService.payChargeWithVat(account, charge, moneyToPay, transactionDate, refNo,
+                    backdatedTxnsAllowedTill);
         }
     }
 }

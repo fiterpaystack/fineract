@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements. See the NOTICE file
  * distributed with this work for additional information
@@ -16,20 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package com.paystack.fineract.client.charge.service;
 
-dependencies {
-    implementation(project(':fineract-provider'))
-    implementation(project(':fineract-loan'))
-    implementation(project(':fineract-savings'))
-    implementation(project(':fineract-core'))
-    implementation(project(':fineract-charge'))
-    implementation(project(':fineract-tax'))
-    implementation(project(":custom:paystack:client:charge"))
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa") {
-        exclude group: 'org.hibernate'
-    }
+import com.paystack.fineract.client.charge.dto.ClientChargeOverrideRequest;
+import com.paystack.fineract.client.charge.dto.ClientChargeOverrideResult;
 
-    implementation('org.eclipse.persistence:org.eclipse.persistence.jpa') {
-        exclude group: 'org.hibernate'
-    }
+public interface ExtendedClientChargeWritePlatformService {
+
+    ClientChargeOverrideResult create(ClientChargeOverrideRequest request);
+
+    ClientChargeOverrideResult update(Long id, ClientChargeOverrideRequest request);
+
+    void delete(Long id);
+
 }

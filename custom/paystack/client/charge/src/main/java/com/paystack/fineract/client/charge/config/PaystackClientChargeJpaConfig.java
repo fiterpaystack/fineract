@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements. See the NOTICE file
  * distributed with this work for additional information
@@ -16,20 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package com.paystack.fineract.client.charge.config;
 
-dependencies {
-    implementation(project(':fineract-provider'))
-    implementation(project(':fineract-loan'))
-    implementation(project(':fineract-savings'))
-    implementation(project(':fineract-core'))
-    implementation(project(':fineract-charge'))
-    implementation(project(':fineract-tax'))
-    implementation(project(":custom:paystack:client:charge"))
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa") {
-        exclude group: 'org.hibernate'
-    }
+import java.util.Set;
+import org.apache.fineract.infrastructure.core.config.jpa.EntityManagerFactoryCustomizer;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
-    implementation('org.eclipse.persistence:org.eclipse.persistence.jpa') {
-        exclude group: 'org.hibernate'
+@Configuration
+@EnableJpaRepositories(basePackages = "com.paystack.fineract.client.charge.domain")
+public class PaystackClientChargeJpaConfig implements EntityManagerFactoryCustomizer {
+
+    @Override
+    public Set<String> additionalPackagesToScan() {
+        return Set.of("com.paystack.fineract.client.charge.domain");
     }
 }

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements. See the NOTICE file
  * distributed with this work for additional information
@@ -17,19 +17,20 @@
  * under the License.
  */
 
-dependencies {
-    implementation(project(':fineract-provider'))
-    implementation(project(':fineract-loan'))
-    implementation(project(':fineract-savings'))
-    implementation(project(':fineract-core'))
-    implementation(project(':fineract-charge'))
-    implementation(project(':fineract-tax'))
-    implementation(project(":custom:paystack:client:charge"))
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa") {
-        exclude group: 'org.hibernate'
-    }
+package com.paystack.fineract.client.charge.service;
 
-    implementation('org.eclipse.persistence:org.eclipse.persistence.jpa') {
-        exclude group: 'org.hibernate'
-    }
+import com.paystack.fineract.client.charge.dto.ChargeSearchResult;
+import com.paystack.fineract.client.charge.dto.ClientChargeResult;
+import java.util.List;
+import org.apache.fineract.infrastructure.core.service.Page;
+
+public interface ExtendedClientChargeReadPlatformService {
+
+    // Returns up to 10 charges from m_charge for template usage
+    List<ChargeSearchResult> retrieveTemplateCharges(String nameKeyWords);
+
+    ClientChargeResult get(Long id);
+
+    Page<ClientChargeResult> listByClient(Long clientId, Integer limit, Integer offset);
+
 }

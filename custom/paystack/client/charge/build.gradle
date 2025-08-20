@@ -16,11 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.paystack.fineract.portfolio.client.starter;
+description = 'CredibleX Fineract Account'
 
-import org.springframework.boot.autoconfigure.AutoConfiguration;
-import org.springframework.context.annotation.ComponentScan;
+group = 'com.paystack.fineract'
 
-@AutoConfiguration
-@ComponentScan("com.paystack.fineract.portfolio.client")
-public class PayStackClientAutoConfiguration {}
+base {
+    archivesName = 'paystack-fineract-client-charge'
+}
+
+apply from: 'dependencies.gradle'

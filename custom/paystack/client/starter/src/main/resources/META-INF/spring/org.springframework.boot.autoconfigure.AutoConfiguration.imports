@@ -1,1 +1,2 @@
-com.paystack.fineract.portfolio.client.starter.PayStackClientAutoConfiguration
+com.paystack.fineract.portfolio.client.starter.PaystackClientAutoConfiguration
+com.paystack.fineract.client.starter.PaystackClientAutoConfiguration
