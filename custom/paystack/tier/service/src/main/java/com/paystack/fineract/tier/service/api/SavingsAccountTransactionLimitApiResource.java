@@ -216,7 +216,7 @@ public class SavingsAccountTransactionLimitApiResource {
         this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
 
         final ApiRequestJsonSerializationSettings settings = this.apiRequestParameterHelper.process(uriInfo.getQueryParameters());
-        if(settings.isTemplate()){
+        if (settings.isTemplate()) {
             final SavingsClientClassificationLimitMappingData classificationLimitMappings = this.readPlatformService
                     .retrieveOneByCodeValueIdWithTemplate(codeValueId);
             return this.classificationToApiJsonSerializer.serialize(settings, classificationLimitMappings);

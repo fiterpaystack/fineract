@@ -37,8 +37,11 @@ public class SavingsClientClassificationLimitMappingData {
     @SuppressWarnings("unused")
     private Collection<SavingsAccountTransactionLimitsSettingData> savingsAccountTransactionLimitsSettingDataCollection;
 
-    public static SavingsClientClassificationLimitMappingData template(final SavingsClientClassificationLimitMappingData savingsClientClassificationLimitMappingData, final Collection<SavingsAccountTransactionLimitsSettingData> savingsAccountTransactionLimitsSettingDataCollection) {
-        return new SavingsClientClassificationLimitMappingData(savingsClientClassificationLimitMappingData.id, savingsClientClassificationLimitMappingData.classificationId,
+    public static SavingsClientClassificationLimitMappingData template(
+            final SavingsClientClassificationLimitMappingData savingsClientClassificationLimitMappingData,
+            final Collection<SavingsAccountTransactionLimitsSettingData> savingsAccountTransactionLimitsSettingDataCollection) {
+        return new SavingsClientClassificationLimitMappingData(savingsClientClassificationLimitMappingData.id,
+                savingsClientClassificationLimitMappingData.classificationId,
                 savingsClientClassificationLimitMappingData.classificationName, savingsClientClassificationLimitMappingData.limitId,
                 savingsClientClassificationLimitMappingData.limitName, savingsClientClassificationLimitMappingData.limits,
                 savingsAccountTransactionLimitsSettingDataCollection);

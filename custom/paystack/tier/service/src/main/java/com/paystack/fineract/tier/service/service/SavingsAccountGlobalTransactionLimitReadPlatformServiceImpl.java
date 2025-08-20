@@ -26,9 +26,6 @@ import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
-
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
@@ -73,13 +70,13 @@ public class SavingsAccountGlobalTransactionLimitReadPlatformServiceImpl
         try {
             final String query = "select " + classificationLimitMappingMapper.schema(true) + " and cclm.code_value_id = ?";
             return this.jdbcTemplate.queryForObject(query, classificationLimitMappingMapper, codeValueId);
-        } catch ( EmptyResultDataAccessException emptyResultDataAccessException) {
+        } catch (EmptyResultDataAccessException emptyResultDataAccessException) {
             Collection<SavingsClientClassificationLimitMappingData> savingsClientClassificationLimitMappingDataCollection = getLimitClassificationMappings();
             // If you expect only one item with a unique ID, you can use findFirst()
             SavingsClientClassificationLimitMappingData singleItem = savingsClientClassificationLimitMappingDataCollection.stream()
-                    .filter(savingsClientClassificationLimitMappingData -> savingsClientClassificationLimitMappingData.getClassificationId().equals(codeValueId))
-                    .findFirst()
-                    .orElse(null); // Returns null if not found
+                    .filter(savingsClientClassificationLimitMappingData -> savingsClientClassificationLimitMappingData.getClassificationId()
+                            .equals(codeValueId))
+                    .findFirst().orElse(null); // Returns null if not found
             return singleItem;
         }
     }
@@ -87,7 +84,8 @@ public class SavingsAccountGlobalTransactionLimitReadPlatformServiceImpl
     @Override
     public SavingsClientClassificationLimitMappingData retrieveOneByCodeValueIdWithTemplate(Long codeValueId) {
         SavingsClientClassificationLimitMappingData savingsClientClassificationLimitMappingData = retrieveOneByCodeValueId(codeValueId);
-        return SavingsClientClassificationLimitMappingData.template(savingsClientClassificationLimitMappingData, retrieveSavingsAccountTransactionLimitsSettingsForLookUp());
+        return SavingsClientClassificationLimitMappingData.template(savingsClientClassificationLimitMappingData,
+                retrieveSavingsAccountTransactionLimitsSettingsForLookUp());
     }
 
     private Collection<SavingsAccountTransactionLimitsSettingData> retrieveSavingsAccountTransactionLimitsSettingsForLookUp() {
@@ -105,7 +103,8 @@ public class SavingsAccountGlobalTransactionLimitReadPlatformServiceImpl
     }
 
     @Getter
-    private static final class SavingsAccountTransactionLimitsSettingLookUpMapper implements RowMapper<SavingsAccountTransactionLimitsSettingData> {
+    private static final class SavingsAccountTransactionLimitsSettingLookUpMapper
+            implements RowMapper<SavingsAccountTransactionLimitsSettingData> {
 
         private final String schema;
 
