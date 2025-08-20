@@ -270,8 +270,7 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
             }
 
             // Special validation for DEPOSIT_FEE charges
-            if (chargeTimeType != null && chargeTimeType.equals(ChargeTimeType.DEPOSIT_FEE.getValue())
-                    && chargeCalculationType != null) {
+            if (chargeTimeType != null && chargeTimeType.equals(ChargeTimeType.DEPOSIT_FEE.getValue()) && chargeCalculationType != null) {
                 baseDataValidator.reset().parameter(CHARGE_CALCULATION_TYPE).value(chargeCalculationType)
                         .isOneOfTheseValues(ChargeCalculationType.validValuesForDeposits());
             }

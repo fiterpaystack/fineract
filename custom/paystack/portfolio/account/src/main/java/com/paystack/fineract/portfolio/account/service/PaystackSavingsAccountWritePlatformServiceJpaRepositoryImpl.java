@@ -20,7 +20,7 @@
 package com.paystack.fineract.portfolio.account.service;
 
 import com.paystack.fineract.portfolio.account.data.ChargePaymentResult;
-
+import com.paystack.fineract.portfolio.account.data.VatApplicationResult;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.time.LocalDate;
@@ -31,16 +31,18 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
-
 import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
+import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
+import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.dataqueries.service.EntityDatatableChecksWritePlatformService;
 import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.organisation.holiday.domain.HolidayRepositoryWrapper;
+import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.organisation.staff.domain.StaffRepositoryWrapper;
 import org.apache.fineract.organisation.workingdays.domain.WorkingDaysRepositoryWrapper;
 import org.apache.fineract.portfolio.account.domain.StandingInstructionRepository;
@@ -56,40 +58,30 @@ import org.apache.fineract.portfolio.savings.SavingsAccountTransactionType;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountChargeDataValidator;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountDataValidator;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountTransactionDataValidator;
-import org.apache.fineract.portfolio.savings.data.SavingsAccountTransactionDTO;
-import org.apache.fineract.infrastructure.core.api.JsonCommand;
-import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
-import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
-import org.apache.fineract.portfolio.savings.service.SavingsAccountWritePlatformService;
-import org.apache.fineract.portfolio.savings.domain.GroupSavingsIndividualMonitoring;
-import org.apache.fineract.portfolio.savings.domain.GSIMRepositoy;
 import org.apache.fineract.portfolio.savings.domain.DepositAccountOnHoldTransaction;
 import org.apache.fineract.portfolio.savings.domain.DepositAccountOnHoldTransactionRepository;
 import org.apache.fineract.portfolio.savings.domain.GSIMRepositoy;
+import org.apache.fineract.portfolio.savings.domain.GroupSavingsIndividualMonitoring;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountAssembler;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountCharge;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountChargePaidBy;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountChargeRepositoryWrapper;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepositoryWrapper;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransactionRepository;
-import org.apache.fineract.portfolio.savings.domain.SavingsAccountChargePaidBy;
-import org.apache.fineract.portfolio.savings.SavingsAccountTransactionType;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountDomainService;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountInterestPostingService;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountWritePlatformServiceJpaRepositoryImpl;
-import org.apache.fineract.organisation.monetary.domain.Money;
-import com.paystack.fineract.portfolio.account.service.SavingsVatPostProcessorService;
-import com.paystack.fineract.portfolio.account.data.VatApplicationResult;
 import org.apache.fineract.useradministration.domain.AppUserRepositoryWrapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Service
 @Primary
@@ -101,22 +93,22 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
     private final SavingsVatPostProcessorService vatService;
 
     public PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl(PlatformSecurityContext context,
-                                                                       SavingsAccountDataValidator fromApiJsonDeserializer, SavingsAccountRepositoryWrapper savingAccountRepositoryWrapper,
-                                                                       StaffRepositoryWrapper staffRepository, SavingsAccountTransactionRepository savingsAccountTransactionRepository,
-                                                                       SavingsAccountAssembler savingAccountAssembler, SavingsAccountTransactionDataValidator savingsAccountTransactionDataValidator,
-                                                                       SavingsAccountChargeDataValidator savingsAccountChargeDataValidator,
-                                                                       PaymentDetailWritePlatformService paymentDetailWritePlatformService,
-                                                                       JournalEntryWritePlatformService journalEntryWritePlatformService, SavingsAccountDomainService savingsAccountDomainService,
-                                                                       NoteRepository noteRepository, AccountTransfersReadPlatformService accountTransfersReadPlatformService,
-                                                                       AccountAssociationsReadPlatformService accountAssociationsReadPlatformService, ChargeRepositoryWrapper chargeRepository,
-                                                                       SavingsAccountChargeRepositoryWrapper savingsAccountChargeRepository, HolidayRepositoryWrapper holidayRepository,
-                                                                       WorkingDaysRepositoryWrapper workingDaysRepository, ConfigurationDomainService configurationDomainService,
-                                                                       DepositAccountOnHoldTransactionRepository depositAccountOnHoldTransactionRepository,
-                                                                       EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService, AppUserRepositoryWrapper appuserRepository,
-                                                                       StandingInstructionRepository standingInstructionRepository, BusinessEventNotifierService businessEventNotifierService,
-                                                                       GSIMRepositoy gsimRepository, SavingsAccountInterestPostingService savingsAccountInterestPostingService,
-                                                                       ErrorHandler errorHandler, SavingsAccountChargePaymentWrapperService chargePaymentWrapperService,
-                                                                       SavingsVatPostProcessorService vatService) {
+            SavingsAccountDataValidator fromApiJsonDeserializer, SavingsAccountRepositoryWrapper savingAccountRepositoryWrapper,
+            StaffRepositoryWrapper staffRepository, SavingsAccountTransactionRepository savingsAccountTransactionRepository,
+            SavingsAccountAssembler savingAccountAssembler, SavingsAccountTransactionDataValidator savingsAccountTransactionDataValidator,
+            SavingsAccountChargeDataValidator savingsAccountChargeDataValidator,
+            PaymentDetailWritePlatformService paymentDetailWritePlatformService,
+            JournalEntryWritePlatformService journalEntryWritePlatformService, SavingsAccountDomainService savingsAccountDomainService,
+            NoteRepository noteRepository, AccountTransfersReadPlatformService accountTransfersReadPlatformService,
+            AccountAssociationsReadPlatformService accountAssociationsReadPlatformService, ChargeRepositoryWrapper chargeRepository,
+            SavingsAccountChargeRepositoryWrapper savingsAccountChargeRepository, HolidayRepositoryWrapper holidayRepository,
+            WorkingDaysRepositoryWrapper workingDaysRepository, ConfigurationDomainService configurationDomainService,
+            DepositAccountOnHoldTransactionRepository depositAccountOnHoldTransactionRepository,
+            EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService, AppUserRepositoryWrapper appuserRepository,
+            StandingInstructionRepository standingInstructionRepository, BusinessEventNotifierService businessEventNotifierService,
+            GSIMRepositoy gsimRepository, SavingsAccountInterestPostingService savingsAccountInterestPostingService,
+            ErrorHandler errorHandler, SavingsAccountChargePaymentWrapperService chargePaymentWrapperService,
+            SavingsVatPostProcessorService vatService) {
         super(context, fromApiJsonDeserializer, savingAccountRepositoryWrapper, staffRepository, savingsAccountTransactionRepository,
                 savingAccountAssembler, savingsAccountTransactionDataValidator, savingsAccountChargeDataValidator,
                 paymentDetailWritePlatformService, journalEntryWritePlatformService, savingsAccountDomainService, noteRepository,
@@ -132,7 +124,7 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
     @Override
     @Transactional
     protected SavingsAccountTransaction payCharge(final SavingsAccountCharge savingsAccountCharge, final LocalDate transactionDate,
-                                                  final BigDecimal amountPaid, final DateTimeFormatter formatter, final boolean backdatedTxnsAllowedTill) {
+            final BigDecimal amountPaid, final DateTimeFormatter formatter, final boolean backdatedTxnsAllowedTill) {
         final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
                 .isSavingsInterestPostingAtCurrentPeriodEnd();
         final Integer financialYearBeginningMonth = this.configurationDomainService.retrieveFinancialYearBeginningMonth();
@@ -190,8 +182,8 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
     }
 
     /**
-     * Enhanced deposit method that applies deposit fees for all credit/inbound transactions
-     * and provides detailed transaction receipt with fee breakdown
+     * Enhanced deposit method that applies deposit fees for all credit/inbound transactions and provides detailed
+     * transaction receipt with fee breakdown
      */
     @Override
     @Transactional
@@ -209,9 +201,9 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
         Set<SavingsAccountCharge> depositFeeCharges = new HashSet<>();
 
         for (SavingsAccountCharge charge : account.charges()) {
-            if (charge.getCharge().getChargeTimeType().equals(ChargeTimeType.DEPOSIT_FEE.getValue()) &&
-                    charge.isActive()) {
-                // For DEPOSIT_FEE charges, we don't check if they're paid because they should be applied to every deposit
+            if (charge.getCharge().getChargeTimeType().equals(ChargeTimeType.DEPOSIT_FEE.getValue()) && charge.isActive()) {
+                // For DEPOSIT_FEE charges, we don't check if they're paid because they should be applied to every
+                // deposit
                 depositFeeCharges.add(charge);
                 log.debug("Found DEPOSIT_FEE charge: {}", charge.getCharge().getName());
             }
@@ -228,7 +220,8 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
         // Use gross amount for deposit (what user wants to see credited)
         BigDecimal depositAmount = grossAmount;
 
-        CommandProcessingResult result = processDepositWithNetAmount(savingsId, command, depositAmount, transactionDate, fmt, backdatedTxnsAllowedTill);
+        CommandProcessingResult result = processDepositWithNetAmount(savingsId, command, depositAmount, transactionDate, fmt,
+                backdatedTxnsAllowedTill);
 
         // If deposit was successful and fees exist, apply them as separate transactions
         if (result.getResourceId() != null && totalFeeAmount.compareTo(BigDecimal.ZERO) > 0) {
@@ -244,7 +237,6 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
 
                 // Post journal entries for the fee transactions
                 postJournalEntries(account, existingTransactionIds, existingReversedTransactionIds, backdatedTxnsAllowedTill);
-
 
                 // Update the result with fee information
                 Map<String, Object> changes = new LinkedHashMap<>();
@@ -272,8 +264,8 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
      * Apply deposit fees to the account
      */
     private void applyDepositFees(final SavingsAccount account, final Set<SavingsAccountCharge> depositFeeCharges,
-                                  final LocalDate transactionDate, final BigDecimal grossAmount,
-                                  final BigDecimal totalFeeAmount, final DateTimeFormatter formatter, final boolean backdatedTxnsAllowedTill) {
+            final LocalDate transactionDate, final BigDecimal grossAmount, final BigDecimal totalFeeAmount,
+            final DateTimeFormatter formatter, final boolean backdatedTxnsAllowedTill) {
 
         for (SavingsAccountCharge charge : depositFeeCharges) {
             BigDecimal feeAmount = calculateDepositFeeAmount(charge, account, grossAmount);
@@ -281,8 +273,8 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
             if (feeAmount.compareTo(BigDecimal.ZERO) > 0) {
                 // Create a direct fee transaction instead of using charge payment infrastructure
                 // This bypasses the "already paid/waived" validation for DEPOSIT_FEE charges
-                SavingsAccountTransaction feeTransaction = createDirectFeeTransaction(
-                        account, charge, feeAmount, transactionDate, formatter);
+                SavingsAccountTransaction feeTransaction = createDirectFeeTransaction(account, charge, feeAmount, transactionDate,
+                        formatter);
 
                 // Save the fee transaction
                 saveTransactionToGenerateTransactionId(feeTransaction);
@@ -301,11 +293,8 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
     /**
      * Create a direct fee transaction without using the charge payment infrastructure
      */
-    private SavingsAccountTransaction createDirectFeeTransaction(final SavingsAccount account,
-                                                                 final SavingsAccountCharge charge,
-                                                                 final BigDecimal feeAmount,
-                                                                 final LocalDate transactionDate,
-                                                                 final DateTimeFormatter formatter) {
+    private SavingsAccountTransaction createDirectFeeTransaction(final SavingsAccount account, final SavingsAccountCharge charge,
+            final BigDecimal feeAmount, final LocalDate transactionDate, final DateTimeFormatter formatter) {
 
         log.debug("Creating direct fee transaction - Amount: {}, Charge: {}", feeAmount, charge.getCharge().getName());
 
@@ -318,13 +307,12 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
         Money feeMoney = Money.of(account.getCurrency(), feeAmount);
 
         // Create the transaction using the account's addTransaction method
-        SavingsAccountTransaction feeTransaction = new SavingsAccountTransaction(
-                account, account.office(),
-                SavingsAccountTransactionType.PAY_CHARGE.getValue(),
-                transactionDate, feeMoney, isReversed, isManualTransaction, lienTransaction, refNo);
+        SavingsAccountTransaction feeTransaction = new SavingsAccountTransaction(account, account.office(),
+                SavingsAccountTransactionType.PAY_CHARGE.getValue(), transactionDate, feeMoney, isReversed, isManualTransaction,
+                lienTransaction, refNo);
 
-        log.debug("Created fee transaction - Type: {}, Date: {}, Amount: {}",
-                feeTransaction.getTransactionType(), feeTransaction.getTransactionDate(), feeTransaction.getAmount());
+        log.debug("Created fee transaction - Type: {}, Date: {}, Amount: {}", feeTransaction.getTransactionType(),
+                feeTransaction.getTransactionDate(), feeTransaction.getAmount());
 
         final SavingsAccountChargePaidBy chargePaidBy = SavingsAccountChargePaidBy.instance(feeTransaction, charge, feeAmount);
         feeTransaction.getSavingsAccountChargesPaid().add(chargePaidBy);
@@ -340,16 +328,12 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
     /**
      * Apply VAT for fee transaction using the VAT service directly
      */
-    private void applyVatForFeeTransaction(final SavingsAccount account,
-                                           final SavingsAccountCharge charge,
-                                           final BigDecimal feeAmount,
-                                           final LocalDate transactionDate,
-                                           final SavingsAccountTransaction feeTransaction) {
+    private void applyVatForFeeTransaction(final SavingsAccount account, final SavingsAccountCharge charge, final BigDecimal feeAmount,
+            final LocalDate transactionDate, final SavingsAccountTransaction feeTransaction) {
 
         try {
             // Use the VAT service to process VAT if applicable
-            VatApplicationResult vatResult = vatService.processVatForFeeTransaction(
-                    feeAmount, transactionDate, charge, account, false);
+            VatApplicationResult vatResult = vatService.processVatForFeeTransaction(feeAmount, transactionDate, charge, account, false);
 
             if (vatResult.isVatApplied()) {
                 // Save the VAT transaction
@@ -363,9 +347,8 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
     /**
      * Process deposit with net amount by calling the parent's handleDeposit method directly
      */
-    private CommandProcessingResult processDepositWithNetAmount(final Long savingsId, final JsonCommand command,
-                                                                final BigDecimal netAmount, final LocalDate transactionDate,
-                                                                final DateTimeFormatter fmt, final boolean backdatedTxnsAllowedTill) {
+    private CommandProcessingResult processDepositWithNetAmount(final Long savingsId, final JsonCommand command, final BigDecimal netAmount,
+            final LocalDate transactionDate, final DateTimeFormatter fmt, final boolean backdatedTxnsAllowedTill) {
 
         // Get the account
         final SavingsAccount account = this.savingAccountAssembler.assembleFrom(savingsId, backdatedTxnsAllowedTill);
@@ -381,8 +364,8 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
         boolean isAccountTransfer = false;
         boolean isRegularTransaction = true;
 
-        final SavingsAccountTransaction deposit = this.savingsAccountDomainService.handleDeposit(account, fmt, transactionDate,
-                netAmount, paymentDetail, isAccountTransfer, isRegularTransaction, backdatedTxnsAllowedTill);
+        final SavingsAccountTransaction deposit = this.savingsAccountDomainService.handleDeposit(account, fmt, transactionDate, netAmount,
+                paymentDetail, isAccountTransfer, isRegularTransaction, backdatedTxnsAllowedTill);
 
         if (account.getGsim() != null && (deposit.getId() != null)) {
             GroupSavingsIndividualMonitoring gsim = gsimRepository.findById(account.getGsim().getId()).orElseThrow();
@@ -412,7 +395,8 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
     /**
      * Calculate the deposit fee amount based on charge calculation type
      */
-    private BigDecimal calculateDepositFeeAmount(final SavingsAccountCharge charge, final SavingsAccount account, final BigDecimal depositAmount) {
+    private BigDecimal calculateDepositFeeAmount(final SavingsAccountCharge charge, final SavingsAccount account,
+            final BigDecimal depositAmount) {
         BigDecimal feeAmount = BigDecimal.ZERO;
 
         // Get charge calculation type from the underlying charge definition
@@ -427,14 +411,13 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
                 case 1: // FLAT
                     feeAmount = charge.getAmount(account.getCurrency()).getAmount();
                     log.debug("FLAT charge - Fee amount: {}", feeAmount);
-                    break;
+                break;
                 case 2: // PERCENT_OF_AMOUNT
                     // For percentage charges, use the underlying charge definition's amount as the percentage
                     if (charge.getCharge().getAmount() != null && depositAmount != null) {
                         BigDecimal percentage = charge.getCharge().getAmount();
 
-                        feeAmount = depositAmount.multiply(percentage)
-                                .divide(BigDecimal.valueOf(100), MathContext.DECIMAL64);
+                        feeAmount = depositAmount.multiply(percentage).divide(BigDecimal.valueOf(100), MathContext.DECIMAL64);
 
                         // Apply min/max caps if configured
                         if (charge.getCharge().getMinCap() != null && feeAmount.compareTo(charge.getCharge().getMinCap()) < 0) {
@@ -444,11 +427,11 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
                             feeAmount = charge.getCharge().getMaxCap();
                         }
                     }
-                    break;
+                break;
                 default:
                     // Default to flat amount
                     feeAmount = charge.getAmount(account.getCurrency()).getAmount();
-                    break;
+                break;
             }
         }
         return feeAmount;
