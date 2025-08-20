@@ -26,6 +26,8 @@ import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
+
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -39,6 +41,7 @@ public class SavingsAccountGlobalTransactionLimitReadPlatformServiceImpl
 
     private final SavingsAccountTransactionLimitSettingMapper savingsAccountTransactionLimitSettingMapper = new SavingsAccountTransactionLimitSettingMapper();
     private final ClassificationLimitMappingMapper classificationLimitMappingMapper = new ClassificationLimitMappingMapper();
+    private static final SavingsAccountTransactionLimitsSettingLookUpMapper SAVINGS_ACCOUNT_TRANSACTION_LIMITS_SETTING_LOOK_UP_MAPPER_LOOK_UP_MAPPER = new SavingsAccountTransactionLimitsSettingLookUpMapper();
     private final JdbcTemplate jdbcTemplate;
 
     @Override
@@ -69,12 +72,44 @@ public class SavingsAccountGlobalTransactionLimitReadPlatformServiceImpl
     }
 
     @Override
+    public SavingsClientClassificationLimitMappingData retrieveOneByCodeValueIdWithTemplate(Long codeValueId) {
+        SavingsClientClassificationLimitMappingData savingsClientClassificationLimitMappingData = retrieveOneByCodeValueId(codeValueId);
+        return SavingsClientClassificationLimitMappingData.template(savingsClientClassificationLimitMappingData, retrieveSavingsAccountTransactionLimitsSettingsForLookUp());
+    }
+
+    private Collection<SavingsAccountTransactionLimitsSettingData> retrieveSavingsAccountTransactionLimitsSettingsForLookUp() {
+        String sql = "select " + SAVINGS_ACCOUNT_TRANSACTION_LIMITS_SETTING_LOOK_UP_MAPPER_LOOK_UP_MAPPER.getSchema();
+        return this.jdbcTemplate.query(sql, SAVINGS_ACCOUNT_TRANSACTION_LIMITS_SETTING_LOOK_UP_MAPPER_LOOK_UP_MAPPER); // NOSONAR
+    }
+
+    @Override
     public Collection<SavingsAccountTransactionLimitsSettingData> searchForGlobalSettingByName(String name) {
 
         final String query = "select " + savingsAccountTransactionLimitSettingMapper.schema()
                 + " where stls.is_active = ? and stls.name  like ?  limit 10";
 
         return jdbcTemplate.query(query, savingsAccountTransactionLimitSettingMapper, true, "%" + name + "%");
+    }
+
+    @Getter
+    private static final class SavingsAccountTransactionLimitsSettingLookUpMapper implements RowMapper<SavingsAccountTransactionLimitsSettingData> {
+
+        private final String schema;
+
+        SavingsAccountTransactionLimitsSettingLookUpMapper() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("limits.id as id, limits.name as name ");
+            sb.append(" from m_savings_global_transaction_limits_setting limits ");
+            this.schema = sb.toString();
+        }
+
+        @Override
+        public SavingsAccountTransactionLimitsSettingData mapRow(ResultSet rs, @SuppressWarnings("unused") int rowNum) throws SQLException {
+            final Long id = rs.getLong("id");
+            final String name = rs.getString("name");
+            return SavingsAccountTransactionLimitsSettingData.lookup(id, name);
+        }
+
     }
 
     private static final class SavingsAccountTransactionLimitSettingMapper

@@ -215,11 +215,16 @@ public class SavingsAccountTransactionLimitApiResource {
 
         this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
 
-        final SavingsClientClassificationLimitMappingData classificationLimitMappings = this.readPlatformService
-                .retrieveOneByCodeValueId(codeValueId);
-
         final ApiRequestJsonSerializationSettings settings = this.apiRequestParameterHelper.process(uriInfo.getQueryParameters());
-        return this.classificationToApiJsonSerializer.serialize(settings, classificationLimitMappings);
+        if(settings.isTemplate()){
+            final SavingsClientClassificationLimitMappingData classificationLimitMappings = this.readPlatformService
+                    .retrieveOneByCodeValueIdWithTemplate(codeValueId);
+            return this.classificationToApiJsonSerializer.serialize(settings, classificationLimitMappings);
+        } else {
+            final SavingsClientClassificationLimitMappingData classificationLimitMappings = this.readPlatformService
+                    .retrieveOneByCodeValueId(codeValueId);
+            return this.classificationToApiJsonSerializer.serialize(settings, classificationLimitMappings);
+        }
     }
 
     @GET

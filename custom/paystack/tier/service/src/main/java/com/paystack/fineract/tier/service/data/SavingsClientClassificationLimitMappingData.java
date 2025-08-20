@@ -19,7 +19,7 @@
 
 package com.paystack.fineract.tier.service.data;
 
-import java.math.BigDecimal;
+import java.util.Collection;
 
 @lombok.Data
 @lombok.Builder
@@ -30,7 +30,17 @@ public class SavingsClientClassificationLimitMappingData {
     private String classificationName;
     private Long limitId;
     private String limitName;
-    private BigDecimal maxClientSpecificDailyWithdrawalAmount;
-    private BigDecimal maxClientSpecificSingleWithdrawalAmount;
     private TransactionLimitData limits;
+
+    // Template options
+    @SuppressWarnings("unused")
+    private Collection<SavingsAccountTransactionLimitsSettingData> savingsAccountTransactionLimitsSettingDataCollection;
+
+    public static SavingsClientClassificationLimitMappingData template(final SavingsClientClassificationLimitMappingData savingsClientClassificationLimitMappingData, final Collection<SavingsAccountTransactionLimitsSettingData> savingsAccountTransactionLimitsSettingDataCollection) {
+        return new SavingsClientClassificationLimitMappingData(savingsClientClassificationLimitMappingData.id, savingsClientClassificationLimitMappingData.classificationId,
+                savingsClientClassificationLimitMappingData.classificationName, savingsClientClassificationLimitMappingData.limitId,
+                savingsClientClassificationLimitMappingData.limitName, savingsClientClassificationLimitMappingData.limits,
+                savingsAccountTransactionLimitsSettingDataCollection);
+    }
+
 }
