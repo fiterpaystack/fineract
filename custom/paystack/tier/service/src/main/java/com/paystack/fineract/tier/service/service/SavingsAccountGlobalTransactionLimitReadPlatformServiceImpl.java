@@ -26,10 +26,13 @@ import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -67,8 +70,18 @@ public class SavingsAccountGlobalTransactionLimitReadPlatformServiceImpl
 
     @Override
     public SavingsClientClassificationLimitMappingData retrieveOneByCodeValueId(Long codeValueId) {
-        final String query = "select " + classificationLimitMappingMapper.schema(true) + " and cclm.code_value_id = ?";
-        return this.jdbcTemplate.queryForObject(query, classificationLimitMappingMapper, codeValueId);
+        try {
+            final String query = "select " + classificationLimitMappingMapper.schema(true) + " and cclm.code_value_id = ?";
+            return this.jdbcTemplate.queryForObject(query, classificationLimitMappingMapper, codeValueId);
+        } catch ( EmptyResultDataAccessException emptyResultDataAccessException) {
+            Collection<SavingsClientClassificationLimitMappingData> savingsClientClassificationLimitMappingDataCollection = getLimitClassificationMappings();
+            // If you expect only one item with a unique ID, you can use findFirst()
+            SavingsClientClassificationLimitMappingData singleItem = savingsClientClassificationLimitMappingDataCollection.stream()
+                    .filter(savingsClientClassificationLimitMappingData -> savingsClientClassificationLimitMappingData.getClassificationId().equals(codeValueId))
+                    .findFirst()
+                    .orElse(null); // Returns null if not found
+            return singleItem;
+        }
     }
 
     @Override

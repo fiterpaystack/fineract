@@ -20,6 +20,7 @@
 package com.paystack.fineract.tier.service.data;
 
 import java.util.Collection;
+import java.util.Objects;
 
 @lombok.Data
 @lombok.Builder
@@ -43,4 +44,15 @@ public class SavingsClientClassificationLimitMappingData {
                 savingsAccountTransactionLimitsSettingDataCollection);
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        SavingsClientClassificationLimitMappingData that = (SavingsClientClassificationLimitMappingData) o;
+        return Objects.equals(classificationId, that.classificationId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(classificationId);
+    }
 }
