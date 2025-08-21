@@ -49,7 +49,9 @@ public class SavingsClientClassificationLimitMappingData {
 
     @Override
     public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         SavingsClientClassificationLimitMappingData that = (SavingsClientClassificationLimitMappingData) o;
         return Objects.equals(classificationId, that.classificationId);
     }
