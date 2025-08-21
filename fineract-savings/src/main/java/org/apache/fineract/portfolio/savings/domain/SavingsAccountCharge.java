@@ -782,8 +782,26 @@ public class SavingsAccountCharge extends AbstractAuditableWithUTCDateTimeCustom
         return amountPaybale;
     }
 
+    public BigDecimal calculateDepositFeeAmount(@NotNull BigDecimal transactionAmount) {
+        BigDecimal amountPaybale = BigDecimal.ZERO;
+        if (ChargeCalculationType.fromInt(this.chargeCalculation).isFlat()) {
+            amountPaybale = this.amount;
+        } else if (ChargeCalculationType.fromInt(this.chargeCalculation).isPercentageOfAmount()) {
+            amountPaybale = transactionAmount.multiply(this.percentage).divide(BigDecimal.valueOf(100L), MoneyHelper.getRoundingMode());
+        }
+        return amountPaybale;
+    }
+
     public BigDecimal updateWithdralFeeAmount(final BigDecimal transactionAmount) {
         return amountOutstanding = calculateWithdralFeeAmount(transactionAmount);
+    }
+
+    public BigDecimal updateDepositFeeAmount(final BigDecimal transactionAmount) {
+        return amountOutstanding = calculateDepositFeeAmount(transactionAmount);
+    }
+
+    public BigDecimal updateNoDepositFee() {
+        return amountOutstanding = BigDecimal.ZERO;
     }
 
     public BigDecimal updateNoWithdrawalFee() {

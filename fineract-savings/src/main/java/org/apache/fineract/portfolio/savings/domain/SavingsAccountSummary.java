@@ -51,6 +51,9 @@ public final class SavingsAccountSummary {
     @Column(name = "total_withdrawal_fees_derived", scale = 6, precision = 19)
     private BigDecimal totalWithdrawalFees;
 
+    @Column(name = "total_deposit_fees_derived", scale = 6, precision = 19)
+    private BigDecimal totalDepositFees;
+
     @Column(name = "total_fees_charge_derived", scale = 6, precision = 19)
     private BigDecimal totalFeeCharge;
 
@@ -97,6 +100,7 @@ public final class SavingsAccountSummary {
         this.totalWithdrawals = wrapper.calculateTotalWithdrawals(currency, transactions);
         this.totalInterestPosted = wrapper.calculateTotalInterestPosted(currency, transactions);
         this.totalWithdrawalFees = wrapper.calculateTotalWithdrawalFees(currency, transactions);
+        this.totalDepositFees = wrapper.calculateTotalDepositFees(currency, transactions);
         this.totalAnnualFees = wrapper.calculateTotalAnnualFees(currency, transactions);
         this.totalFeeCharge = wrapper.calculateTotalFeesCharge(currency, transactions);
         this.totalPenaltyCharge = wrapper.calculateTotalPenaltyCharge(currency, transactions);
@@ -108,8 +112,8 @@ public final class SavingsAccountSummary {
         updateRunningBalanceAndPivotDate(false, transactions, null, null, null, currency);
 
         this.accountBalance = Money.of(currency, this.totalDeposits).plus(this.totalInterestPosted).minus(this.totalWithdrawals)
-                .minus(this.totalWithdrawalFees).minus(this.totalAnnualFees).minus(this.totalFeeCharge).minus(this.totalPenaltyCharge)
-                .minus(totalOverdraftInterestDerived).minus(totalWithholdTax).getAmount();
+                .minus(this.totalWithdrawalFees).minus(this.totalDepositFees).minus(this.totalAnnualFees).minus(this.totalFeeCharge)
+                .minus(this.totalPenaltyCharge).minus(totalOverdraftInterestDerived).minus(totalWithholdTax).getAmount();
     }
 
     public void updateSummaryWithPivotConfig(final MonetaryCurrency currency, final SavingsAccountTransactionSummaryWrapper wrapper,
@@ -136,6 +140,13 @@ public final class SavingsAccountSummary {
                 case WITHDRAWAL_FEE:
                     if (transaction.isWithdrawalFeeAndNotReversed() && transaction.isNotReversed()) {
                         this.totalWithdrawalFees = Money.of(currency, this.totalWithdrawalFees).plus(transactionAmount).getAmount();
+                        this.totalFeeCharge = Money.of(currency, this.totalFeeCharge).plus(transactionAmount).getAmount();
+                        this.accountBalance = Money.of(currency, this.accountBalance).minus(transactionAmount).getAmount();
+                    }
+                break;
+                case DEPOSIT_FEE:
+                    if (transaction.isDepositFeeAndNotReversed() && transaction.isNotReversed()) {
+                        this.totalDepositFees = Money.of(currency, this.totalDepositFees).plus(transactionAmount).getAmount();
                         this.totalFeeCharge = Money.of(currency, this.totalFeeCharge).plus(transactionAmount).getAmount();
                         this.accountBalance = Money.of(currency, this.accountBalance).minus(transactionAmount).getAmount();
                     }
@@ -192,7 +203,7 @@ public final class SavingsAccountSummary {
             Money interestTotal = Money.zero(currency);
             Money withHoldTaxTotal = Money.zero(currency);
             Money overdraftInterestTotal = Money.zero(currency);
-            Money vatOnFeesTotal;
+            Money vatOnFeesTotal = Money.zero(currency);
             this.totalDeposits = wrapper.calculateTotalDeposits(currency, savingsAccountTransactions);
             this.totalWithdrawals = wrapper.calculateTotalWithdrawals(currency, savingsAccountTransactions);
 
@@ -326,6 +337,10 @@ public final class SavingsAccountSummary {
 
     public BigDecimal getTotalWithdrawalFees() {
         return this.totalWithdrawalFees;
+    }
+
+    public BigDecimal getTotalDepositFees() {
+        return this.totalDepositFees;
     }
 
     public BigDecimal getTotalFeeCharge() {

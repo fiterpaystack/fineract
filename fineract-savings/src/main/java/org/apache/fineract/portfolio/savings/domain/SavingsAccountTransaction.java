@@ -527,6 +527,14 @@ public final class SavingsAccountTransaction extends AbstractAuditableWithUTCDat
         return getTransactionType().isWithdrawalFee();
     }
 
+    public boolean isDepositFeeAndNotReversed() {
+        return getTransactionType().isDepositFee() && isNotReversed();
+    }
+
+    public boolean isDepositFee() {
+        return getTransactionType().isDepositFee();
+    }
+
     public boolean isAnnualFeeAndNotReversed() {
         return isAnnualFee() && isNotReversed();
     }

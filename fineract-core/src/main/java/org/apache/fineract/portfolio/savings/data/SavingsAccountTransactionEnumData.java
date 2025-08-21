@@ -64,6 +64,7 @@ public class SavingsAccountTransactionEnumData implements Serializable {
         this.interestPosting = transactionType == SavingsAccountTransactionType.INTEREST_POSTING;
         this.feeDeduction = transactionType == SavingsAccountTransactionType.ANNUAL_FEE
                 || transactionType == SavingsAccountTransactionType.WITHDRAWAL_FEE
+                || transactionType == SavingsAccountTransactionType.DEPOSIT_FEE
                 || transactionType == SavingsAccountTransactionType.PAY_CHARGE;
         this.initiateTransfer = transactionType == SavingsAccountTransactionType.INITIATE_TRANSFER;
         this.approveTransfer = transactionType == SavingsAccountTransactionType.APPROVE_TRANSFER;
@@ -97,6 +98,10 @@ public class SavingsAccountTransactionEnumData implements Serializable {
 
     public boolean isAnnualFee() {
         return Long.valueOf(SavingsAccountTransactionType.ANNUAL_FEE.getValue()).equals(this.id);
+    }
+
+    public boolean isDepositFee() {
+        return Long.valueOf(SavingsAccountTransactionType.DEPOSIT_FEE.getValue()).equals(this.id);
     }
 
     public boolean isPayCharge() {

@@ -25,14 +25,9 @@ import java.math.MathContext;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-
-import com.paystack.fineract.portfolio.account.data.VatApplicationResult;
 import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
-import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
-import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
-import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.event.business.domain.savings.transaction.SavingsWithdrawalBusinessEvent;
@@ -40,33 +35,20 @@ import org.apache.fineract.infrastructure.event.business.service.BusinessEventNo
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.organisation.monetary.domain.ApplicationCurrencyRepositoryWrapper;
 import org.apache.fineract.organisation.monetary.domain.Money;
-import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.charge.domain.ChargeCalculationType;
 import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
-import org.apache.fineract.portfolio.note.domain.Note;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.paymentdetail.service.PaymentDetailWritePlatformService;
-import org.apache.fineract.portfolio.savings.SavingsAccountTransactionType;
-import org.apache.fineract.portfolio.savings.SavingsApiConstants;
 import org.apache.fineract.portfolio.savings.SavingsTransactionBooleanValues;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountTransactionDTO;
 import org.apache.fineract.portfolio.savings.domain.*;
-import org.apache.fineract.portfolio.savings.exception.DepositAccountTransactionNotAllowedException;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountAssembler;
-import com.paystack.fineract.portfolio.account.service.SavingsVatPostProcessorService;
-import org.apache.fineract.portfolio.client.domain.Client;
-import org.apache.fineract.portfolio.client.exception.ClientNotActiveException;
-import org.apache.fineract.portfolio.group.domain.Group;
-import org.apache.fineract.portfolio.group.exception.GroupNotActiveException;
-import org.apache.fineract.portfolio.savings.domain.GroupSavingsIndividualMonitoring;
-import org.apache.fineract.portfolio.savings.domain.SavingsAccountChargePaidBy;
+import org.apache.fineract.portfolio.savings.exception.DepositAccountTransactionNotAllowedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import static org.apache.fineract.portfolio.client.api.ClientApiConstants.chargeIdParamName;
 
 @Service
 @Primary
@@ -89,10 +71,8 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             BusinessEventNotifierService businessEventNotifierService,
             SavingsAccountTransactionSummaryWrapper savingsAccountTransactionSummaryWrapper,
             SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService,
-            ClientChargeOverrideReadService clientChargeOverrideReadService,
-            SavingsAccountAssembler savingAccountAssembler,
-            PaymentDetailWritePlatformService paymentDetailWritePlatformService,
-            SavingsVatPostProcessorService vatService) {
+            ClientChargeOverrideReadService clientChargeOverrideReadService, SavingsAccountAssembler savingAccountAssembler,
+            PaymentDetailWritePlatformService paymentDetailWritePlatformService, SavingsVatPostProcessorService vatService) {
         super(savingsAccountRepository, savingsAccountTransactionRepository, applicationCurrencyRepositoryWrapper,
                 journalEntryWritePlatformService, configurationDomainService, context, depositAccountOnHoldTransactionRepository,
                 businessEventNotifierService);
@@ -333,7 +313,6 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         }
     }
 
-
     /**
      * Enhanced handleDeposit method that applies deposit fees for all credit/inbound transactions
      */
@@ -342,10 +321,10 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
     public SavingsAccountTransaction handleDeposit(final SavingsAccount account, final DateTimeFormatter fmt,
             final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail,
             final boolean isAccountTransfer, final boolean isRegularTransaction, final boolean backdatedTxnsAllowedTill) {
-        
+
         // Call parent's handleDeposit method to process the actual deposit
-        SavingsAccountTransaction deposit = super.handleDeposit(account, fmt, transactionDate, transactionAmount,
-                paymentDetail, isAccountTransfer, isRegularTransaction, backdatedTxnsAllowedTill);
+        SavingsAccountTransaction deposit = super.handleDeposit(account, fmt, transactionDate, transactionAmount, paymentDetail,
+                isAccountTransfer, isRegularTransaction, backdatedTxnsAllowedTill);
 
         // Apply deposit fees after successful deposit
         if (deposit.getId() != null) {
@@ -380,7 +359,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
                 charge.update(pctResolved, charge.getDueDate(), null, null);
 
                 // 2) Compute outstanding using the just-updated percentage
-                charge.updateWithdralFeeAmount(transactionAmount);
+                charge.updateDepositFeeAmount(transactionAmount);
                 BigDecimal computed = charge.getAmountOutstanding(account.getCurrency()).getAmount();
 
                 // 3) Apply caps from client override (fallback to product)
@@ -399,7 +378,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
                     BigDecimal pctNeeded = desired.multiply(BigDecimal.valueOf(100L)).divide(transactionAmount,
                             org.apache.fineract.organisation.monetary.domain.MoneyHelper.getRoundingMode());
                     charge.update(pctNeeded, charge.getDueDate(), null, null);
-                    charge.updateWithdralFeeAmount(transactionAmount);
+                    charge.updateDepositFeeAmount(transactionAmount);
                 }
 
                 amountToPay = charge.getAmountOutstanding(account.getCurrency()).getAmount();
@@ -408,7 +387,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
                 BigDecimal flatResolved = clientChargeOverrideReadService.resolvePrimaryAmount(account.clientId(), charge.getCharge(),
                         charge.amount());
                 charge.update(flatResolved, charge.getDueDate(), null, null);
-                charge.updateWithdralFeeAmount(transactionAmount);
+                charge.updateDepositFeeAmount(transactionAmount);
                 amountToPay = charge.getAmountOutstanding(account.getCurrency()).getAmount();
             }
 

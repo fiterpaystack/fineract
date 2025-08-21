@@ -72,6 +72,16 @@ public final class SavingsAccountTransactionDataSummaryWrapper {
         return total.getAmountDefaultedToNullIfZero();
     }
 
+    public BigDecimal calculateTotalDepositFees(final CurrencyData currency, final List<SavingsAccountTransactionData> transactions) {
+        Money total = Money.zero(currency);
+        for (final SavingsAccountTransactionData transaction : transactions) {
+            if (transaction.isDepositFeeAndNotReversed() && transaction.isNotReversed() && !transaction.isReversalTransaction()) {
+                total = total.plus(transaction.getAmount());
+            }
+        }
+        return total.getAmountDefaultedToNullIfZero();
+    }
+
     public BigDecimal calculateTotalAnnualFees(final CurrencyData currency, final List<SavingsAccountTransactionData> transactions) {
         Money total = Money.zero(currency);
         for (final SavingsAccountTransactionData transaction : transactions) {
