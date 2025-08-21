@@ -20,6 +20,7 @@
 package com.paystack.fineract.portfolio.account.service;
 
 import com.paystack.fineract.client.charge.service.ClientChargeOverrideReadService;
+import com.paystack.fineract.portfolio.account.data.ChargePaymentResult;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.time.LocalDate;
@@ -330,6 +331,37 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         if (deposit.getId() != null) {
             UUID refNo = UUID.randomUUID();
             payDepositFee(transactionAmount, transactionDate, paymentDetail, backdatedTxnsAllowedTill, refNo.toString(), account);
+
+            // Trigger summary recalculation to include the fees and VAT in the current deposit's balance
+            if (backdatedTxnsAllowedTill) {
+                account.getSummary().updateSummaryWithPivotConfig(account.getCurrency(), savingsAccountTransactionSummaryWrapper, null,
+                        account.getSavingsAccountTransactionsWithPivotConfig());
+            } else {
+                account.getSummary().updateSummary(account.getCurrency(), savingsAccountTransactionSummaryWrapper,
+                        account.getTransactions());
+            }
+
+            // Trigger a recalculation to update individual transaction balances
+            final MathContext mc = MathContext.DECIMAL64;
+            final LocalDate today = DateUtils.getBusinessLocalDate();
+            final boolean postReversals = this.configurationDomainService.isReversalTransactionAllowed();
+            final boolean isInterestTransfer = false;
+            final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
+                    .isSavingsInterestPostingAtCurrentPeriodEnd();
+            final Integer financialYearBeginningMonth = this.configurationDomainService.retrieveFinancialYearBeginningMonth();
+            final LocalDate postInterestOnDate = null;
+
+            // Trigger recalculation by calling calculateInterestUsing which internally calls recalculateDailyBalances
+            account.calculateInterestUsing(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd,
+                    financialYearBeginningMonth, postInterestOnDate, backdatedTxnsAllowedTill, postReversals);
+
+            // Save updated transactions if using pivot config
+            if (backdatedTxnsAllowedTill) {
+                saveUpdatedTransactionsOfSavingsAccount(account.getSavingsAccountTransactionsWithPivotConfig());
+            }
+
+            // Save the updated account to persist the recalculated summary and transaction balances
+            this.savingsAccountRepository.saveAndFlush(account);
         }
 
         return deposit;
@@ -396,8 +428,21 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             }
 
             Money moneyToPay = org.apache.fineract.organisation.monetary.domain.Money.of(account.getCurrency(), amountToPay);
-            savingsAccountChargePaymentWrapperService.payChargeWithVat(account, charge, moneyToPay, transactionDate, refNo,
-                    backdatedTxnsAllowedTill);
+            payChargeWithVatAndSave(account, charge, moneyToPay, transactionDate, refNo, backdatedTxnsAllowedTill);
+        }
+    }
+
+    private void payChargeWithVatAndSave(SavingsAccount account, SavingsAccountCharge charge, Money amount, LocalDate transactionDate,
+            String refNo, boolean backdatedTxnsAllowedTill) {
+        ChargePaymentResult result = savingsAccountChargePaymentWrapperService.payChargeWithVat(account, charge, amount, transactionDate,
+                refNo, backdatedTxnsAllowedTill);
+
+        // Save the fee and VAT transactions immediately to ensure they're persisted
+        if (result.getFeeTransaction() != null) {
+            saveTransactionToGenerateTransactionId(result.getFeeTransaction());
+        }
+        if (result.getVatResult() != null && result.getVatResult().isVatApplied() && result.getVatResult().getVatTransaction() != null) {
+            saveTransactionToGenerateTransactionId(result.getVatResult().getVatTransaction());
         }
     }
 }
