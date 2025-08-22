@@ -158,6 +158,11 @@ public class SavingsAccountSummaryData implements Serializable {
                         this.accountBalance = Money.of(currency, this.accountBalance).minus(transactionAmount).getAmount();
                     }
                 break;
+                case VAT_ON_FEES:
+                    if (transaction.isVatOnFeesAndNotReversed() && transaction.isNotReversed()) {
+                        this.accountBalance = Money.of(currency, this.accountBalance).minus(transactionAmount).getAmount();
+                    }
+                break;
                 default:
                 break;
             }
@@ -173,6 +178,7 @@ public class SavingsAccountSummaryData implements Serializable {
             interestTotal = map.get("interestTotal");
             withHoldTaxTotal = map.get("withHoldTax");
             overdraftInterestTotal = map.get("overdraftInterestTotal");
+            Money vatOnFeesTotal = map.get("vatOnFeesTotal");
             BigDecimal deltaInterest = interestTotal.minus(this.totalInterestPosted).getAmountDefaultedToNullIfZero();
             BigDecimal deltaWithholdTax = withHoldTaxTotal.minus(this.totalWithholdTax).getAmountDefaultedToNullIfZero();
             BigDecimal deltaOverdraftInterestDerived = overdraftInterestTotal.minus(this.totalOverdraftInterestDerived)
@@ -182,7 +188,8 @@ public class SavingsAccountSummaryData implements Serializable {
             this.totalOverdraftInterestDerived = overdraftInterestTotal.getAmountDefaultedToNullIfZero();
             this.accountBalance = getRunningBalanceOnPivotDate();
             this.accountBalance = Money.of(currency, this.accountBalance).plus(Money.of(currency, this.totalDeposits)).plus(deltaInterest)
-                    .minus(this.totalWithdrawals).minus(deltaWithholdTax).minus(deltaOverdraftInterestDerived).getAmount();
+                    .minus(this.totalWithdrawals).minus(deltaWithholdTax).minus(deltaOverdraftInterestDerived)
+                    .minus(vatOnFeesTotal.getAmountDefaultedToNullIfZero()).getAmount();
         }
     }
 
@@ -205,6 +212,7 @@ public class SavingsAccountSummaryData implements Serializable {
             Money withHoldTaxTotal) {
         boolean isUpdated = false;
         HashMap<String, Money> map = new HashMap<>();
+        Money vatOnFeesTotal = Money.zero(savingsAccountTransactions.isEmpty() ? null : savingsAccountTransactions.get(0).getCurrency());
         for (int i = savingsAccountTransactions.size() - 1; i >= 0; i--) {
             final SavingsAccountTransactionData savingsAccountTransaction = savingsAccountTransactions.get(i);
             if (savingsAccountTransaction.isInterestPostingAndNotReversed() && !savingsAccountTransaction.isReversalTransaction()
@@ -233,12 +241,17 @@ public class SavingsAccountSummaryData implements Serializable {
                 if (savingsAccountTransaction.isWithHoldTaxAndNotReversed() && !savingsAccountTransaction.isReversalTransaction()) {
                     withHoldTaxTotal = withHoldTaxTotal.plus(savingsAccountTransaction.getAmount());
                 }
+                if (savingsAccountTransaction.getTransactionType().isVatOnFees() && savingsAccountTransaction.isNotReversed()
+                        && !savingsAccountTransaction.isReversalTransaction()) {
+                    vatOnFeesTotal = vatOnFeesTotal.plus(savingsAccountTransaction.getAmount());
+                }
             }
         }
         if (backdatedTxnsAllowedTill) {
             map.put("interestTotal", interestTotal);
             map.put("withHoldTax", withHoldTaxTotal);
             map.put("overdraftInterestTotal", overdraftInterestTotal);
+            map.put("vatOnFeesTotal", vatOnFeesTotal);
         }
         return map;
     }
@@ -261,9 +274,12 @@ public class SavingsAccountSummaryData implements Serializable {
         // boolean isUpdated = false;
         updateRunningBalanceAndPivotDate(false, transactions, null, null, null);
 
+        // Calculate total VAT on fees
+        BigDecimal totalVatOnFees = wrapper.calculateTotalVatOnFees(currency, transactions);
+
         this.accountBalance = Money.of(currency, this.totalDeposits).plus(this.totalInterestPosted).minus(this.totalWithdrawals)
                 .minus(this.totalWithdrawalFees).minus(this.totalAnnualFees).minus(this.totalFeeCharge).minus(this.totalPenaltyCharge)
-                .minus(totalOverdraftInterestDerived).minus(totalWithholdTax).getAmount();
+                .minus(totalOverdraftInterestDerived).minus(totalWithholdTax).minus(totalVatOnFees).getAmount();
     }
 
     public void setRunningBalanceOnPivotDate(final BigDecimal runningBalanceOnPivotDate) {

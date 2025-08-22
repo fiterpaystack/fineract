@@ -108,9 +108,12 @@ public final class SavingsAccountSummary {
 
         updateRunningBalanceAndPivotDate(false, transactions, null, null, null, currency);
 
+        // Calculate total VAT on fees
+        BigDecimal totalVatOnFees = wrapper.calculateTotalVatOnFees(currency, transactions);
+
         this.accountBalance = Money.of(currency, this.totalDeposits).plus(this.totalInterestPosted).minus(this.totalWithdrawals)
                 .minus(this.totalWithdrawalFees).minus(this.totalAnnualFees).minus(this.totalFeeCharge).minus(this.totalPenaltyCharge)
-                .minus(totalOverdraftInterestDerived).minus(totalWithholdTax).getAmount();
+                .minus(totalOverdraftInterestDerived).minus(totalWithholdTax).minus(totalVatOnFees).getAmount();
     }
 
     public void updateSummaryWithPivotConfig(final MonetaryCurrency currency, final SavingsAccountTransactionSummaryWrapper wrapper,

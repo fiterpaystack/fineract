@@ -130,4 +130,8 @@ public class SavingsAccountTransactionEnumData implements Serializable {
     public SavingsAccountTransactionType getTransactionTypeEnum() {
         return id == null ? null : SavingsAccountTransactionType.fromInt(id.intValue());
     }
+
+    public boolean isVatOnFees() {
+        return this.vat;
+    }
 }
