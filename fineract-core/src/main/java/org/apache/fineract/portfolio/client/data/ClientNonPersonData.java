@@ -20,12 +20,14 @@ package org.apache.fineract.portfolio.client.data;
 
 import java.io.Serializable;
 import java.time.LocalDate;
+import lombok.Getter;
 import org.apache.fineract.infrastructure.codes.data.CodeValueData;
 
 /**
  * Immutable data object representing the ClientNonPerson
  */
 @SuppressWarnings("unused")
+@Getter
 public class ClientNonPersonData implements Serializable {
 
     private final CodeValueData constitution;
