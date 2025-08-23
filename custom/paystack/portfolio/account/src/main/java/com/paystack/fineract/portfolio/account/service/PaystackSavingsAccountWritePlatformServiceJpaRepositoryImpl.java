@@ -25,12 +25,19 @@ import java.math.BigDecimal;
 import java.math.MathContext;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
+import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
+import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
+import org.apache.fineract.infrastructure.core.exception.PlatformServiceUnavailableException;
+import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.dataqueries.service.EntityDatatableChecksWritePlatformService;
 import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
@@ -38,13 +45,16 @@ import org.apache.fineract.infrastructure.security.service.PlatformSecurityConte
 import org.apache.fineract.organisation.holiday.domain.HolidayRepositoryWrapper;
 import org.apache.fineract.organisation.staff.domain.StaffRepositoryWrapper;
 import org.apache.fineract.organisation.workingdays.domain.WorkingDaysRepositoryWrapper;
+import org.apache.fineract.portfolio.account.PortfolioAccountType;
 import org.apache.fineract.portfolio.account.domain.StandingInstructionRepository;
 import org.apache.fineract.portfolio.account.service.AccountAssociationsReadPlatformService;
 import org.apache.fineract.portfolio.account.service.AccountTransfersReadPlatformService;
 import org.apache.fineract.portfolio.charge.domain.ChargeRepositoryWrapper;
+import org.apache.fineract.portfolio.charge.service.ChargeReadPlatformService;
 import org.apache.fineract.portfolio.note.domain.NoteRepository;
 import org.apache.fineract.portfolio.paymentdetail.service.PaymentDetailWritePlatformService;
 import org.apache.fineract.portfolio.savings.SavingsAccountTransactionType;
+import org.apache.fineract.portfolio.savings.SavingsApiConstants;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountChargeDataValidator;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountDataValidator;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountTransactionDataValidator;
@@ -55,7 +65,6 @@ import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountAssembler;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountCharge;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountChargeRepositoryWrapper;
-import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepositoryWrapper;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransactionRepository;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountDomainService;
@@ -70,14 +79,20 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.apache.fineract.portfolio.savings.exception.SavingsAccountTransactionNotFoundException;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepositoryWrapper;
+import org.apache.fineract.organisation.monetary.domain.MoneyHelper;
 
 @Service
 @Primary
+@Slf4j
 public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends SavingsAccountWritePlatformServiceJpaRepositoryImpl {
 
-    private static final Logger log = LoggerFactory.getLogger(PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl.class);
-
-    private final SavingsAccountChargePaymentWrapperService chargePaymentWrapperService;
+    private final AccountTransfersReadPlatformService accountTransfersReadPlatformService;
+    private final SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService;
+    private final ClientChargeOverrideReadService clientChargeOverrideReadService;
 
     public PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl(PlatformSecurityContext context,
             SavingsAccountDataValidator fromApiJsonDeserializer, SavingsAccountRepositoryWrapper savingAccountRepositoryWrapper,
@@ -94,7 +109,7 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
             EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService, AppUserRepositoryWrapper appuserRepository,
             StandingInstructionRepository standingInstructionRepository, BusinessEventNotifierService businessEventNotifierService,
             GSIMRepositoy gsimRepository, SavingsAccountInterestPostingService savingsAccountInterestPostingService,
-            ErrorHandler errorHandler, SavingsAccountChargePaymentWrapperService chargePaymentWrapperService,
+            ErrorHandler errorHandler, SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService,
             SavingsVatPostProcessorService vatService, ClientChargeOverrideReadService clientChargeOverrideReadService) {
         super(context, fromApiJsonDeserializer, savingAccountRepositoryWrapper, staffRepository, savingsAccountTransactionRepository,
                 savingAccountAssembler, savingsAccountTransactionDataValidator, savingsAccountChargeDataValidator,
@@ -104,7 +119,9 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
                 depositAccountOnHoldTransactionRepository, entityDatatableChecksWritePlatformService, appuserRepository,
                 standingInstructionRepository, businessEventNotifierService, gsimRepository, savingsAccountInterestPostingService,
                 errorHandler);
-        this.chargePaymentWrapperService = chargePaymentWrapperService;
+        this.accountTransfersReadPlatformService = accountTransfersReadPlatformService;
+        this.savingsAccountChargePaymentWrapperService = savingsAccountChargePaymentWrapperService;
+        this.clientChargeOverrideReadService = clientChargeOverrideReadService;
     }
 
     @Override
@@ -129,7 +146,7 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
 
         updateExistingTransactionsDetails(account, existingTransactionIds, existingReversedTransactionIds);
 
-        ChargePaymentResult chargePaymentResult = chargePaymentWrapperService.payChargeWithVat(account, savingsAccountCharge, amountPaid,
+        ChargePaymentResult chargePaymentResult = savingsAccountChargePaymentWrapperService.payChargeWithVat(account, savingsAccountCharge, amountPaid,
                 transactionDate, formatter, backdatedTxnsAllowedTill, null);
 
         boolean isInterestTransfer = false;
@@ -152,8 +169,7 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
                     .findBySavingsAccountAndReversedFalseOrderByCreatedDateAsc(account);
         }
 
-        account.validateAccountBalanceDoesNotBecomeNegative("." + SavingsAccountTransactionType.PAY_CHARGE.getCode(),
-                depositAccountOnHoldTransactions, backdatedTxnsAllowedTill);
+        account.validateAccountBalanceDoesNotBecomeNegative(SavingsApiConstants.undoTransactionAction, depositAccountOnHoldTransactions, false);
 
         saveTransactionToGenerateTransactionId(chargePaymentResult.getFeeTransaction());
         if (chargePaymentResult.hasVat()) {
@@ -165,5 +181,115 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
         postJournalEntries(account, existingTransactionIds, existingReversedTransactionIds, backdatedTxnsAllowedTill);
 
         return chargePaymentResult.getFeeTransaction();
+    }
+
+    @Override
+    @Transactional
+    public CommandProcessingResult undoTransaction(final Long savingsId, final Long transactionId,
+            final boolean allowAccountTransferModification) {
+
+        final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
+                .isSavingsInterestPostingAtCurrentPeriodEnd();
+        final Integer financialYearBeginningMonth = this.configurationDomainService.retrieveFinancialYearBeginningMonth();
+        final SavingsAccount account = this.savingAccountAssembler.assembleFrom(savingsId, false);
+        final Set<Long> existingTransactionIds = new HashSet<>();
+        final Set<Long> existingReversedTransactionIds = new HashSet<>();
+        updateExistingTransactionsDetails(account, existingTransactionIds, existingReversedTransactionIds);
+
+        final SavingsAccountTransaction savingsAccountTransaction = this.savingsAccountTransactionRepository
+                .findOneByIdAndSavingsAccountId(transactionId, savingsId);
+        if (savingsAccountTransaction == null) {
+            throw new SavingsAccountTransactionNotFoundException(savingsId, transactionId);
+        }
+
+        this.savingsAccountTransactionDataValidator.validateTransactionWithPivotDate(savingsAccountTransaction.getTransactionDate(),
+                account);
+
+        if (!allowAccountTransferModification
+                && this.accountTransfersReadPlatformService.isAccountTransfer(transactionId, PortfolioAccountType.SAVINGS)) {
+            throw new PlatformServiceUnavailableException("error.msg.saving.account.transfer.transaction.update.not.allowed",
+                    "Savings account transaction:" + transactionId + " update not allowed as it involves in account transfer",
+                    transactionId);
+        }
+
+        if (!account.allowModify()) {
+            throw new PlatformServiceUnavailableException("error.msg.saving.account.transfer.transaction.update.not.allowed",
+                    "Savings account transaction:" + transactionId + " update not allowed for this savings type", transactionId);
+        }
+
+        final LocalDate today = DateUtils.getBusinessLocalDate();
+        final MathContext mc = new MathContext(15, MoneyHelper.getRoundingMode());
+
+        if (account.isNotActive()) {
+            throwValidationForActiveStatus(SavingsApiConstants.undoTransactionAction);
+        }
+        account.undoTransaction(transactionId);
+
+        // Handle cascading reversals for deposits with fees and VAT
+        if (savingsAccountTransaction.isDeposit()) {
+            // Check for deposit fee at transactionId + 1
+            final SavingsAccountTransaction depositFeeTransaction = this.savingsAccountTransactionRepository
+                    .findOneByIdAndSavingsAccountId(transactionId + 1, savingsId);
+            if (depositFeeTransaction != null && depositFeeTransaction.isChargeTransactionAndNotReversed()) {
+                account.undoTransaction(transactionId + 1);
+                
+                // Check for VAT on fees at transactionId + 2
+                final SavingsAccountTransaction vatTransaction = this.savingsAccountTransactionRepository
+                        .findOneByIdAndSavingsAccountId(transactionId + 2, savingsId);
+                if (vatTransaction != null && vatTransaction.isVatonFeesAndNotReversed()) {
+                    account.undoTransaction(transactionId + 2);
+                }
+            }
+        }
+
+        // Handle withdrawal fees (existing Fineract logic)
+        if (savingsAccountTransaction.isWithdrawal()) {
+            final SavingsAccountTransaction nextSavingsAccountTransaction = this.savingsAccountTransactionRepository
+                    .findOneByIdAndSavingsAccountId(transactionId + 1, savingsId);
+            if (nextSavingsAccountTransaction != null && nextSavingsAccountTransaction.isWithdrawalFeeAndNotReversed()) {
+                account.undoTransaction(transactionId + 1);
+            }
+        }
+        
+        boolean isInterestTransfer = false;
+        LocalDate postInterestOnDate = null;
+        boolean postReversals = false;
+        checkClientOrGroupActive(account);
+        if (savingsAccountTransaction.isPostInterestCalculationRequired()
+                && account.isBeforeLastPostingPeriod(savingsAccountTransaction.getTransactionDate(), false)) {
+            account.postInterest(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth,
+                    postInterestOnDate, false, postReversals);
+        } else {
+            account.calculateInterestUsing(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd,
+                    financialYearBeginningMonth, postInterestOnDate, false, postReversals);
+        }
+        List<DepositAccountOnHoldTransaction> depositAccountOnHoldTransactions = null;
+        if (account.getOnHoldFunds().compareTo(BigDecimal.ZERO) > 0) {
+            depositAccountOnHoldTransactions = this.depositAccountOnHoldTransactionRepository
+                    .findBySavingsAccountAndReversedFalseOrderByCreatedDateAsc(account);
+        }
+
+        account.validateAccountBalanceDoesNotBecomeNegative(SavingsApiConstants.undoTransactionAction,
+                depositAccountOnHoldTransactions, false);
+
+        final Set<Long> existingTransactionIdsForPosting = new HashSet<>();
+        final Set<Long> existingReversedTransactionIdsForPosting = new HashSet<>();
+        updateExistingTransactionsDetails(account, existingTransactionIdsForPosting, existingReversedTransactionIdsForPosting);
+
+        postJournalEntries(account, existingTransactionIdsForPosting, existingReversedTransactionIdsForPosting, false);
+
+        return new CommandProcessingResultBuilder() //
+                .withEntityId(savingsId) //
+                .withOfficeId(account.officeId()) //
+                .withClientId(account.clientId()) //
+                .withGroupId(account.groupId()) //
+                .withSavingsId(savingsId) //
+                .withTransactionId(String.valueOf(transactionId)) //
+                .build();
+    }
+
+    private void throwValidationForActiveStatus(final String actionName) {
+        final String errorMessage = "validation.msg.savingsaccount.transaction." + actionName + ".account.is.not.active";
+        throw new GeneralPlatformDomainRuleException(errorMessage, "Transaction " + actionName + " is not allowed. Account is not active.");
     }
 }

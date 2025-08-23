@@ -327,27 +327,20 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         SavingsAccountTransaction deposit = super.handleDeposit(account, fmt, transactionDate, transactionAmount, paymentDetail,
                 isAccountTransfer, isRegularTransaction, backdatedTxnsAllowedTill);
 
-        // Apply deposit fees after successful deposit
-        if (deposit.getId() != null) {
-            UUID refNo = UUID.randomUUID();
-            payDepositFee(transactionAmount, transactionDate, paymentDetail, backdatedTxnsAllowedTill, refNo.toString(), account);
+        // Apply deposit fees and VAT after the deposit is processed
+        if (transactionAmount.compareTo(BigDecimal.ZERO) > 0) {
+            // Store the deposit transaction ID
+            Long depositTransactionId = deposit.getId();
+            
+            payDepositFee(transactionAmount, transactionDate, paymentDetail, backdatedTxnsAllowedTill, deposit.getRefNo(), account);
 
-            // Trigger summary recalculation to include the fees and VAT in the current deposit's balance
-            if (backdatedTxnsAllowedTill) {
-                account.getSummary().updateSummaryWithPivotConfig(account.getCurrency(), savingsAccountTransactionSummaryWrapper, null,
-                        account.getSavingsAccountTransactionsWithPivotConfig());
-            } else {
-                account.getSummary().updateSummary(account.getCurrency(), savingsAccountTransactionSummaryWrapper,
-                        account.getTransactions());
-            }
-
-            // Trigger a recalculation to update individual transaction balances
+            // Recalculate summary after fees and VAT are applied
             final MathContext mc = MathContext.DECIMAL64;
             final LocalDate today = DateUtils.getBusinessLocalDate();
             final boolean postReversals = this.configurationDomainService.isReversalTransactionAllowed();
             final boolean isInterestTransfer = false;
-            final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
-                    .isSavingsInterestPostingAtCurrentPeriodEnd();
+            final boolean isSavingsInterestPostingAtCurrentPeriodEnd =
+                    this.configurationDomainService.isSavingsInterestPostingAtCurrentPeriodEnd();
             final Integer financialYearBeginningMonth = this.configurationDomainService.retrieveFinancialYearBeginningMonth();
             final LocalDate postInterestOnDate = null;
 
@@ -362,6 +355,38 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
 
             // Save the updated account to persist the recalculated summary and transaction balances
             this.savingsAccountRepository.saveAndFlush(account);
+
+            // Post journal entries after fees and VAT are applied to include them in GL
+            final Set<Long> existingTransactionIds = new HashSet<>();
+            final Set<Long> existingReversedTransactionIds = new HashSet<>();
+
+            List<SavingsAccountTransaction> allTransactions = backdatedTxnsAllowedTill ? 
+                account.getSavingsAccountTransactionsWithPivotConfig() : account.getTransactions();
+            Set<Long> feeAndVatTransactionIds = new HashSet<>();
+            for (SavingsAccountTransaction transaction : allTransactions) {
+                if (transaction.getId() > depositTransactionId &&
+                    (transaction.isChargeTransaction() || transaction.getTransactionType().isVatOnFees())) {
+                    feeAndVatTransactionIds.add(transaction.getId());
+                }
+            }
+            
+            for (SavingsAccountTransaction transaction : allTransactions) {
+                // Skip the fee and VAT transactions that were just created for this deposit
+                if (feeAndVatTransactionIds.contains(transaction.getId())) {
+                    // DO NOT add these to existingTransactionIds - they will be included in GL posting
+                    log.debug("DEBUG: Fee/VAT transaction will be included in GL posting: " + transaction.getId() +
+                                     ", Type: " + transaction.getTransactionType() + ", Amount: " + transaction.getAmount());
+                } else {
+                    // Add all other transactions to existingTransactionIds to exclude them from GL posting
+                    existingTransactionIds.add(transaction.getId());
+                }
+            }
+            
+            existingReversedTransactionIds.addAll(account.findExistingReversedTransactionIds());
+            
+            this.savingsAccountRepository.saveAndFlush(account);
+
+            postJournalEntries(account, existingTransactionIds, existingReversedTransactionIds, isAccountTransfer, backdatedTxnsAllowedTill);
         }
 
         return deposit;
@@ -424,7 +449,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             }
 
             if (amountToPay.compareTo(BigDecimal.ZERO) <= 0) {
-                continue; // nothing to pay
+                continue;
             }
 
             Money moneyToPay = org.apache.fineract.organisation.monetary.domain.Money.of(account.getCurrency(), amountToPay);
@@ -437,12 +462,13 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         ChargePaymentResult result = savingsAccountChargePaymentWrapperService.payChargeWithVat(account, charge, amount, transactionDate,
                 refNo, backdatedTxnsAllowedTill);
 
-        // Save the fee and VAT transactions immediately to ensure they're persisted
         if (result.getFeeTransaction() != null) {
             saveTransactionToGenerateTransactionId(result.getFeeTransaction());
         }
         if (result.getVatResult() != null && result.getVatResult().isVatApplied() && result.getVatResult().getVatTransaction() != null) {
             saveTransactionToGenerateTransactionId(result.getVatResult().getVatTransaction());
         }
+        
+        this.savingsAccountRepository.saveAndFlush(account);
     }
 }
