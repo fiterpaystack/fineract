@@ -19,7 +19,8 @@
 
 package com.paystack.fineract.tier.service.data;
 
-import java.math.BigDecimal;
+import java.util.Collection;
+import java.util.Objects;
 
 @lombok.Data
 @lombok.Builder
@@ -30,7 +31,33 @@ public class SavingsClientClassificationLimitMappingData {
     private String classificationName;
     private Long limitId;
     private String limitName;
-    private BigDecimal maxClientSpecificDailyWithdrawalAmount;
-    private BigDecimal maxClientSpecificSingleWithdrawalAmount;
     private TransactionLimitData limits;
+
+    // Template options
+    @SuppressWarnings("unused")
+    private Collection<SavingsAccountTransactionLimitsSettingData> savingsAccountTransactionLimitsSettingDataCollection;
+
+    public static SavingsClientClassificationLimitMappingData template(
+            final SavingsClientClassificationLimitMappingData savingsClientClassificationLimitMappingData,
+            final Collection<SavingsAccountTransactionLimitsSettingData> savingsAccountTransactionLimitsSettingDataCollection) {
+        return new SavingsClientClassificationLimitMappingData(savingsClientClassificationLimitMappingData.id,
+                savingsClientClassificationLimitMappingData.classificationId,
+                savingsClientClassificationLimitMappingData.classificationName, savingsClientClassificationLimitMappingData.limitId,
+                savingsClientClassificationLimitMappingData.limitName, savingsClientClassificationLimitMappingData.limits,
+                savingsAccountTransactionLimitsSettingDataCollection);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        SavingsClientClassificationLimitMappingData that = (SavingsClientClassificationLimitMappingData) o;
+        return Objects.equals(classificationId, that.classificationId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(classificationId);
+    }
 }

@@ -35,4 +35,12 @@ public class SavingsAccountTransactionLimitsSettingData {
     public TransactionLimitData getTransactionLimits() {
         return TransactionLimitData.builder().maxSingleDepositAmount(maxSingleDepositAmount).balanceCumulative(balanceCumulative).build();
     }
+
+    public static SavingsAccountTransactionLimitsSettingData lookup(final Long id, final String name) {
+        final BigDecimal maxSingleDepositAmount = null;
+        final BigDecimal balanceCumulative = null;
+        final Boolean isActive = null;
+        final String description = null;
+        return new SavingsAccountTransactionLimitsSettingData(id, name, maxSingleDepositAmount, balanceCumulative, isActive, description);
+    }
 }

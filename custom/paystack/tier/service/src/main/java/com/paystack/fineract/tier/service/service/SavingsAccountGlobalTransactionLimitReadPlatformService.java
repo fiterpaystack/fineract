@@ -33,6 +33,8 @@ public interface SavingsAccountGlobalTransactionLimitReadPlatformService {
 
     SavingsClientClassificationLimitMappingData retrieveOneByCodeValueId(Long codeValueId);
 
+    SavingsClientClassificationLimitMappingData retrieveOneByCodeValueIdWithTemplate(Long id);
+
     Collection<SavingsAccountTransactionLimitsSettingData> searchForGlobalSettingByName(String name);
 
 }
