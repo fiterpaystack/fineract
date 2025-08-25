@@ -331,7 +331,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         if (transactionAmount.compareTo(BigDecimal.ZERO) > 0) {
             // Store the deposit transaction ID
             Long depositTransactionId = deposit.getId();
-            
+
             payDepositFee(transactionAmount, transactionDate, paymentDetail, backdatedTxnsAllowedTill, deposit.getRefNo(), account);
 
             // Recalculate summary after fees and VAT are applied
@@ -339,8 +339,8 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             final LocalDate today = DateUtils.getBusinessLocalDate();
             final boolean postReversals = this.configurationDomainService.isReversalTransactionAllowed();
             final boolean isInterestTransfer = false;
-            final boolean isSavingsInterestPostingAtCurrentPeriodEnd =
-                    this.configurationDomainService.isSavingsInterestPostingAtCurrentPeriodEnd();
+            final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
+                    .isSavingsInterestPostingAtCurrentPeriodEnd();
             final Integer financialYearBeginningMonth = this.configurationDomainService.retrieveFinancialYearBeginningMonth();
             final LocalDate postInterestOnDate = null;
 
@@ -360,33 +360,35 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             final Set<Long> existingTransactionIds = new HashSet<>();
             final Set<Long> existingReversedTransactionIds = new HashSet<>();
 
-            List<SavingsAccountTransaction> allTransactions = backdatedTxnsAllowedTill ? 
-                account.getSavingsAccountTransactionsWithPivotConfig() : account.getTransactions();
+            List<SavingsAccountTransaction> allTransactions = backdatedTxnsAllowedTill
+                    ? account.getSavingsAccountTransactionsWithPivotConfig()
+                    : account.getTransactions();
             Set<Long> feeAndVatTransactionIds = new HashSet<>();
             for (SavingsAccountTransaction transaction : allTransactions) {
-                if (transaction.getId() > depositTransactionId &&
-                    (transaction.isChargeTransaction() || transaction.getTransactionType().isVatOnFees())) {
+                if (transaction.getId() > depositTransactionId
+                        && (transaction.isChargeTransaction() || transaction.getTransactionType().isVatOnFees())) {
                     feeAndVatTransactionIds.add(transaction.getId());
                 }
             }
-            
+
             for (SavingsAccountTransaction transaction : allTransactions) {
                 // Skip the fee and VAT transactions that were just created for this deposit
                 if (feeAndVatTransactionIds.contains(transaction.getId())) {
                     // DO NOT add these to existingTransactionIds - they will be included in GL posting
-                    log.debug("DEBUG: Fee/VAT transaction will be included in GL posting: " + transaction.getId() +
-                                     ", Type: " + transaction.getTransactionType() + ", Amount: " + transaction.getAmount());
+                    log.debug("DEBUG: Fee/VAT transaction will be included in GL posting: " + transaction.getId() + ", Type: "
+                            + transaction.getTransactionType() + ", Amount: " + transaction.getAmount());
                 } else {
                     // Add all other transactions to existingTransactionIds to exclude them from GL posting
                     existingTransactionIds.add(transaction.getId());
                 }
             }
-            
+
             existingReversedTransactionIds.addAll(account.findExistingReversedTransactionIds());
-            
+
             this.savingsAccountRepository.saveAndFlush(account);
 
-            postJournalEntries(account, existingTransactionIds, existingReversedTransactionIds, isAccountTransfer, backdatedTxnsAllowedTill);
+            postJournalEntries(account, existingTransactionIds, existingReversedTransactionIds, isAccountTransfer,
+                    backdatedTxnsAllowedTill);
         }
 
         return deposit;
@@ -468,7 +470,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         if (result.getVatResult() != null && result.getVatResult().isVatApplied() && result.getVatResult().getVatTransaction() != null) {
             saveTransactionToGenerateTransactionId(result.getVatResult().getVatTransaction());
         }
-        
+
         this.savingsAccountRepository.saveAndFlush(account);
     }
 }
