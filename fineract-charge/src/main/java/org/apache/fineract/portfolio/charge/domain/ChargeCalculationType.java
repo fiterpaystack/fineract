@@ -69,6 +69,10 @@ public enum ChargeCalculationType {
         return new Integer[] { ChargeCalculationType.FLAT.getValue(), ChargeCalculationType.PERCENT_OF_DISBURSEMENT_AMOUNT.getValue() };
     }
 
+    public static Object[] validValuesForDeposits() {
+        return new Integer[] { ChargeCalculationType.FLAT.getValue(), ChargeCalculationType.PERCENT_OF_AMOUNT.getValue() };
+    }
+
     public static ChargeCalculationType fromInt(final Integer chargeCalculation) {
         ChargeCalculationType chargeCalculationType = ChargeCalculationType.INVALID;
         switch (chargeCalculation) {
@@ -108,6 +112,10 @@ public enum ChargeCalculationType {
     }
 
     public boolean isAllowedSavingsChargeCalculationType() {
+        return isFlat() || isPercentageOfAmount();
+    }
+
+    public boolean isAllowedDepositsChargeCalculationType() {
         return isFlat() || isPercentageOfAmount();
     }
 

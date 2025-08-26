@@ -335,6 +335,10 @@ public final class SavingsAccountTransactionData implements Serializable {
         return transactionType.isFeeDeduction() && isNotReversed();
     }
 
+    public boolean isDepositFeeAndNotReversed() {
+        return isDepositFee() && isNotReversed();
+    }
+
     public boolean isPayCharge() {
         return this.transactionType.isPayCharge();
     }
@@ -357,6 +361,10 @@ public final class SavingsAccountTransactionData implements Serializable {
 
     public boolean isAnnualFee() {
         return this.transactionType.isAnnualFee();
+    }
+
+    public boolean isDepositFee() {
+        return this.transactionType.isDepositFee();
     }
 
     public Money getRunningBalance(final CurrencyData currency) {

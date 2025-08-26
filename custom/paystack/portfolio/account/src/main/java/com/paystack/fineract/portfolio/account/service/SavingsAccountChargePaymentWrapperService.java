@@ -41,7 +41,6 @@ import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountCharge;
-import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepository;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransactionSummaryWrapper;
 import org.springframework.stereotype.Service;
@@ -56,7 +55,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class SavingsAccountChargePaymentWrapperService {
 
     private final SavingsVatPostProcessorService vatService;
-    private final SavingsAccountRepository accountRepository;
     private final SavingsAccountTransactionSummaryWrapper savingsAccountTransactionSummaryWrapper;
     private final PaystackSavingsAccountRepository paystackSavingsAccountRepository;
 
@@ -79,9 +77,6 @@ public class SavingsAccountChargePaymentWrapperService {
             // The VAT amount needs to be deducted from account balance
             updateAccountForVat(account, vatResult);
         }
-
-        // Step 4: Save account with all transactions
-        // accountRepository.save(account);
 
         // Return comprehensive result
         return new ChargePaymentResult(feeTransaction, vatResult);

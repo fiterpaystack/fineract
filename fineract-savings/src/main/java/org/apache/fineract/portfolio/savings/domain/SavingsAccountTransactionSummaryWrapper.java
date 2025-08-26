@@ -83,6 +83,16 @@ public final class SavingsAccountTransactionSummaryWrapper {
         return total.getAmountDefaultedToNullIfZero();
     }
 
+    public BigDecimal calculateTotalDepositFees(final MonetaryCurrency currency, final List<SavingsAccountTransaction> transactions) {
+        Money total = Money.zero(currency);
+        for (final SavingsAccountTransaction transaction : transactions) {
+            if (transaction.isDepositFeeAndNotReversed() && transaction.isNotReversed() && !transaction.isReversalTransaction()) {
+                total = total.plus(transaction.getAmount(currency));
+            }
+        }
+        return total.getAmountDefaultedToNullIfZero();
+    }
+
     public BigDecimal calculateTotalAnnualFees(final MonetaryCurrency currency, final List<SavingsAccountTransaction> transactions) {
         Money total = Money.zero(currency);
         for (final SavingsAccountTransaction transaction : transactions) {
@@ -159,6 +169,16 @@ public final class SavingsAccountTransactionSummaryWrapper {
         Money total = Money.zero(currency);
         for (final SavingsAccountTransaction transaction : transactions) {
             if (transaction.isWithHoldTaxAndNotReversed() && !transaction.isReversalTransaction()) {
+                total = total.plus(transaction.getAmount(currency));
+            }
+        }
+        return total.getAmountDefaultedToNullIfZero();
+    }
+
+    public BigDecimal calculateTotalVatOnFees(MonetaryCurrency currency, List<SavingsAccountTransaction> transactions) {
+        Money total = Money.zero(currency);
+        for (final SavingsAccountTransaction transaction : transactions) {
+            if (transaction.isVatonFeesAndNotReversed() && !transaction.isReversalTransaction()) {
                 total = total.plus(transaction.getAmount(currency));
             }
         }

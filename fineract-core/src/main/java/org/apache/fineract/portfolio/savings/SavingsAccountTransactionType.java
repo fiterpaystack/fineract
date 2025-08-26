@@ -36,6 +36,7 @@ public enum SavingsAccountTransactionType {
     WITHDRAWAL(2, "savingsAccountTransactionType.withdrawal", TransactionEntryType.DEBIT), //
     INTEREST_POSTING(3, "savingsAccountTransactionType.interestPosting", TransactionEntryType.CREDIT), //
     WITHDRAWAL_FEE(4, "savingsAccountTransactionType.withdrawalFee", TransactionEntryType.DEBIT), //
+    DEPOSIT_FEE(23, "savingsAccountTransactionType.depositFee", TransactionEntryType.DEBIT), //
     ANNUAL_FEE(5, "savingsAccountTransactionType.annualFee", TransactionEntryType.DEBIT), //
     WAIVE_CHARGES(6, "savingsAccountTransactionType.waiveCharge"), //
     PAY_CHARGE(7, "savingsAccountTransactionType.payCharge", TransactionEntryType.DEBIT), //
@@ -127,6 +128,10 @@ public enum SavingsAccountTransactionType {
         return this == WITHDRAWAL_FEE;
     }
 
+    public boolean isDepositFee() {
+        return this == DEPOSIT_FEE;
+    }
+
     public boolean isAnnualFee() {
         return this == ANNUAL_FEE;
     }
@@ -136,7 +141,7 @@ public enum SavingsAccountTransactionType {
     }
 
     public boolean isChargeTransaction() {
-        return isPayCharge() || isWithdrawalFee() || isAnnualFee();
+        return isPayCharge() || isWithdrawalFee() || isDepositFee() || isAnnualFee();
     }
 
     public boolean isWaiveCharge() {

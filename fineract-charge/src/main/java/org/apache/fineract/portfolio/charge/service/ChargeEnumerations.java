@@ -103,6 +103,10 @@ public final class ChargeEnumerations {
                 optionData = new EnumOptionData(ChargeTimeType.SAVINGS_NOACTIVITY_FEE.getValue().longValue(),
                         ChargeTimeType.SAVINGS_NOACTIVITY_FEE.getCode(), "Saving No Activity Fee");
             break;
+            case DEPOSIT_FEE:
+                optionData = new EnumOptionData(ChargeTimeType.DEPOSIT_FEE.getValue().longValue(), ChargeTimeType.DEPOSIT_FEE.getCode(),
+                        "Deposit Fee");
+            break;
             default:
                 optionData = new EnumOptionData(ChargeTimeType.INVALID.getValue().longValue(), ChargeTimeType.INVALID.getCode(), "Invalid");
             break;

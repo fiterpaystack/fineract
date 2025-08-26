@@ -36,7 +36,8 @@ public enum ChargeTimeType {
     SHAREACCOUNT_ACTIVATION(13, "chargeTimeType.activation"), // only for shares
     SHARE_PURCHASE(14, "chargeTimeType.sharespurchase"), // only for shares
     SHARE_REDEEM(15, "chargeTimeType.sharesredeem"), // only for shares
-    SAVINGS_NOACTIVITY_FEE(16, "chargeTimeType.savingsNoActivityFee"); // only for savings
+    SAVINGS_NOACTIVITY_FEE(16, "chargeTimeType.savingsNoActivityFee"), // only for savings
+    DEPOSIT_FEE(17, "chargeTimeType.depositFee"); // only for savings
 
     private final Integer value;
     private final String code;
@@ -69,7 +70,7 @@ public enum ChargeTimeType {
         return new Integer[] { ChargeTimeType.SPECIFIED_DUE_DATE.getValue(), ChargeTimeType.SAVINGS_ACTIVATION.getValue(),
                 ChargeTimeType.SAVINGS_CLOSURE.getValue(), ChargeTimeType.WITHDRAWAL_FEE.getValue(), ChargeTimeType.ANNUAL_FEE.getValue(),
                 ChargeTimeType.MONTHLY_FEE.getValue(), ChargeTimeType.OVERDRAFT_FEE.getValue(), ChargeTimeType.WEEKLY_FEE.getValue(),
-                ChargeTimeType.SAVINGS_NOACTIVITY_FEE.getValue() };
+                ChargeTimeType.SAVINGS_NOACTIVITY_FEE.getValue(), ChargeTimeType.DEPOSIT_FEE.getValue() };
     }
 
     public static Object[] validClientValues() {
@@ -133,6 +134,9 @@ public enum ChargeTimeType {
                 case 16:
                     chargeTimeType = SAVINGS_NOACTIVITY_FEE;
                 break;
+                case 17:
+                    chargeTimeType = DEPOSIT_FEE;
+                break;
                 default:
                     chargeTimeType = INVALID;
                 break;
@@ -163,6 +167,10 @@ public enum ChargeTimeType {
 
     public boolean isSavingsNoActivityFee() {
         return this.equals(ChargeTimeType.SAVINGS_NOACTIVITY_FEE);
+    }
+
+    public boolean isDepositFee() {
+        return this.equals(ChargeTimeType.DEPOSIT_FEE);
     }
 
     public boolean isAnnualFee() {
@@ -199,7 +207,7 @@ public enum ChargeTimeType {
 
     public boolean isAllowedSavingsChargeTime() {
         return isOnSpecifiedDueDate() || isSavingsActivation() || isSavingsClosure() || isWithdrawalFee() || isAnnualFee() || isMonthlyFee()
-                || isWeeklyFee() || isOverdraftFee() || isSavingsNoActivityFee();
+                || isWeeklyFee() || isOverdraftFee() || isSavingsNoActivityFee() || isDepositFee();
     }
 
     public boolean isOverdraftFee() {

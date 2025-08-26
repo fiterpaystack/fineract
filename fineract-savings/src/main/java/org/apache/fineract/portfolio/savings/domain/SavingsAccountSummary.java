@@ -97,6 +97,7 @@ public final class SavingsAccountSummary {
         this.totalWithdrawals = wrapper.calculateTotalWithdrawals(currency, transactions);
         this.totalInterestPosted = wrapper.calculateTotalInterestPosted(currency, transactions);
         this.totalWithdrawalFees = wrapper.calculateTotalWithdrawalFees(currency, transactions);
+
         this.totalAnnualFees = wrapper.calculateTotalAnnualFees(currency, transactions);
         this.totalFeeCharge = wrapper.calculateTotalFeesCharge(currency, transactions);
         this.totalPenaltyCharge = wrapper.calculateTotalPenaltyCharge(currency, transactions);
@@ -107,9 +108,12 @@ public final class SavingsAccountSummary {
 
         updateRunningBalanceAndPivotDate(false, transactions, null, null, null, currency);
 
+        // Calculate total VAT on fees
+        BigDecimal totalVatOnFees = wrapper.calculateTotalVatOnFees(currency, transactions);
+
         this.accountBalance = Money.of(currency, this.totalDeposits).plus(this.totalInterestPosted).minus(this.totalWithdrawals)
                 .minus(this.totalWithdrawalFees).minus(this.totalAnnualFees).minus(this.totalFeeCharge).minus(this.totalPenaltyCharge)
-                .minus(totalOverdraftInterestDerived).minus(totalWithholdTax).getAmount();
+                .minus(totalOverdraftInterestDerived).minus(totalWithholdTax).minus(totalVatOnFees).getAmount();
     }
 
     public void updateSummaryWithPivotConfig(final MonetaryCurrency currency, final SavingsAccountTransactionSummaryWrapper wrapper,
@@ -136,6 +140,12 @@ public final class SavingsAccountSummary {
                 case WITHDRAWAL_FEE:
                     if (transaction.isWithdrawalFeeAndNotReversed() && transaction.isNotReversed()) {
                         this.totalWithdrawalFees = Money.of(currency, this.totalWithdrawalFees).plus(transactionAmount).getAmount();
+                        this.totalFeeCharge = Money.of(currency, this.totalFeeCharge).plus(transactionAmount).getAmount();
+                        this.accountBalance = Money.of(currency, this.accountBalance).minus(transactionAmount).getAmount();
+                    }
+                break;
+                case DEPOSIT_FEE:
+                    if (transaction.isDepositFeeAndNotReversed() && transaction.isNotReversed()) {
                         this.totalFeeCharge = Money.of(currency, this.totalFeeCharge).plus(transactionAmount).getAmount();
                         this.accountBalance = Money.of(currency, this.accountBalance).minus(transactionAmount).getAmount();
                     }
@@ -192,7 +202,7 @@ public final class SavingsAccountSummary {
             Money interestTotal = Money.zero(currency);
             Money withHoldTaxTotal = Money.zero(currency);
             Money overdraftInterestTotal = Money.zero(currency);
-            Money vatOnFeesTotal;
+            Money vatOnFeesTotal = Money.zero(currency);
             this.totalDeposits = wrapper.calculateTotalDeposits(currency, savingsAccountTransactions);
             this.totalWithdrawals = wrapper.calculateTotalWithdrawals(currency, savingsAccountTransactions);
 
