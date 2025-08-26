@@ -27,10 +27,14 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+
+import com.paystack.fineract.portfolio.account.data.SavingsAccountTransactionLimitValidator;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
+import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
@@ -85,6 +89,7 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
     private final AccountTransfersReadPlatformService accountTransfersReadPlatformService;
     private final SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService;
     private final ClientChargeOverrideReadService clientChargeOverrideReadService;
+    private final SavingsAccountTransactionLimitValidator savingsAccountTransactionLimitValidator;
 
     public PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl(PlatformSecurityContext context,
             SavingsAccountDataValidator fromApiJsonDeserializer, SavingsAccountRepositoryWrapper savingAccountRepositoryWrapper,
@@ -102,7 +107,7 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
             StandingInstructionRepository standingInstructionRepository, BusinessEventNotifierService businessEventNotifierService,
             GSIMRepositoy gsimRepository, SavingsAccountInterestPostingService savingsAccountInterestPostingService,
             ErrorHandler errorHandler, SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService,
-            SavingsVatPostProcessorService vatService, ClientChargeOverrideReadService clientChargeOverrideReadService) {
+            SavingsVatPostProcessorService vatService, ClientChargeOverrideReadService clientChargeOverrideReadService, SavingsAccountTransactionLimitValidator savingsAccountTransactionLimitValidator) {
         super(context, fromApiJsonDeserializer, savingAccountRepositoryWrapper, staffRepository, savingsAccountTransactionRepository,
                 savingAccountAssembler, savingsAccountTransactionDataValidator, savingsAccountChargeDataValidator,
                 paymentDetailWritePlatformService, journalEntryWritePlatformService, savingsAccountDomainService, noteRepository,
@@ -114,6 +119,7 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
         this.accountTransfersReadPlatformService = accountTransfersReadPlatformService;
         this.savingsAccountChargePaymentWrapperService = savingsAccountChargePaymentWrapperService;
         this.clientChargeOverrideReadService = clientChargeOverrideReadService;
+        this.savingsAccountTransactionLimitValidator = savingsAccountTransactionLimitValidator;
     }
 
     @Override
@@ -284,5 +290,24 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
     private void throwValidationForActiveStatus(final String actionName) {
         final String errorMessage = "validation.msg.savingsaccount.transaction." + actionName + ".account.is.not.active";
         throw new GeneralPlatformDomainRuleException(errorMessage, "Transaction " + actionName + " is not allowed. Account is not active.");
+    }
+
+    @Transactional
+    @Override
+    public CommandProcessingResult deposit(final Long savingsId, final JsonCommand command) {
+        //TODO CHECK the transaction limit and make account POST_NO_DEBIT if the limit reached
+        final LocalDate transactionDate = command.localDateValueOfParameterNamed("transactionDate");
+        final BigDecimal transactionAmount = command.bigDecimalValueOfParameterNamed("transactionAmount");
+        final boolean backdatedTxnsAllowedTill = this.savingAccountAssembler.getPivotConfigStatus();
+        final SavingsAccount account = this.savingAccountAssembler.assembleFrom(savingsId, backdatedTxnsAllowedTill);
+
+        if(savingsAccountTransactionLimitValidator.isDepositTransactionExceedsLimits(account.getClient(),account, transactionDate, transactionAmount)) {
+            //make account BLOCK_DEBIT if the limit reached
+            final Map<String, Object> changes = account.blockDebits(account.getSubStatus());
+            if (!changes.isEmpty()) {
+                this.savingAccountRepositoryWrapper.save(account);
+            }
+        }
+        return super.deposit(savingsId, command);
     }
 }
