@@ -30,7 +30,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlatformService;
@@ -45,7 +44,6 @@ import org.apache.fineract.organisation.monetary.domain.ApplicationCurrencyRepos
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.portfolio.charge.domain.ChargeCalculationType;
 import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
-import org.apache.fineract.portfolio.note.domain.Note;
 import org.apache.fineract.portfolio.note.domain.NoteRepository;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.paymentdetail.service.PaymentDetailWritePlatformService;
@@ -83,7 +81,6 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
     private final PaymentDetailWritePlatformService paymentDetailWritePlatformService;
     private final SavingsVatPostProcessorService vatService;
     private final SavingsAccountTransactionLimitValidator savingsAccountTransactionLimitValidator;
-    private final NoteRepository noteRepository;
 
     public PaystackSavingsAccountDomainServiceJpa(SavingsAccountRepositoryWrapper savingsAccountRepository,
             SavingsAccountTransactionRepository savingsAccountTransactionRepository,
@@ -106,7 +103,6 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         this.paymentDetailWritePlatformService = paymentDetailWritePlatformService;
         this.vatService = vatService;
         this.savingsAccountTransactionLimitValidator = savingsAccountTransactionLimitValidator;
-        this.noteRepository = noteRepository;
     }
 
     @Transactional
@@ -352,19 +348,8 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
                 isAccountTransfer, isRegularTransaction, backdatedTxnsAllowedTill);
 
         // CHECK the transaction limit and make account BLOCKDEBIT if the limit reached
-        if (savingsAccountTransactionLimitValidator.isDepositTransactionExceedsLimits(account.getClient(), account, transactionDate,
-                transactionAmount)) {
-            // make account BLOCK_DEBIT if the limit reached
-            final Map<String, Object> changes = account.blockDebits(account.getSubStatus());
-            if (!changes.isEmpty()) {
-                this.savingsAccountRepository.save(account);
-            }
-        }
-        // BLOCKDEBIT NOTE
-        final String note = "Savings Account : " + account.getId() + " is Blocked for Debit Transactions as the transaction : "
-                + deposit.getId() + " exceeds the limit set by Client's classification.";
-        final Note newNote = Note.savingNote(account, note);
-        this.noteRepository.saveAndFlush(newNote);
+        savingsAccountTransactionLimitValidator.isDepositTransactionExceedsLimits(account.getClient(), account, transactionDate,
+                transactionAmount);
 
         // Apply deposit fees and VAT after the deposit is processed
         if (transactionAmount.compareTo(BigDecimal.ZERO) > 0) {
