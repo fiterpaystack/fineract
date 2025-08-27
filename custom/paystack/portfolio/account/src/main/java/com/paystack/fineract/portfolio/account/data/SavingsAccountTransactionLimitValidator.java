@@ -19,15 +19,14 @@
 
 package com.paystack.fineract.portfolio.account.data;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.Optional;
-
 import com.paystack.fineract.tier.service.domain.SavingsAccountGlobalTransactionLimitSetting;
 import com.paystack.fineract.tier.service.domain.SavingsAccountGlobalTransactionLimitSettingRepository;
 import com.paystack.fineract.tier.service.domain.SavingsClientClassificationLimitMapping;
 import com.paystack.fineract.tier.service.domain.SavingsClientClassificationMappingRepository;
 import com.paystack.fineract.tier.service.exception.SavingsAccountTransactionLimitSettingNotFoundException;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.portfolio.client.domain.Client;
@@ -41,24 +40,28 @@ public class SavingsAccountTransactionLimitValidator {
     final SavingsAccountGlobalTransactionLimitSettingRepository savingsAccountGlobalTransactionLimitSettingRepository;
     final SavingsClientClassificationMappingRepository savingsClientClassificationMappingRepository;
 
-    public boolean isDepositTransactionExceedsLimits(Client client, SavingsAccount savingsAccount, LocalDate transactionDate, BigDecimal transactionAmount) {
-        Optional<SavingsClientClassificationLimitMapping> mappingOptional = savingsClientClassificationMappingRepository.findByClassificationId(client.getClientClassification().getId());
-        if(mappingOptional.isPresent()){
+    public boolean isDepositTransactionExceedsLimits(Client client, SavingsAccount savingsAccount, LocalDate transactionDate,
+            BigDecimal transactionAmount) {
+        Optional<SavingsClientClassificationLimitMapping> mappingOptional = savingsClientClassificationMappingRepository
+                .findByClassificationId(client.getClientClassification().getId());
+        if (mappingOptional.isPresent()) {
             SavingsClientClassificationLimitMapping mapping = mappingOptional.get();
             Long transactionLimitId = mapping.getSavingsAccountGlobalTransactionLimitSetting().getId();
             SavingsAccountGlobalTransactionLimitSetting globalLimit = savingsAccountGlobalTransactionLimitSettingRepository
-                .findById(transactionLimitId)
-                .orElseThrow(() -> new SavingsAccountTransactionLimitSettingNotFoundException(transactionLimitId));
+                    .findById(transactionLimitId)
+                    .orElseThrow(() -> new SavingsAccountTransactionLimitSettingNotFoundException(transactionLimitId));
 
-            Money maxSingleDepositAmountLimitMoney = Money.of(savingsAccount.getCurrency(), globalLimit.getTransactionLimits().getMaxSingleDepositAmount());
-            Money balanceCumulativeLimitMoney = Money.of(savingsAccount.getCurrency(), globalLimit.getTransactionLimits().getBalanceCumulative());
+            Money maxSingleDepositAmountLimitMoney = Money.of(savingsAccount.getCurrency(),
+                    globalLimit.getTransactionLimits().getMaxSingleDepositAmount());
+            Money balanceCumulativeLimitMoney = Money.of(savingsAccount.getCurrency(),
+                    globalLimit.getTransactionLimits().getBalanceCumulative());
             Money transactionAmountMoney = Money.of(savingsAccount.getCurrency(), transactionAmount);
             Money runningBalance = savingsAccount.getSummary().getAccountBalance(savingsAccount.getCurrency());
 
-            if(transactionAmountMoney.isGreaterThan(maxSingleDepositAmountLimitMoney)) {
+            if (transactionAmountMoney.isGreaterThan(maxSingleDepositAmountLimitMoney)) {
                 return true;
             }
-            if(runningBalance.plus(transactionAmount).isGreaterThan(balanceCumulativeLimitMoney)) {
+            if (runningBalance.plus(transactionAmount).isGreaterThan(balanceCumulativeLimitMoney)) {
                 return true;
             }
         }
