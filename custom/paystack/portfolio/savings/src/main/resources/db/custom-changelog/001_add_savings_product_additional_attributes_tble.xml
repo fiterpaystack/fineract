@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <!-- Replaced previous column additions on m_savings_product with dedicated EMT configuration table -->
+    <changeSet author="paystack" id="2">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_savings_product_attributes"/>
+            </not>
+        </preConditions>
+
+        <comment>Create additional configuration table decoupled from m_savings_product with separate deposit/withdraw flags</comment>
+
+        <createTable tableName="m_savings_product_attributes">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" primaryKeyName="pk_m_savings_product_attributes" nullable="false"/>
+            </column>
+            <column name="savings_product_id" type="BIGINT">
+                <constraints nullable="false" unique="true" uniqueConstraintName="unq_paystack_emt_config_product"/>
+            </column>
+            <column name="emt_applicable_for_deposit" type="BOOLEAN">
+                <constraints nullable="true"/>
+            </column>
+            <column name="emt_applicable_for_withdraw" type="BOOLEAN">
+                <constraints nullable="true"/>
+            </column>
+            <column name="emt_override_global" type="BOOLEAN">
+                <constraints nullable="true"/>
+            </column>
+            <column name="emt_levy_amount" type="DECIMAL(19,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="emt_levy_threshold" type="DECIMAL(19,6)">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint baseTableName="m_savings_product_attributes"
+                                 baseColumnNames="savings_product_id"
+                                 constraintName="fk_paystack_emt_config_product"
+                                 referencedTableName="m_savings_product"
+                                 referencedColumnNames="id"
+                                 onDelete="CASCADE"/>
+
+        <createIndex tableName="m_savings_product_attributes" indexName="idx_paystack_emt_config_product_id">
+            <column name="savings_product_id"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

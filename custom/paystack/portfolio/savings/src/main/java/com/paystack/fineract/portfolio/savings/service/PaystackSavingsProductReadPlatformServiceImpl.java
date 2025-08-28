@@ -31,11 +31,16 @@ public class PaystackSavingsProductReadPlatformServiceImpl extends SavingsProduc
     public SavingsProductData retrieveOne(final Long savingProductId) {
         try {
             this.context.authenticatedUser();
-            final String additionalParam = " sp.is_emt_levy_applicable as emtLevyApplicable, sp.emt_levy_amount as emtLevyAmount,"
-                    + " sp.override_global_emt_levy as overrideGlobalEmtLevy, sp.emt_levy_threshold as emtLevyThreshold, ";
+            final String additionalParam = """
+                    at.emt_applicable_for_deposit as isEmtLevyApplicableForDeposit,
+                    at.emt_applicable_for_withdraw as isEmtLevyApplicableForWithdraw,
+                    at.emt_levy_amount as emtLevyAmount,
+                    at.emt_override_global as emtOverrideGlobalLevy,
+                    at.emt_levy_threshold as emtLevyThreshold,
+                    """;
 
             final String sql = "select " + additionalParam + this.savingsProductRowMapper.schema()
-                    + " where sp.id = ? and sp.deposit_type_enum = ?";
+                    + " left join m_savings_product_attributes at on at.savings_product_id = sp.id where sp.id = ? and sp.deposit_type_enum = ?";
 
             return this.jdbcTemplate.queryForObject(sql, this.paystackSavingsProductMapper, savingProductId,
                     DepositAccountType.SAVINGS_DEPOSIT.getValue());
@@ -52,9 +57,12 @@ public class PaystackSavingsProductReadPlatformServiceImpl extends SavingsProduc
             SavingsProductData base = savingsProductRowMapper.mapRow(rs, rowNum);
             HashMap<String, Object> additionalAttriubtes = new HashMap<>();
             additionalAttriubtes.put(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_AMOUNT, rs.getBigDecimal("emtLevyAmount"));
-            additionalAttriubtes.put(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE, rs.getBoolean("emtLevyApplicable"));
-            additionalAttriubtes.put(PaystackSavingsProductAdditionalAttributes.OVERRIDE_GLOBAL_EMT_LEVY,
-                    rs.getBoolean("overrideGlobalEmtLevy"));
+            additionalAttriubtes.put(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE_FOR_WITHDRAW,
+                    rs.getBoolean("isEmtLevyApplicableForWithdraw"));
+            additionalAttriubtes.put(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE_FOR_DEPOSIT,
+                    rs.getBoolean("isEmtLevyApplicableForDeposit"));
+            additionalAttriubtes.put(PaystackSavingsProductAdditionalAttributes.EMT_OVERRIDE_GLOBAL_LEVY,
+                    rs.getBoolean("emtOverrideGlobalLevy"));
             additionalAttriubtes.put(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_THRESHOLD, rs.getBigDecimal("emtLevyThreshold"));
 
             base.setAdditionalAttributes(additionalAttriubtes);

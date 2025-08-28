@@ -47,4 +47,4 @@ jobs:
       - name: Run unit tests on the code
         run: |
           # Build the JAR
-          ./gradlew --no-daemon --console=plain tests -x :integration-tests:test -x spotlessCheck -x checkstyleMain -x spotBugsMain -x pmdMain -x :twofactor-tests:test -x :fineract-e2e-tests-runner:test
+          ./gradlew --no-daemon --console=plain test -x :integration-tests:test -x spotlessCheck -x checkstyleMain -x spotBugsMain -x pmdMain -x :twofactor-tests:test -x :fineract-e2e-tests-runner:test -x :oauth2-tests:test

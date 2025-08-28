@@ -1,5 +1,8 @@
 package com.paystack.fineract.portfolio.savings.service;
 
+import com.paystack.fineract.portfolio.savings.data.PaystackSavingsProductAdditionalAttributes;
+import com.paystack.fineract.portfolio.savings.domain.PaystackSavingsProductAttributes;
+import com.paystack.fineract.portfolio.savings.domain.PaystackSavingsProductAttributesRepository;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
@@ -26,17 +29,20 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
 
     private final SavingsProductRepository savingsProductRepository;
     private final FinancialActivityAccountRepositoryWrapper financialActivityAccountRepositoryWrapper;
+    private final PaystackSavingsProductAttributesRepository paystackSavingsProductAttributesRepository;
 
     public PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl(PlatformSecurityContext context,
             SavingsProductRepository savingProductRepository, SavingsProductDataValidator fromApiJsonDataValidator,
             SavingsProductAssembler savingsProductAssembler,
             org.apache.fineract.accounting.producttoaccountmapping.service.ProductToGLAccountMappingWritePlatformService accountMappingWritePlatformService,
             FineractEntityAccessUtil fineractEntityAccessUtil,
-            FinancialActivityAccountRepositoryWrapper financialActivityAccountRepositoryWrapper) {
+            FinancialActivityAccountRepositoryWrapper financialActivityAccountRepositoryWrapper,
+            PaystackSavingsProductAttributesRepository paystackSavingsProductAttributesRepository) {
         super(context, savingProductRepository, fromApiJsonDataValidator, savingsProductAssembler, accountMappingWritePlatformService,
                 fineractEntityAccessUtil);
         this.savingsProductRepository = savingProductRepository;
         this.financialActivityAccountRepositoryWrapper = financialActivityAccountRepositoryWrapper;
+        this.paystackSavingsProductAttributesRepository = paystackSavingsProductAttributesRepository;
     }
 
     @Transactional
@@ -48,7 +54,7 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
             SavingsProduct product = savingsProductRepository.findById(productId).orElse(null);
             if (product != null) {
                 ensureEmtFinancialActivityConfigured(product, command);
-                applyEmtLevyIfPresent(command, product);
+                applyEmtLevyIfPresent(command, product, true);
             }
         }
         return result;
@@ -62,7 +68,7 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
         boolean emtUpdated = false;
         if (product != null) {
             ensureEmtFinancialActivityConfigured(product, command);
-            emtUpdated = applyEmtLevyIfPresent(command, product);
+            emtUpdated = applyEmtLevyIfPresent(command, product, false);
         }
         if (emtUpdated) {
             CommandProcessingResultBuilder builder = new CommandProcessingResultBuilder().withEntityId(productId);
@@ -82,7 +88,7 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
             }
 
             if (command.parameterExists("overrideGlobalEmtLevySetting")) {
-                changes.put("overrideGlobalEmtLevySetting", command.bigDecimalValueOfParameterNamed("overrideGlobalEmtLevySetting"));
+                changes.put("overrideGlobalEmtLevySetting", command.booleanObjectValueOfParameterNamed("overrideGlobalEmtLevySetting"));
             }
             builder.with(changes);
 
@@ -91,43 +97,65 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
         return baseResult;
     }
 
-    private boolean applyEmtLevyIfPresent(JsonCommand command, SavingsProduct product) {
+    private boolean applyEmtLevyIfPresent(JsonCommand command, SavingsProduct product, boolean isNew) {
+
+        PaystackSavingsProductAttributes attributes;
+
+        if (isNew) {
+            attributes = PaystackSavingsProductAttributes.of(product.getId());
+        } else {
+            attributes = paystackSavingsProductAttributesRepository.findBySavingsProductId(product.getId())
+                    .orElse(PaystackSavingsProductAttributes.of(product.getId()));
+        }
+
         boolean any = false;
         Boolean isApplicable;
         Boolean overrideGlobalSetting;
         BigDecimal amount;
         BigDecimal threshold;
 
-        if (command.parameterExists("isEmtLevyApplicable")) {
-            isApplicable = command.booleanObjectValueOfParameterNamed("isEmtLevyApplicable");
+        if (command.parameterExists(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE_FOR_DEPOSIT)) {
+            isApplicable = command
+                    .booleanObjectValueOfParameterNamed(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE_FOR_DEPOSIT);
             any = true;
-            product.setIsEmtLevyApplicable(isApplicable);
-        }
-        if (command.parameterExists("emtLevyAmount")) {
-            amount = command.bigDecimalValueOfParameterNamed("emtLevyAmount");
-            any = true;
-            product.setEmtLevyAmount(amount);
-        }
-        if (command.parameterExists("emtLevyThreshold")) {
-            threshold = command.bigDecimalValueOfParameterNamed("emtLevyThreshold");
-            any = true;
-            product.setEmtLevyThreshold(threshold);
+            attributes.setIsEmtLevyApplicableForDeposit(isApplicable);
         }
 
-        if (command.parameterExists("overrideGlobalEmtLevySetting")) {
-            overrideGlobalSetting = command.booleanObjectValueOfParameterNamed("overrideGlobalEmtLevySetting");
+        if (command.parameterExists(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE_FOR_WITHDRAW)) {
+            isApplicable = command
+                    .booleanObjectValueOfParameterNamed(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE_FOR_WITHDRAW);
             any = true;
-            product.setOverrideGlobalEmtLevy(overrideGlobalSetting);
+            attributes.setIsEmtLevyApplicableForWithdraw(isApplicable);
+        }
+        if (command.parameterExists(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_AMOUNT)) {
+            amount = command.bigDecimalValueOfParameterNamed(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_AMOUNT);
+            any = true;
+            attributes.setEmtLevyAmount(amount);
+        }
+        if (command.parameterExists(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_THRESHOLD)) {
+            threshold = command.bigDecimalValueOfParameterNamed(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_THRESHOLD);
+            any = true;
+            attributes.setEmtLevyThreshold(threshold);
+        }
+
+        if (command.parameterExists(PaystackSavingsProductAdditionalAttributes.EMT_OVERRIDE_GLOBAL_LEVY)) {
+            overrideGlobalSetting = command
+                    .booleanObjectValueOfParameterNamed(PaystackSavingsProductAdditionalAttributes.EMT_OVERRIDE_GLOBAL_LEVY);
+            any = true;
+            attributes.setOverrideGlobalEmtLevy(overrideGlobalSetting);
         }
         if (any) {
-            savingsProductRepository.saveAndFlush(product);
+            paystackSavingsProductAttributesRepository.saveAndFlush(attributes);
         }
         return any;
     }
 
     private void ensureEmtFinancialActivityConfigured(SavingsProduct product, JsonCommand command) {
         // Use a method that provides a default value to avoid null checks.
-        final boolean isEmtLevyRequested = command.booleanPrimitiveValueOfParameterNamed("isEmtLevyApplicable");
+        final boolean isEmtLevyRequested = command
+                .booleanPrimitiveValueOfParameterNamed(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE_FOR_WITHDRAW)
+                || command
+                        .booleanPrimitiveValueOfParameterNamed(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE_FOR_DEPOSIT);
 
         if (!isEmtLevyRequested) {
             return;

@@ -20,7 +20,6 @@ import org.springframework.stereotype.Component;
 @Primary
 public class PaystackSavingsProductDataValidator extends SavingsProductDataValidator {
 
-    // locally keep reference to helper (private in superclass)
     private final FromJsonHelper paystackFromJsonHelper;
 
     public PaystackSavingsProductDataValidator(FromJsonHelper fromApiJsonHelper,
@@ -31,17 +30,16 @@ public class PaystackSavingsProductDataValidator extends SavingsProductDataValid
 
     @PostConstruct
     public void init() {
-        // Extend supported parameters with EMT Levy custom fields
-        SAVINGS_PRODUCT_REQUEST_DATA_PARAMETERS
-                .addAll(Arrays.asList("isEmtLevyApplicable", "emtLevyAmount", "emtLevyThreshold", "overrideGlobalEmtLevySetting"));
-
+        SAVINGS_PRODUCT_REQUEST_DATA_PARAMETERS.addAll(Arrays.asList(
+                PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE_FOR_DEPOSIT,
+                PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE_FOR_WITHDRAW,
+                PaystackSavingsProductAdditionalAttributes.EMT_LEVY_AMOUNT, PaystackSavingsProductAdditionalAttributes.EMT_LEVY_THRESHOLD,
+                PaystackSavingsProductAdditionalAttributes.EMT_OVERRIDE_GLOBAL_LEVY));
     }
 
     @Override
     public void validateForCreate(String json) {
-        // run base validations first
         super.validateForCreate(json);
-        // then run EMT levy specific validations
         validateEmtLevyParams(json);
     }
 
@@ -54,46 +52,52 @@ public class PaystackSavingsProductDataValidator extends SavingsProductDataValid
     private void validateEmtLevyParams(String json) {
         final JsonElement element = this.paystackFromJsonHelper.parse(json);
         final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
-        final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("savingsproduct.emtlevy");
+        final DataValidatorBuilder base = new DataValidatorBuilder(dataValidationErrors).resource("savingsproduct.emtlevy");
 
-        // isEmtLevyApplicable
-        Boolean isEmtLevyApplicable = null;
-        if (this.paystackFromJsonHelper.parameterExists("isEmtLevyApplicable", element)) {
-            isEmtLevyApplicable = this.paystackFromJsonHelper.extractBooleanNamed("isEmtLevyApplicable", element);
-            baseDataValidator.reset().parameter("isEmtLevyApplicable").value(isEmtLevyApplicable).ignoreIfNull().validateForBooleanValue();
+        // Flags: applicability for deposit & withdraw
+        Boolean levyOnDeposit = null;
+        if (paystackFromJsonHelper.parameterExists(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE_FOR_DEPOSIT, element)) {
+            levyOnDeposit = paystackFromJsonHelper
+                    .extractBooleanNamed(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE_FOR_DEPOSIT, element);
+            base.reset().parameter(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE_FOR_DEPOSIT).value(levyOnDeposit)
+                    .ignoreIfNull().validateForBooleanValue();
+        }
+        Boolean levyOnWithdraw = null;
+        if (paystackFromJsonHelper.parameterExists(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE_FOR_WITHDRAW, element)) {
+            levyOnWithdraw = paystackFromJsonHelper
+                    .extractBooleanNamed(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE_FOR_WITHDRAW, element);
+            base.reset().parameter(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE_FOR_WITHDRAW).value(levyOnWithdraw)
+                    .ignoreIfNull().validateForBooleanValue();
         }
 
-        // overrideGlobalEmtLevySetting
+        // Override global flag
         Boolean overrideGlobal = null;
-        if (this.paystackFromJsonHelper.parameterExists("overrideGlobalEmtLevySetting", element)) {
-            overrideGlobal = this.paystackFromJsonHelper.extractBooleanNamed("overrideGlobalEmtLevySetting", element);
-            baseDataValidator.reset().parameter("overrideGlobalEmtLevySetting").value(overrideGlobal).ignoreIfNull()
+        if (paystackFromJsonHelper.parameterExists(PaystackSavingsProductAdditionalAttributes.EMT_OVERRIDE_GLOBAL_LEVY, element)) {
+            overrideGlobal = paystackFromJsonHelper.extractBooleanNamed(PaystackSavingsProductAdditionalAttributes.EMT_OVERRIDE_GLOBAL_LEVY,
+                    element);
+            base.reset().parameter(PaystackSavingsProductAdditionalAttributes.EMT_OVERRIDE_GLOBAL_LEVY).value(overrideGlobal).ignoreIfNull()
                     .validateForBooleanValue();
         }
 
-        // emtLevyAmount
+        // Amount & threshold
         BigDecimal levyAmount = null;
-        if (this.paystackFromJsonHelper.parameterExists("emtLevyAmount", element)) {
-            levyAmount = this.paystackFromJsonHelper.extractBigDecimalWithLocaleNamed("emtLevyAmount", element);
-            baseDataValidator.reset().parameter("emtLevyAmount").value(levyAmount).ignoreIfNull().zeroOrPositiveAmount();
+        if (paystackFromJsonHelper.parameterExists(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_AMOUNT, element)) {
+            levyAmount = paystackFromJsonHelper.extractBigDecimalWithLocaleNamed(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_AMOUNT,
+                    element);
+            base.reset().parameter(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_AMOUNT).value(levyAmount).ignoreIfNull()
+                    .zeroOrPositiveAmount();
         }
-
-        // emtLevyThreshold
         BigDecimal levyThreshold = null;
-        if (this.paystackFromJsonHelper.parameterExists("emtLevyThreshold", element)) {
-            levyThreshold = this.paystackFromJsonHelper.extractBigDecimalWithLocaleNamed("emtLevyThreshold", element);
-            baseDataValidator.reset().parameter("emtLevyThreshold").value(levyThreshold).ignoreIfNull().zeroOrPositiveAmount();
+        if (paystackFromJsonHelper.parameterExists(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_THRESHOLD, element)) {
+            levyThreshold = paystackFromJsonHelper
+                    .extractBigDecimalWithLocaleNamed(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_THRESHOLD, element);
+            base.reset().parameter(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_THRESHOLD).value(levyThreshold).ignoreIfNull()
+                    .zeroOrPositiveAmount();
         }
 
-        // Conditional requirements
-        if (Boolean.TRUE.equals(isEmtLevyApplicable) && Boolean.TRUE.equals(overrideGlobal)) {
-            // levy amount required when levy is applicable or global override requested
-            baseDataValidator.reset().parameter("emtLevyAmount").value(levyAmount).notNull().zeroOrPositiveAmount();
-        }
-
+        // If any applicability flag is true, levy amount must be supplied (and non-negative validated earlier)
         if (Boolean.TRUE.equals(overrideGlobal)) {
-            // when overriding global setting we expect explicit applicability flag
-            baseDataValidator.reset().parameter("isEmtLevyApplicable").value(isEmtLevyApplicable).notNull();
+            base.reset().parameter(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_AMOUNT).value(levyAmount).notNull();
         }
 
         if (!dataValidationErrors.isEmpty()) {
