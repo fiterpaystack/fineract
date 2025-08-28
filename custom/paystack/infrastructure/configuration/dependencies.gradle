@@ -16,12 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-description = 'Paystack Fineract Account'
 
-group = 'com.paystack.fineract.account'
-
-base {
-    archivesName = 'paystack-fineract-account'
+dependencies {
+    implementation(project(':fineract-savings'))
 }
-
-apply from: 'dependencies.gradle'

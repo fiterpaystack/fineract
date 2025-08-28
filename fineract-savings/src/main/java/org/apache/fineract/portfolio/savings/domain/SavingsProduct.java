@@ -76,6 +76,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.fineract.accounting.common.AccountingRuleType;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
@@ -216,6 +218,26 @@ public class SavingsProduct extends AbstractPersistableCustom<Long> {
 
     @Column(name = "deposit_type_enum")
     private Integer depositTypeEnum;
+
+    @Getter
+    @Setter
+    @Column(name = "is_emt_levy_applicable")
+    private Boolean isEmtLevyApplicable;
+
+    @Getter
+    @Setter
+    @Column(name = "override_global_emt_levy")
+    private Boolean overrideGlobalEmtLevy;
+
+    @Getter
+    @Setter
+    @Column(name = "emt_levy_amount")
+    private BigDecimal emtLevyAmount;
+
+    @Getter
+    @Setter
+    @Column(name = "emt_levy_threshold")
+    private BigDecimal emtLevyThreshold;
 
     public static SavingsProduct createNew(final String name, final String shortName, final String description,
             final MonetaryCurrency currency, final BigDecimal interestRate,
