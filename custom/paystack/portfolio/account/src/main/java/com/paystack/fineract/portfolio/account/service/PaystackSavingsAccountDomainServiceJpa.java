@@ -21,6 +21,7 @@ package com.paystack.fineract.portfolio.account.service;
 
 import com.paystack.fineract.client.charge.service.ClientChargeOverrideReadService;
 import com.paystack.fineract.portfolio.account.data.ChargePaymentResult;
+import com.paystack.fineract.portfolio.account.data.SavingsAccountTransactionLimitValidator;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.time.LocalDate;
@@ -43,6 +44,7 @@ import org.apache.fineract.organisation.monetary.domain.ApplicationCurrencyRepos
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.portfolio.charge.domain.ChargeCalculationType;
 import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
+import org.apache.fineract.portfolio.note.domain.NoteRepository;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.paymentdetail.service.PaymentDetailWritePlatformService;
 import org.apache.fineract.portfolio.savings.SavingsTransactionBooleanValues;
@@ -79,13 +81,15 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
     private final PaymentDetailWritePlatformService paymentDetailWritePlatformService;
     private final SavingsVatPostProcessorService vatService;
     private final FeeSplitService feeSplitService;
+    private final SavingsAccountTransactionLimitValidator savingsAccountTransactionLimitValidator;
 
     public PaystackSavingsAccountDomainServiceJpa(SavingsAccountRepositoryWrapper savingsAccountRepository,
             SavingsAccountTransactionRepository savingsAccountTransactionRepository,
             ApplicationCurrencyRepositoryWrapper applicationCurrencyRepositoryWrapper,
             JournalEntryWritePlatformService journalEntryWritePlatformService, ConfigurationDomainService configurationDomainService,
             PlatformSecurityContext context, DepositAccountOnHoldTransactionRepository depositAccountOnHoldTransactionRepository,
-            BusinessEventNotifierService businessEventNotifierService,
+            BusinessEventNotifierService businessEventNotifierService, NoteRepository noteRepository,
+            SavingsAccountTransactionLimitValidator savingsAccountTransactionLimitValidator,
             SavingsAccountTransactionSummaryWrapper savingsAccountTransactionSummaryWrapper,
             SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService,
             ClientChargeOverrideReadService clientChargeOverrideReadService, SavingsAccountAssembler savingAccountAssembler,
@@ -101,6 +105,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         this.paymentDetailWritePlatformService = paymentDetailWritePlatformService;
         this.vatService = vatService;
         this.feeSplitService = feeSplitService;
+        this.savingsAccountTransactionLimitValidator = savingsAccountTransactionLimitValidator;
     }
 
     @Transactional
@@ -362,6 +367,10 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         // Call parent's handleDeposit method to process the actual deposit
         SavingsAccountTransaction deposit = super.handleDeposit(account, fmt, transactionDate, transactionAmount, paymentDetail,
                 isAccountTransfer, isRegularTransaction, backdatedTxnsAllowedTill);
+
+        // CHECK the transaction limit and make account BLOCKDEBIT if the limit reached
+        savingsAccountTransactionLimitValidator.isDepositTransactionExceedsLimits(account.getClient(), account, transactionDate,
+                transactionAmount);
 
         // Apply deposit fees and VAT after the deposit is processed
         if (transactionAmount.compareTo(BigDecimal.ZERO) > 0) {

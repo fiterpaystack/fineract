@@ -1875,13 +1875,19 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
 
     @Transactional
     @Override
-    public CommandProcessingResult unblockDebits(final Long savingsId) {
+    public CommandProcessingResult unblockDebits(final Long savingsId, JsonCommand command) {
         this.context.authenticatedUser();
 
         final SavingsAccount account = this.savingAccountAssembler.assembleFrom(savingsId, false);
         checkClientOrGroupActive(account);
 
         account.updateReason(null);
+
+        final String noteText = command.stringValueOfParameterNamed("note");
+        if (StringUtils.isNotBlank(noteText)) {
+            final Note note = Note.savingNote(account, noteText);
+            this.noteRepository.save(note);
+        }
 
         final Map<String, Object> changes = account.unblockDebits();
         if (!changes.isEmpty()) {
