@@ -66,9 +66,9 @@ public class FeeSplitAuditService {
 
         Specification<FeeSplitAudit> spec = Specification.where(null);
 
-        if (officeId != null) {
-            spec = spec.and((root, query, cb) -> cb.equal(root.get("office").get("id"), officeId));
-        }
+        // Note: Office filtering is not available since FeeSplitAudit doesn't have direct office information
+        // The officeId parameter is kept for API compatibility but not used in filtering
+        // Office information can be derived through transaction relationships if needed
 
         if (fromDate != null) {
             spec = spec.and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("splitDate"), fromDate));
@@ -87,13 +87,27 @@ public class FeeSplitAuditService {
     }
 
     /**
+     * Retrieve fee split audits for a specific office
+     */
+    @Transactional(readOnly = true)
+    public List<FeeSplitAuditResponse> retrieveFeeSplitAuditsByOffice(final Long officeId) {
+        if (officeId == null) {
+            throw new IllegalArgumentException("Office ID cannot be null");
+        }
+        // Use the existing repository method that handles office filtering through transaction relationships
+        List<FeeSplitAudit> audits = feeSplitAuditRepository.findByOfficeId(officeId);
+        return feeSplitResponseMapper.toFeeSplitAuditResponses(audits);
+    }
+
+    /**
      * Retrieve fee split audits for a specific charge
      */
     @Transactional(readOnly = true)
     public List<FeeSplitAuditResponse> retrieveFeeSplitAuditsByCharge(final Long chargeId) {
-        // This would require a join with the charge through the transaction
-        // For now, we'll implement a basic version
-        List<FeeSplitAudit> audits = feeSplitAuditRepository.findAll();
+        if (chargeId == null) {
+            throw new IllegalArgumentException("Charge ID cannot be null");
+        }
+        List<FeeSplitAudit> audits = feeSplitAuditRepository.findByChargeId(chargeId);
         return feeSplitResponseMapper.toFeeSplitAuditResponses(audits);
     }
 

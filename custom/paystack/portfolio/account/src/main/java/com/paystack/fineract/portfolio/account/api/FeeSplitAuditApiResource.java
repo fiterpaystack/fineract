@@ -181,6 +181,23 @@ public class FeeSplitAuditApiResource {
     }
 
     /**
+     * Get fee split audits for a specific office
+     */
+    @GET
+    @Path("/offices/{officeId}")
+    @Consumes({ MediaType.APPLICATION_JSON })
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "Retrieve Fee Split Audits by Office", description = "Get fee split audits for a specific office")
+    public String retrieveFeeSplitAuditsByOffice(@Context final UriInfo uriInfo, @PathParam("officeId") @Parameter(description = "officeId") final Long officeId) {
+        this.context.authenticatedUser();
+
+        final List<FeeSplitAuditResponse> audits = this.feeSplitAuditService.retrieveFeeSplitAuditsByOffice(officeId);
+
+        final ApiRequestJsonSerializationSettings settings = this.apiRequestParameterHelper.process(uriInfo.getQueryParameters());
+        return this.toApiJsonSerializer.serialize(settings, audits);
+    }
+
+    /**
      * Get fee split summary statistics
      */
     @GET
