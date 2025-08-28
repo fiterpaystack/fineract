@@ -134,6 +134,9 @@ public class Charge extends AbstractPersistableCustom<Long> {
     @JoinColumn(name = "tax_group_id")
     private TaxGroup taxGroup;
 
+    @Column(name = "enable_fee_split", nullable = false)
+    private boolean enableFeeSplit = false;
+
     public static Charge fromJson(final JsonCommand command, final GLAccount account, final TaxGroup taxGroup,
             final PaymentType paymentType) {
 
@@ -163,6 +166,9 @@ public class Charge extends AbstractPersistableCustom<Long> {
         boolean enablePaymentType = false;
         enablePaymentType = command.booleanPrimitiveValueOfParameterNamed("enablePaymentType");
 
+        boolean enableFeeSplit = false;
+        enableFeeSplit = command.booleanPrimitiveValueOfParameterNamed("enableFeeSplit");
+
         Integer freeWithdrawalFrequency = null;
         Integer restartCountFrequency = null;
         PeriodFrequencyType countFrequencyType = null;
@@ -176,7 +182,7 @@ public class Charge extends AbstractPersistableCustom<Long> {
 
         return new Charge(name, amount, currencyCode, chargeAppliesTo, chargeTimeType, chargeCalculationType, penalty, active, paymentMode,
                 feeOnMonthDay, feeInterval, minCap, maxCap, feeFrequency, enableFreeWithdrawalCharge, freeWithdrawalFrequency,
-                restartCountFrequency, countFrequencyType, account, taxGroup, enablePaymentType, paymentType);
+                restartCountFrequency, countFrequencyType, account, taxGroup, enablePaymentType, paymentType, enableFeeSplit);
     }
 
     protected Charge() {}
@@ -186,7 +192,7 @@ public class Charge extends AbstractPersistableCustom<Long> {
             final ChargePaymentMode paymentMode, final MonthDay feeOnMonthDay, final Integer feeInterval, final BigDecimal minCap,
             final BigDecimal maxCap, final Integer feeFrequency, final boolean enableFreeWithdrawalCharge,
             final Integer freeWithdrawalFrequency, final Integer restartFrequency, final PeriodFrequencyType restartFrequencyEnum,
-            final GLAccount account, final TaxGroup taxGroup, final boolean enablePaymentType, final PaymentType paymentType) {
+            final GLAccount account, final TaxGroup taxGroup, final boolean enablePaymentType, final PaymentType paymentType, final boolean enableFeeSplit) {
         this.name = name;
         this.amount = amount;
         this.currencyCode = currencyCode;
@@ -253,6 +259,8 @@ public class Charge extends AbstractPersistableCustom<Long> {
                     this.paymentType = paymentType;
                 }
             }
+
+            this.enableFeeSplit = enableFeeSplit;
 
         } else if (isLoanCharge()) {
 
@@ -370,6 +378,10 @@ public class Charge extends AbstractPersistableCustom<Long> {
 
     public boolean isEnablePaymentType() {
         return this.enablePaymentType;
+    }
+
+    public boolean isEnableFeeSplit() {
+        return this.enableFeeSplit;
     }
 
     public Integer getFrequencyFreeWithdrawalCharge() {
@@ -648,6 +660,13 @@ public class Charge extends AbstractPersistableCustom<Long> {
             }
         }
 
+        final String enableFeeSplitParamName = "enableFeeSplit";
+        if (command.isChangeInBooleanParameterNamed(enableFeeSplitParamName, this.enableFeeSplit)) {
+            final Boolean newValue = command.booleanPrimitiveValueOfParameterNamed(enableFeeSplitParamName);
+            actualChanges.put(enableFeeSplitParamName, newValue);
+            this.enableFeeSplit = newValue;
+        }
+
         if (!dataValidationErrors.isEmpty()) {
             throw new PlatformApiDataValidationException(dataValidationErrors);
         }
@@ -695,7 +714,8 @@ public class Charge extends AbstractPersistableCustom<Long> {
                 .freeWithdrawal(this.enableFreeWithdrawal).freeWithdrawalChargeFrequency(this.freeWithdrawalFrequency)
                 .restartFrequency(this.restartFrequency).restartFrequencyEnum(this.restartFrequencyEnum)
                 .isPaymentType(this.enablePaymentType).paymentTypeOptions(paymentTypeData).minCap(this.minCap).maxCap(this.maxCap)
-                .feeFrequency(feeFrequencyType).incomeOrLiabilityAccount(accountData).taxGroup(taxGroupData).build();
+                .feeFrequency(feeFrequencyType).incomeOrLiabilityAccount(accountData).taxGroup(taxGroupData)
+                .enableFeeSplit(this.enableFeeSplit).build();
 
     }
 

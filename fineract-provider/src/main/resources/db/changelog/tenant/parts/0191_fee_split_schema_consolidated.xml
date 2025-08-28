@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add fee split support to existing charge table -->
+    <changeSet id="add-fee-split-to-charge" author="paystack">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_charge" columnName="enable_fee_split"/>
+            </not>
+        </preConditions>
+        <comment>Add fee split support to m_charge table</comment>
+        <addColumn tableName="m_charge">
+            <column name="enable_fee_split" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- Create charge split configuration table (directly as m_charge_split) -->
+    <changeSet id="create-charge-split-table" author="paystack">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_charge_split"/>
+            </not>
+        </preConditions>
+        <comment>Create m_charge_split table for fee split configuration with correct column names</comment>
+        <createTable tableName="m_charge_split">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="charge_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="fund_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="split_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="split_value" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="gl_account_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on_utc" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint baseTableName="m_charge_split"
+                                 baseColumnNames="charge_id"
+                                 constraintName="FK_charge_split_charge"
+                                 referencedTableName="m_charge"
+                                 referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint baseTableName="m_charge_split"
+                                 baseColumnNames="fund_id"
+                                 constraintName="FK_charge_split_fund"
+                                 referencedTableName="m_fund"
+                                 referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint baseTableName="m_charge_split"
+                                 baseColumnNames="gl_account_id"
+                                 constraintName="FK_charge_split_gl_account"
+                                 referencedTableName="acc_gl_account"
+                                 referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint baseTableName="m_charge_split"
+                                 baseColumnNames="created_by"
+                                 constraintName="FK_charge_split_createdby"
+                                 referencedTableName="m_appuser"
+                                 referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint baseTableName="m_charge_split"
+                                 baseColumnNames="last_modified_by"
+                                 constraintName="FK_charge_split_modifiedby"
+                                 referencedTableName="m_appuser"
+                                 referencedColumnNames="id"/>
+
+        <addUniqueConstraint tableName="m_charge_split"
+                             columnNames="charge_id, fund_id"
+                             constraintName="unique_charge_fund_split"/>
+    </changeSet>
+
+    <!-- Create fee split audit table -->
+    <changeSet id="create-fee-split-audit-table" author="paystack">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_fee_split_audit"/>
+            </not>
+        </preConditions>
+        <comment>Create m_fee_split_audit table for fee split transaction audit</comment>
+        <createTable tableName="m_fee_split_audit">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="transaction_id" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="charge_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="total_fee_amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="split_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on_utc" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint baseTableName="m_fee_split_audit"
+                                 baseColumnNames="charge_id"
+                                 constraintName="FK_fee_split_audit_charge"
+                                 referencedTableName="m_charge"
+                                 referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint baseTableName="m_fee_split_audit"
+                                 baseColumnNames="created_by"
+                                 constraintName="FK_fee_split_audit_createdby"
+                                 referencedTableName="m_appuser"
+                                 referencedColumnNames="id"/>
+
+        <createIndex tableName="m_fee_split_audit" indexName="idx_fee_split_audit_transaction_id">
+            <column name="transaction_id"/>
+        </createIndex>
+
+        <createIndex tableName="m_fee_split_audit" indexName="idx_fee_split_audit_split_date">
+            <column name="split_date"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Create fee split detail table -->
+    <changeSet id="create-fee-split-detail-table" author="paystack">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_fee_split_detail"/>
+            </not>
+        </preConditions>
+        <comment>Create m_fee_split_detail table for individual split details</comment>
+        <createTable tableName="m_fee_split_detail">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="audit_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="fund_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="split_amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="split_percentage" type="DECIMAL(5,2)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="gl_account_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="journal_entry_id" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint baseTableName="m_fee_split_detail"
+                                 baseColumnNames="audit_id"
+                                 constraintName="FK_fee_split_detail_audit"
+                                 referencedTableName="m_fee_split_audit"
+                                 referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint baseTableName="m_fee_split_detail"
+                                 baseColumnNames="fund_id"
+                                 constraintName="FK_fee_split_detail_fund"
+                                 referencedTableName="m_fund"
+                                 referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint baseTableName="m_fee_split_detail"
+                                 baseColumnNames="gl_account_id"
+                                 constraintName="FK_fee_split_detail_gl_account"
+                                 referencedTableName="acc_gl_account"
+                                 referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint baseTableName="m_fee_split_detail"
+                                 baseColumnNames="journal_entry_id"
+                                 constraintName="FK_fee_split_detail_journal_entry"
+                                 referencedTableName="acc_gl_journal_entry"
+                                 referencedColumnNames="id"/>
+    </changeSet>
+
+</databaseChangeLog>

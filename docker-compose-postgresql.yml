@@ -27,7 +27,7 @@ services:
 
   fineract:
     extends:
-      file: ./config/docker/compose/fineract.yml
+      file: ./config/docker/compose/fineract-custom.yml
       service: fineract
     ports:
       - "8443:8443"

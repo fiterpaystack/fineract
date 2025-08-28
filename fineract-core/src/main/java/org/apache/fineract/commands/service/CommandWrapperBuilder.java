@@ -514,6 +514,30 @@ public class CommandWrapperBuilder {
         return this;
     }
 
+    public CommandWrapperBuilder createChargeSplit(Long chargeId) {
+        this.actionName = "CREATE";
+        this.entityName = "CHARGE_SPLIT";
+        this.entityId = chargeId;
+        this.href = "/charges/" + chargeId + "/splits";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateChargeSplit(Long chargeId, Long splitId) {
+        this.actionName = "UPDATE";
+        this.entityName = "CHARGE_SPLIT";
+        this.entityId = splitId;
+        this.href = "/charges/" + chargeId + "/splits/" + splitId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteChargeSplit(Long chargeId, Long splitId) {
+        this.actionName = "DELETE";
+        this.entityName = "CHARGE_SPLIT";
+        this.entityId = splitId;
+        this.href = "/charges/" + chargeId + "/splits/" + splitId;
+        return this;
+    }
+
     public CommandWrapperBuilder createCollateral() {
         this.actionName = "CREATE";
         this.entityId = null;

@@ -16,23 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package com.paystack.fineract.portfolio.account.dto;
 
-dependencies {
-    implementation(project(':fineract-provider'))
-    implementation(project(':fineract-loan'))
-    implementation(project(':fineract-savings'))
-    implementation(project(':fineract-core'))
-    implementation(project(':fineract-charge'))
-    implementation(project(':fineract-accounting'))
-    implementation(project(':fineract-tax'))
-    implementation(project(":custom:paystack:client:charge"))
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa") {
-        exclude group: 'org.hibernate'
-    }
+import java.math.BigDecimal;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-    implementation('org.eclipse.persistence:org.eclipse.persistence.jpa') {
-        exclude group: 'org.hibernate'
-    }
-    implementation 'jakarta.ws.rs:jakarta.ws.rs-api'
-    implementation 'io.swagger.core.v3:swagger-annotations-jakarta'
+/**
+ * DTO for fee split detail responses to avoid serialization issues with lazy-loaded entities
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class FeeSplitDetailResponse {
+
+    private Long id;
+    private String fundName;
+    private BigDecimal splitAmount;
+    private BigDecimal splitPercentage;
+    private String glAccountName;
+    private Long glAccountId;
+    private Long journalEntryId;
 }

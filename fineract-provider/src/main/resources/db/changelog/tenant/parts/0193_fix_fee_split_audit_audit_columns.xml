@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Fix missing audit columns in m_fee_split_audit table -->
+    <changeSet id="fix-fee-split-audit-audit-columns" author="paystack">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_fee_split_audit" columnName="last_modified_by"/>
+            </not>
+        </preConditions>
+        <comment>Add missing audit columns to m_fee_split_audit table</comment>
+        
+        <!-- Add missing audit columns -->
+        <addColumn tableName="m_fee_split_audit">
+            <column name="last_modified_by" type="BIGINT"/>
+            <column name="last_modified_on_utc" type="TIMESTAMP"/>
+        </addColumn>
+
+        <!-- Add foreign key constraint for last_modified_by -->
+        <addForeignKeyConstraint baseTableName="m_fee_split_audit"
+                                 baseColumnNames="last_modified_by"
+                                 constraintName="FK_fee_split_audit_modifiedby"
+                                 referencedTableName="m_appuser"
+                                 referencedColumnNames="id"/>
+
+        <!-- Add index on charge_id for better performance -->
+        <createIndex tableName="m_fee_split_audit" indexName="idx_fee_split_audit_charge_id">
+            <column name="charge_id"/>
+        </createIndex>
+
+        <!-- Add composite index for common queries -->
+        <createIndex tableName="m_fee_split_audit" indexName="idx_fee_split_audit_charge_date">
+            <column name="charge_id"/>
+            <column name="split_date"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>
