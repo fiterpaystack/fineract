@@ -42,4 +42,9 @@ jobs:
       - name: Run checks for style checkstylemain and pmd
         run: |
           # Build the JAR
-          ./gradlew --no-daemon --console=plain spotlessCheck checkstyleMain pmdMain
+          ./gradlew --no-daemon --console=plain spotlessCheck checkstyleMain spotBugsMain pmdMain
+
+      - name: Run unit tests on the code
+        run: |
+          # Build the JAR
+          ./gradlew --no-daemon --console=plain test -x :integration-tests:test -x spotlessCheck -x checkstyleMain -x spotBugsMain -x pmdMain -x :twofactor-tests:test -x :fineract-e2e-tests-runner:test -x :oauth2-tests:test

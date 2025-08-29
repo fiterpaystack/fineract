@@ -38,15 +38,15 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public final class FinancialActivityAccountDataValidator {
+public class FinancialActivityAccountDataValidator {
 
     /**
      * The parameters supported for this command.
      */
     private final Set<String> supportedParameters = FinancialActivityAccountsJsonInputParams.getAllValues();
 
-    private final String paramNameForFinancialActivity = FinancialActivityAccountsJsonInputParams.FINANCIAL_ACTIVITY_ID.getValue();
-    private final String paramNameForGLAccount = FinancialActivityAccountsJsonInputParams.GL_ACCOUNT_ID.getValue();
+    protected final String paramNameForFinancialActivity = FinancialActivityAccountsJsonInputParams.FINANCIAL_ACTIVITY_ID.getValue();
+    protected final String paramNameForGLAccount = FinancialActivityAccountsJsonInputParams.GL_ACCOUNT_ID.getValue();
 
     private final FromJsonHelper fromApiJsonHelper;
 
@@ -71,7 +71,7 @@ public final class FinancialActivityAccountDataValidator {
         throwExceptionIfValidationWarningsExist(dataValidationErrors);
     }
 
-    private DataValidatorBuilder getDataValidator(final List<ApiParameterError> dataValidationErrors) {
+    protected DataValidatorBuilder getDataValidator(final List<ApiParameterError> dataValidationErrors) {
         final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("financialactivityaccount");
         return baseDataValidator;
     }
@@ -101,7 +101,7 @@ public final class FinancialActivityAccountDataValidator {
         throwExceptionIfValidationWarningsExist(dataValidationErrors);
     }
 
-    private void validateJSONAndCheckForUnsupportedParams(final String json) {
+    protected void validateJSONAndCheckForUnsupportedParams(final String json) {
         if (StringUtils.isBlank(json)) {
             throw new InvalidJsonException();
         }
@@ -110,7 +110,7 @@ public final class FinancialActivityAccountDataValidator {
         this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, json, this.supportedParameters);
     }
 
-    private void throwExceptionIfValidationWarningsExist(final List<ApiParameterError> dataValidationErrors) {
+    protected void throwExceptionIfValidationWarningsExist(final List<ApiParameterError> dataValidationErrors) {
         if (!dataValidationErrors.isEmpty()) {
             throw new PlatformApiDataValidationException("validation.msg.validation.errors.exist", "Validation errors exist.",
                     dataValidationErrors);

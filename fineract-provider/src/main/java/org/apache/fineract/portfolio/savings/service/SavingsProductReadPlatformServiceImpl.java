@@ -41,9 +41,9 @@ import org.springframework.jdbc.core.RowMapper;
 @RequiredArgsConstructor
 public class SavingsProductReadPlatformServiceImpl implements SavingsProductReadPlatformService {
 
-    private final PlatformSecurityContext context;
-    private final JdbcTemplate jdbcTemplate;
-    private final SavingProductMapper savingsProductRowMapper = new SavingProductMapper();
+    protected final PlatformSecurityContext context;
+    protected final JdbcTemplate jdbcTemplate;
+    protected final SavingProductMapper savingsProductRowMapper = new SavingProductMapper();
     private final SavingProductLookupMapper savingsProductLookupsRowMapper = new SavingProductLookupMapper();
     private final FineractEntityAccessUtil fineractEntityAccessUtil;
 
@@ -94,7 +94,7 @@ public class SavingsProductReadPlatformServiceImpl implements SavingsProductRead
         }
     }
 
-    private static final class SavingProductMapper implements RowMapper<SavingsProductData> {
+    protected static final class SavingProductMapper implements RowMapper<SavingsProductData> {
 
         private final String schemaSql;
 

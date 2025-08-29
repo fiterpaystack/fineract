@@ -128,92 +128,60 @@ public final class SavingsEnumerations {
         SavingsAccountTransactionEnumData optionData = new SavingsAccountTransactionEnumData(
                 SavingsAccountTransactionType.INVALID.getValue().longValue(), SavingsAccountTransactionType.INVALID.getCode(), "Invalid");
 
-        switch (type) {
-            case INVALID:
-                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.INVALID.getValue().longValue(),
-                        SavingsAccountTransactionType.INVALID.getCode(), "Invalid");
-            break;
-            case DEPOSIT:
-                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.DEPOSIT.getValue().longValue(),
-                        SavingsAccountTransactionType.DEPOSIT.getCode(), "Deposit");
-            break;
-            case WITHDRAWAL:
-                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.WITHDRAWAL.getValue().longValue(),
-                        SavingsAccountTransactionType.WITHDRAWAL.getCode(), "Withdrawal");
-            break;
-            case ACCRUAL:
-                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.ACCRUAL.getValue().longValue(),
-                        SavingsAccountTransactionType.ACCRUAL.getCode(), "Accrual");
-            break;
-            case INTEREST_POSTING:
-                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.INTEREST_POSTING.getValue().longValue(),
+        optionData = switch (type) {
+            case INVALID -> new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.INVALID.getValue().longValue(),
+                    SavingsAccountTransactionType.INVALID.getCode(), "Invalid");
+            case DEPOSIT -> new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.DEPOSIT.getValue().longValue(),
+                    SavingsAccountTransactionType.DEPOSIT.getCode(), "Deposit");
+            case WITHDRAWAL -> new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.WITHDRAWAL.getValue().longValue(),
+                    SavingsAccountTransactionType.WITHDRAWAL.getCode(), "Withdrawal");
+            case ACCRUAL -> new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.ACCRUAL.getValue().longValue(),
+                    SavingsAccountTransactionType.ACCRUAL.getCode(), "Accrual");
+            case INTEREST_POSTING ->
+                new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.INTEREST_POSTING.getValue().longValue(),
                         SavingsAccountTransactionType.INTEREST_POSTING.getCode(), "Interest posting");
-            break;
-            case WITHDRAWAL_FEE:
-                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.WITHDRAWAL_FEE.getValue().longValue(),
+            case WITHDRAWAL_FEE ->
+                new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.WITHDRAWAL_FEE.getValue().longValue(),
                         SavingsAccountTransactionType.WITHDRAWAL_FEE.getCode(), "Withdrawal fee");
-            break;
-            case ANNUAL_FEE:
-                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.ANNUAL_FEE.getValue().longValue(),
-                        SavingsAccountTransactionType.ANNUAL_FEE.getCode(), "Annual fee");
-            break;
-            case APPROVE_TRANSFER:
-                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.APPROVE_TRANSFER.getValue().longValue(),
+            case ANNUAL_FEE -> new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.ANNUAL_FEE.getValue().longValue(),
+                    SavingsAccountTransactionType.ANNUAL_FEE.getCode(), "Annual fee");
+            case APPROVE_TRANSFER ->
+                new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.APPROVE_TRANSFER.getValue().longValue(),
                         SavingsAccountTransactionType.APPROVE_TRANSFER.getCode(), "Transfer approved");
-            break;
-            case INITIATE_TRANSFER:
-                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.INITIATE_TRANSFER.getValue().longValue(),
+            case INITIATE_TRANSFER ->
+                new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.INITIATE_TRANSFER.getValue().longValue(),
                         SavingsAccountTransactionType.INITIATE_TRANSFER.getCode(), "Transfer initiated");
-            break;
-            case REJECT_TRANSFER:
-                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.REJECT_TRANSFER.getValue().longValue(),
+            case REJECT_TRANSFER ->
+                new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.REJECT_TRANSFER.getValue().longValue(),
                         SavingsAccountTransactionType.REJECT_TRANSFER.getCode(), "Transfer Rejected");
-            break;
-            case WITHDRAW_TRANSFER:
-                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.WITHDRAW_TRANSFER.getValue().longValue(),
+            case WITHDRAW_TRANSFER ->
+                new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.WITHDRAW_TRANSFER.getValue().longValue(),
                         SavingsAccountTransactionType.WITHDRAW_TRANSFER.getCode(), "Transfer Withdrawn");
-            break;
-            case PAY_CHARGE:
-                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.PAY_CHARGE.getValue().longValue(),
-                        SavingsAccountTransactionType.PAY_CHARGE.getCode(), "Pay Charge");
-            break;
-            case WAIVE_CHARGES:
-                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.WAIVE_CHARGES.getValue().longValue(),
-                        SavingsAccountTransactionType.WAIVE_CHARGES.getCode(), "Waive Charge");
-            break;
-            case WRITTEN_OFF:
-                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.WRITTEN_OFF.getValue().longValue(),
-                        SavingsAccountTransactionType.WRITTEN_OFF.getCode(), "writtenoff");
-            break;
-            case OVERDRAFT_INTEREST:
-                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.OVERDRAFT_INTEREST.getValue().longValue(),
+            case PAY_CHARGE -> new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.PAY_CHARGE.getValue().longValue(),
+                    SavingsAccountTransactionType.PAY_CHARGE.getCode(), "Pay Charge");
+            case WAIVE_CHARGES -> new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.WAIVE_CHARGES.getValue().longValue(),
+                    SavingsAccountTransactionType.WAIVE_CHARGES.getCode(), "Waive Charge");
+            case WRITTEN_OFF -> new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.WRITTEN_OFF.getValue().longValue(),
+                    SavingsAccountTransactionType.WRITTEN_OFF.getCode(), "writtenoff");
+            case OVERDRAFT_INTEREST ->
+                new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.OVERDRAFT_INTEREST.getValue().longValue(),
                         SavingsAccountTransactionType.OVERDRAFT_INTEREST.getCode(), "Overdraft Interest");
-            break;
-            case WITHHOLD_TAX:
-                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.WITHHOLD_TAX.getValue().longValue(),
-                        SavingsAccountTransactionType.WITHHOLD_TAX.getCode(), "Withhold Tax");
-            break;
-            case DIVIDEND_PAYOUT:
-                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.DIVIDEND_PAYOUT.getValue().longValue(),
+            case WITHHOLD_TAX -> new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.WITHHOLD_TAX.getValue().longValue(),
+                    SavingsAccountTransactionType.WITHHOLD_TAX.getCode(), "Withhold Tax");
+            case DIVIDEND_PAYOUT ->
+                new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.DIVIDEND_PAYOUT.getValue().longValue(),
                         SavingsAccountTransactionType.DIVIDEND_PAYOUT.getCode(), "Dividend Payout");
-            break;
-            case ESCHEAT:
-                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.ESCHEAT.getValue().longValue(),
-                        SavingsAccountTransactionType.ESCHEAT.getCode(), "Escheat");
-            break;
-            case AMOUNT_HOLD:
-                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.AMOUNT_HOLD.getValue().longValue(),
-                        SavingsAccountTransactionType.AMOUNT_HOLD.getCode(), "Amount on hold");
-            break;
-            case AMOUNT_RELEASE:
-                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.AMOUNT_RELEASE.getValue().longValue(),
+            case ESCHEAT -> new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.ESCHEAT.getValue().longValue(),
+                    SavingsAccountTransactionType.ESCHEAT.getCode(), "Escheat");
+            case AMOUNT_HOLD -> new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.AMOUNT_HOLD.getValue().longValue(),
+                    SavingsAccountTransactionType.AMOUNT_HOLD.getCode(), "Amount on hold");
+            case AMOUNT_RELEASE ->
+                new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.AMOUNT_RELEASE.getValue().longValue(),
                         SavingsAccountTransactionType.AMOUNT_RELEASE.getCode(), "Release Amount");
-            break;
-            case VAT_ON_FEES:
-                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.VAT_ON_FEES.getValue().longValue(),
-                        SavingsAccountTransactionType.VAT_ON_FEES.getCode(), "VAT on Fees");
-            break;
-        }
+            case VAT_ON_FEES -> new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.VAT_ON_FEES.getValue().longValue(),
+                    SavingsAccountTransactionType.VAT_ON_FEES.getCode(), "VAT on Fees");
+            default -> optionData;
+        };
         return optionData;
     }
 
