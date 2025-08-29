@@ -105,65 +105,46 @@ public class FeeSplitService {
 
     @Transactional
     public void processFeeSplitForSavings(SavingsAccountTransaction savingsTransaction, BigDecimal totalFeeAmount) {
-        log.info("=== FEE SPLIT SERVICE: Starting processFeeSplitForSavings ===");
-        log.info("Transaction ID: {}, Amount: {}, Type: {}", savingsTransaction.getId(), totalFeeAmount,
-                savingsTransaction.getTransactionType());
-        log.info("Transaction Date: {}, Currency: {}", savingsTransaction.getTransactionDate(), savingsTransaction.getCurrency());
+        log.debug("Processing fee split for savings transaction: {}, amount: {}", savingsTransaction.getId(), totalFeeAmount);
 
         // Get charge and check if fee splitting is enabled
-        log.info("Attempting to get charge from savings transaction...");
         Charge charge = getChargeFromSavingsTransaction(savingsTransaction);
 
         if (charge == null) {
-            log.error("❌ No charge found for savings transaction: {}", savingsTransaction.getId());
+            log.error("No charge found for savings transaction: {}", savingsTransaction.getId());
             return;
         }
 
-        log.info("✅ Charge found: ID={}, Name={}, Enable Fee Split={}", charge.getId(), charge.getName(), charge.isEnableFeeSplit());
+        log.debug("Charge found: ID={}, Enable Fee Split={}", charge.getId(), charge.isEnableFeeSplit());
 
         if (!charge.isEnableFeeSplit()) {
-            log.warn("❌ Fee splitting is NOT enabled for charge: {}", charge.getId());
+            log.debug("Fee splitting is not enabled for charge: {}", charge.getId());
             return;
         }
 
         // Get stakeholder splits for this charge
-        log.info("Looking for active splits for charge: {}", charge.getId());
         List<ChargeSplit> splits = splitRepository.findActiveSplitsByChargeId(charge.getId());
-        log.info("Found {} splits for charge: {}", splits.size(), charge.getId());
+        log.debug("Found {} splits for charge: {}", splits.size(), charge.getId());
 
         if (splits.isEmpty()) {
-            log.warn("❌ No active splits found for charge: {}", charge.getId());
+            log.warn("No active splits found for charge: {}", charge.getId());
             return;
         }
 
-        // Log split details
-        for (ChargeSplit split : splits) {
-            log.info("Split: ID={}, Fund={}, Type={}, Value={}", split.getId(), split.getFund().getName(),
-                    split.isPercentageSplit() ? "PERCENTAGE" : "FLAT_AMOUNT", split.getSplitValue());
-        }
-
         // Validate total splits don't exceed 100%
-        log.info("Validating split totals...");
         validateSplitTotals(splits, totalFeeAmount);
-        log.info("✅ Split validation passed");
 
         // Create audit record
-        log.info("Creating audit record...");
         FeeSplitAudit audit = createAuditRecordForSavings(savingsTransaction, charge, totalFeeAmount);
-        log.info("✅ Audit record created: {}", audit.getId());
 
         // Process each split
-        log.info("Processing individual splits...");
         for (ChargeSplit split : splits) {
-            log.info("Processing split: {}", split.getId());
             processIndividualSplitForSavings(split, totalFeeAmount, audit, savingsTransaction);
         }
 
         // Save audit record with all details
-        log.info("Saving audit record...");
         auditRepository.save(audit);
 
-        log.info("=== FEE SPLIT SERVICE: Completed successfully ===");
         log.info("Fee split processing completed for savings transaction: {}, total splits: {}", savingsTransaction.getId(), splits.size());
     }
 
@@ -177,36 +158,26 @@ public class FeeSplitService {
     }
 
     private Charge getChargeFromSavingsTransaction(SavingsAccountTransaction savingsTransaction) {
-        log.info("Getting charge from savings transaction: {}", savingsTransaction.getId());
+        log.debug("Getting charge from savings transaction: {}", savingsTransaction.getId());
 
         // For savings transactions, we need to find the associated charge
         // We'll look up the charge through the savings account charges
         try {
             // Get the savings account from the transaction
             if (savingsTransaction.getSavingsAccount() != null) {
-                log.info("Savings account found: {}", savingsTransaction.getSavingsAccount().getId());
+                log.debug("Savings account found: {}", savingsTransaction.getSavingsAccount().getId());
 
                 // Look for charges that match this transaction
                 // This is a simplified approach - we'll look for charges with the same amount
-                log.info("Total charges on account: {}", savingsTransaction.getSavingsAccount().charges().size());
-                log.info("Looking for charge matching transaction amount: {}", savingsTransaction.getAmount());
-
                 for (SavingsAccountCharge accountCharge : savingsTransaction.getSavingsAccount().charges()) {
                     BigDecimal chargeAmount = accountCharge.getAmount(savingsTransaction.getCurrency()).getAmount();
                     BigDecimal chargeOutstanding = accountCharge.getAmountOutstanding(savingsTransaction.getCurrency()).getAmount();
 
-                    log.info("Checking charge: ID={}, Amount={}, Outstanding={}, Active={}", accountCharge.getCharge().getId(),
-                            chargeAmount, chargeOutstanding, accountCharge.isActive());
-
                     // Fix: Use type-safe comparison for Money vs BigDecimal
                     if (chargeAmount.compareTo(savingsTransaction.getAmount()) == 0) {
-                        log.info("✅ Found matching charge: {} for transaction: {}", accountCharge.getCharge().getId(),
+                        log.debug("Found matching charge: {} for transaction: {}", accountCharge.getCharge().getId(),
                                 savingsTransaction.getId());
-                        log.info("Charge amount: {}, Transaction amount: {}, Match: {}", chargeAmount, savingsTransaction.getAmount(),
-                                chargeAmount.compareTo(savingsTransaction.getAmount()) == 0);
                         return accountCharge.getCharge();
-                    } else {
-                        log.debug("No match: Charge amount {} != Transaction amount {}", chargeAmount, savingsTransaction.getAmount());
                     }
                 }
 
@@ -255,16 +226,13 @@ public class FeeSplitService {
 
     private FeeSplitAudit createAuditRecordForSavings(SavingsAccountTransaction savingsTransaction, Charge charge,
             BigDecimal totalFeeAmount) {
-        log.info("Creating audit record for savings transaction: {}", savingsTransaction.getId());
         try {
             String transactionId = generateTransactionId(savingsTransaction.getSavingsAccount().officeId());
-            log.info("Generated transaction ID: {}", transactionId);
-
             FeeSplitAudit audit = FeeSplitAudit.createNew(transactionId, charge, totalFeeAmount, DateUtils.getBusinessLocalDate());
-            log.info("✅ Audit record created successfully: {}", audit.getId());
+            log.debug("Audit record created: {}", audit.getId());
             return audit;
         } catch (Exception e) {
-            log.error("❌ Error creating audit record: {}", e.getMessage(), e);
+            log.error("Error creating audit record: {}", e.getMessage(), e);
             throw e;
         }
     }
@@ -300,19 +268,18 @@ public class FeeSplitService {
             audit.addSplitDetail(detail);
 
         } catch (Exception e) {
-            log.error("❌ Error processing individual client split: {}", e.getMessage(), e);
+            log.error("Error processing individual client split: {}", e.getMessage(), e);
             throw e;
         }
     }
 
     private void processIndividualSplitForSavings(ChargeSplit split, BigDecimal totalFeeAmount, FeeSplitAudit audit,
             SavingsAccountTransaction savingsTransaction) {
-        log.info("Processing individual split: ID={}, Fund={}, Value={}", split.getId(), split.getFund().getName(), split.getSplitValue());
+        log.debug("Processing individual split: ID={}, Fund={}", split.getId(), split.getFund().getName());
 
         try {
             // Calculate split amount
             BigDecimal splitAmount = split.calculateSplitAmount(totalFeeAmount);
-            log.info("Calculated split amount: {} for total fee: {}", splitAmount, totalFeeAmount);
 
             // Get charge for GL account resolution
             Charge charge = getChargeFromSavingsTransaction(savingsTransaction);
@@ -326,34 +293,27 @@ public class FeeSplitService {
             }
 
             // Create balanced journal entries
-            log.info("Creating balanced journal entries for split...");
             List<JournalEntry> journalEntries = createJournalEntriesForSavingsSplit(split, splitAmount, savingsTransaction, charge);
 
             // Use the CREDIT entry for the split detail (maintains existing logic)
             JournalEntry creditEntry = journalEntries.stream().filter(je -> je.getType().equals(JournalEntryType.CREDIT.getValue()))
                     .findFirst().orElseThrow(() -> new IllegalStateException("Credit entry not found in balanced journal entries"));
 
-            log.info("✅ Journal entries created: DEBIT={}, CREDIT={}", journalEntries.stream()
-                    .filter(je -> je.getType().equals(JournalEntryType.DEBIT.getValue())).findFirst().map(JournalEntry::getId).orElse(null),
-                    creditEntry.getId());
-
             // Create split detail record
-            log.info("Creating split detail record...");
             FeeSplitDetail detail = FeeSplitDetail.createNew(audit, split.getFund(), splitAmount,
                     split.isPercentageSplit() ? split.getSplitValue() : null, split.getGlAccount(), creditEntry);
 
             audit.addSplitDetail(detail);
-            log.info("✅ Split detail added to audit record");
 
         } catch (Exception e) {
-            log.error("❌ Error processing individual split: {}", e.getMessage(), e);
+            log.error("Error processing individual split: {}", e.getMessage(), e);
             throw e;
         }
     }
 
     private List<JournalEntry> createJournalEntriesForSplit(ChargeSplit split, BigDecimal splitAmount, ClientTransaction clientTransaction,
             Charge charge) {
-        log.info("Creating balanced journal entries for client split: Split ID={}, Amount={}", split.getId(), splitAmount);
+        log.debug("Creating balanced journal entries for client split: Split ID={}, Amount={}", split.getId(), splitAmount);
 
         try {
             Office office = clientTransaction.getClient().getOffice();
@@ -363,11 +323,6 @@ public class FeeSplitService {
 
             // Get original income account (implement similar to savings)
             GLAccount originalIncomeAccount = getOriginalIncomeAccountForClient(charge, clientTransaction);
-
-            log.info("Office: {}, Currency: {}, Date: {}, Transaction ID: {}", office.getId(), currencyCode, transactionDate,
-                    transactionId);
-            log.info("Original Income Account: {}, Destination GL Account: {}, Fund: {}", originalIncomeAccount.getId(),
-                    split.getGlAccount().getId(), split.getFund().getName());
 
             // Create DEBIT entry from original income account
             JournalEntry debitEntry = JournalEntry.createNew(office, null, // paymentDetail
@@ -394,7 +349,6 @@ public class FeeSplitService {
             );
 
             // Persist both entries
-            log.info("Persisting balanced journal entries for client split...");
             JournalEntry persistedDebit = accountingHelper.persistJournalEntry(debitEntry);
             JournalEntry persistedCredit = accountingHelper.persistJournalEntry(creditEntry);
 
@@ -404,19 +358,19 @@ public class FeeSplitService {
             validateJournalEntryBalance(journalEntries, splitAmount);
             validateTransactionIdUniqueness(journalEntries);
 
-            log.info("✅ Balanced journal entries created for client: DEBIT={}, CREDIT={}", persistedDebit.getId(), persistedCredit.getId());
+            log.debug("Balanced journal entries created for client: DEBIT={}, CREDIT={}", persistedDebit.getId(), persistedCredit.getId());
 
             return journalEntries;
 
         } catch (Exception e) {
-            log.error("❌ Error creating balanced journal entries for client split: {}", e.getMessage(), e);
+            log.error("Error creating balanced journal entries for client split: {}", e.getMessage(), e);
             throw e;
         }
     }
 
     private List<JournalEntry> createJournalEntriesForSavingsSplit(ChargeSplit split, BigDecimal splitAmount,
             SavingsAccountTransaction savingsTransaction, Charge charge) {
-        log.info("Creating balanced journal entries for savings split: Split ID={}, Amount={}", split.getId(), splitAmount);
+        log.debug("Creating balanced journal entries for savings split: Split ID={}, Amount={}", split.getId(), splitAmount);
 
         try {
             Office office = savingsTransaction.getSavingsAccount().office();
@@ -426,11 +380,6 @@ public class FeeSplitService {
 
             // Get original income account
             GLAccount originalIncomeAccount = getOriginalIncomeAccount(charge, savingsTransaction);
-
-            log.info("Office: {}, Currency: {}, Date: {}, Transaction ID: {}", office.getId(), currencyCode, transactionDate,
-                    transactionId);
-            log.info("Original Income Account: {}, Destination GL Account: {}, Fund: {}", originalIncomeAccount.getId(),
-                    split.getGlAccount().getId(), split.getFund().getName());
 
             // Create DEBIT entry from original income account
             JournalEntry debitEntry = JournalEntry.createNew(office, null, // paymentDetail
@@ -457,7 +406,6 @@ public class FeeSplitService {
             );
 
             // Persist both entries atomically
-            log.info("Persisting balanced journal entries...");
             JournalEntry persistedDebit = accountingHelper.persistJournalEntry(debitEntry);
             JournalEntry persistedCredit = accountingHelper.persistJournalEntry(creditEntry);
 
@@ -467,12 +415,12 @@ public class FeeSplitService {
             validateJournalEntryBalance(journalEntries, splitAmount);
             validateTransactionIdUniqueness(journalEntries);
 
-            log.info("✅ Balanced journal entries created: DEBIT={}, CREDIT={}", persistedDebit.getId(), persistedCredit.getId());
+            log.debug("Balanced journal entries created: DEBIT={}, CREDIT={}", persistedDebit.getId(), persistedCredit.getId());
 
             return journalEntries;
 
         } catch (Exception e) {
-            log.error("❌ Error creating balanced journal entries for savings split: {}", e.getMessage(), e);
+            log.error("Error creating balanced journal entries for savings split: {}", e.getMessage(), e);
             throw e;
         }
     }
@@ -486,8 +434,7 @@ public class FeeSplitService {
             Long chargeId = charge.getId();
             int accountTypeId = CashAccountsForSavings.INCOME_FROM_FEES.getValue(); // = 4
 
-            log.info("Getting original income account for charge {} from savings product {} using account type {}", chargeId,
-                    savingsProductId, accountTypeId);
+            log.debug("Getting original income account for charge {} from savings product {}", chargeId, savingsProductId);
 
             // 1. Get product-level default mapping (EXACT same as Fineract)
             ProductToGLAccountMapping accountMapping = accountMappingRepository.findCoreProductToFinAccountMapping(savingsProductId,
@@ -499,7 +446,7 @@ public class FeeSplitService {
                 // Try to get charge's own account (EXACT same as Fineract)
                 GLAccount glAccount = charge.getAccount();
                 if (glAccount != null) {
-                    log.info("✅ Using charge-specific account: ID={}, Name={}", glAccount.getId(), glAccount.getName());
+                    log.debug("Using charge-specific account: ID={}", glAccount.getId());
                     return glAccount;
                 }
 
@@ -509,14 +456,13 @@ public class FeeSplitService {
                                 PortfolioProductType.SAVING.getValue(), accountTypeId, chargeId);
                 if (chargeSpecificIncomeAccountMapping != null) {
                     accountMapping = chargeSpecificIncomeAccountMapping;
-                    log.info("✅ Using charge-specific product mapping: ID={}, Name={}", accountMapping.getGlAccount().getId(),
-                            accountMapping.getGlAccount().getName());
+                    log.debug("Using charge-specific product mapping: ID={}", accountMapping.getGlAccount().getId());
                 }
             }
 
             // 3. Return the best available account (EXACT same as Fineract)
             GLAccount finalAccount = accountMapping.getGlAccount();
-            log.info("✅ Using product default account: ID={}, Name={}", finalAccount.getId(), finalAccount.getName());
+            log.debug("Using product default account: ID={}", finalAccount.getId());
             return finalAccount;
 
         } catch (Exception e) {
@@ -536,14 +482,14 @@ public class FeeSplitService {
             // For client transactions, we need to determine the appropriate income account
             // This implementation follows the same pattern as savings but for client products
 
-            log.info("Getting original income account for client charge: {}", charge.getId());
+            log.debug("Getting original income account for client charge: {}", charge.getId());
 
             // For now, we'll use the charge's own account if available
             // In a full implementation, you would need to determine the client's product
             // and use the same mapping logic as savings
             GLAccount chargeAccount = charge.getAccount();
             if (chargeAccount != null) {
-                log.info("✅ Using charge's own account as income account: ID={}, Name={}", chargeAccount.getId(), chargeAccount.getName());
+                log.debug("Using charge's own account as income account: ID={}", chargeAccount.getId());
                 return chargeAccount;
             }
 
@@ -586,8 +532,7 @@ public class FeeSplitService {
                             "expected", expectedAmount, "actual", totalDebits)));
         }
 
-        log.info("✅ Journal entry balance validation passed: DEBITS={}, CREDITS={}, EXPECTED={}", totalDebits, totalCredits,
-                expectedAmount);
+        log.debug("Journal entry balance validation passed: DEBITS={}, CREDITS={}, EXPECTED={}", totalDebits, totalCredits, expectedAmount);
     }
 
     /**
@@ -605,13 +550,12 @@ public class FeeSplitService {
                     "Transaction IDs are not unique across journal entries: " + transactionIds, dataValidationErrors);
         }
 
-        log.info("✅ Transaction ID uniqueness validation passed: {}", transactionIds.iterator().next());
+        log.debug("Transaction ID uniqueness validation passed: {}", transactionIds.iterator().next());
     }
 
     private String generateTransactionId(Long officeId) {
-        log.info("Generating transaction ID for office: {}", officeId);
         String transactionId = "FS" + officeId + System.currentTimeMillis();
-        log.info("Generated transaction ID: {}", transactionId);
+        log.debug("Generated transaction ID: {}", transactionId);
         return transactionId;
     }
 
@@ -619,30 +563,20 @@ public class FeeSplitService {
      * Log comprehensive fee split summary for production monitoring
      */
     private void logFeeSplitSummary(FeeSplitAudit audit, List<ChargeSplit> splits, SavingsAccountTransaction savingsTransaction) {
-        log.info("=== FEE SPLIT SUMMARY ===");
-        log.info("Transaction ID: {}", savingsTransaction.getId());
-        log.info("Charge ID: {}, Name: {}", audit.getCharge().getId(), audit.getCharge().getName());
-        log.info("Total Fee Amount: {}", audit.getTotalFeeAmount());
-        log.info("Split Date: {}", audit.getSplitDate());
-        log.info("Total Splits: {}", splits.size());
+        log.debug("Fee split summary - Transaction: {}, Charge: {}, Total Fee: {}, Splits: {}", savingsTransaction.getId(),
+                audit.getCharge().getId(), audit.getTotalFeeAmount(), splits.size());
 
         BigDecimal totalSplitAmount = audit.getTotalSplitAmount();
-        log.info("Total Split Amount: {}", totalSplitAmount);
 
         // Verify balance
         if (audit.getTotalFeeAmount().compareTo(totalSplitAmount) != 0) {
-            log.warn("⚠️ WARNING: Total fee amount ({}) != Total split amount ({})", audit.getTotalFeeAmount(), totalSplitAmount);
-        } else {
-            log.info("✅ Balance verification passed: Fee amount = Split amount");
+            log.warn("Total fee amount ({}) != Total split amount ({})", audit.getTotalFeeAmount(), totalSplitAmount);
         }
 
-        // Log individual splits
+        // Log individual splits at debug level
         for (FeeSplitDetail detail : audit.getSplitDetails()) {
-            log.info("Split Detail: Fund={}, Amount={}, Percentage={}, GL Account={}, Journal Entry={}", detail.getFund().getName(),
-                    detail.getSplitAmount(), detail.getSplitPercentage(), detail.getGlAccount().getName(),
-                    detail.getJournalEntry().getId());
+            log.debug("Split Detail: Fund={}, Amount={}, GL Account={}", detail.getFund().getName(), detail.getSplitAmount(),
+                    detail.getGlAccount().getName());
         }
-
-        log.info("=== END FEE SPLIT SUMMARY ===");
     }
 }
