@@ -16,12 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-description = 'Paystack Fineract Account'
 
-group = 'com.paystack.fineract'
-
-base {
-    archivesName = 'paystack-fineract-client-charge'
+dependencies {
+    implementation(project(':fineract-accounting'))
 }
-
-apply from: 'dependencies.gradle'

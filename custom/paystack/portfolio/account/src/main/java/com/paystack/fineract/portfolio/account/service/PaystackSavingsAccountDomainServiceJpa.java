@@ -399,8 +399,8 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
                 // Skip the fee and VAT transactions that were just created for this deposit
                 if (feeAndVatTransactionIds.contains(transaction.getId())) {
                     // DO NOT add these to existingTransactionIds - they will be included in GL posting
-                    log.debug("DEBUG: Fee/VAT transaction will be included in GL posting: " + transaction.getId() + ", Type: "
-                            + transaction.getTransactionType() + ", Amount: " + transaction.getAmount());
+                    log.debug("DEBUG: Fee/VAT transaction will be included in GL posting: {}, Type: {}, Amount: {}", transaction.getId(),
+                            transaction.getTransactionType(), transaction.getAmount());
                 } else {
                     // Add all other transactions to existingTransactionIds to exclude them from GL posting
                     existingTransactionIds.add(transaction.getId());

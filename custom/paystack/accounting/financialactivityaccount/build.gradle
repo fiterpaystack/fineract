@@ -18,10 +18,10 @@
  */
 description = 'Paystack Fineract Account'
 
-group = 'com.paystack.fineract'
+group = 'com.paystack.fineract.accounting.financialactivityaccount'
 
 base {
-    archivesName = 'paystack-fineract-client-charge'
+    archivesName = 'paystack-fineract-financial-activity-account'
 }
 
 apply from: 'dependencies.gradle'

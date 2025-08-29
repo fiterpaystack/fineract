@@ -16,12 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-description = 'Paystack Fineract Account'
+description = 'Paystack Fineract Infrastructure Configuration'
 
-group = 'com.paystack.fineract'
+group = 'com.paystack.fineract.infrastructure'
 
 base {
-    archivesName = 'paystack-fineract-client-charge'
+    archivesName = 'paystack-fineract-infrastructure-configuration'
 }
 
 apply from: 'dependencies.gradle'

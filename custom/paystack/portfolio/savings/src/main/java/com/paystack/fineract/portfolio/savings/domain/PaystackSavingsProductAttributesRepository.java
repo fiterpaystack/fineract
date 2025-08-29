@@ -16,12 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-description = 'Paystack Fineract Account'
+package com.paystack.fineract.portfolio.savings.domain;
 
-group = 'com.paystack.fineract'
+import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-base {
-    archivesName = 'paystack-fineract-client-charge'
+public interface PaystackSavingsProductAttributesRepository extends JpaRepository<PaystackSavingsProductAttributes, Long> {
+
+    Optional<PaystackSavingsProductAttributes> findBySavingsProductId(Long savingsProductId);
 }
-
-apply from: 'dependencies.gradle'
