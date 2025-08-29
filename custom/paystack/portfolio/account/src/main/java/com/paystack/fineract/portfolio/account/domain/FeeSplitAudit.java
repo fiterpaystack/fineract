@@ -18,8 +18,14 @@
  */
 package com.paystack.fineract.portfolio.account.domain;
 
-import jakarta.persistence.*;
-
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -35,8 +41,6 @@ import org.apache.fineract.portfolio.charge.domain.Charge;
 @Setter
 public class FeeSplitAudit extends AbstractAuditableWithUTCDateTimeCustom<Long> {
 
-
-
     @Column(name = "transaction_id", nullable = false, length = 50)
     private String transactionId;
 
@@ -50,20 +54,19 @@ public class FeeSplitAudit extends AbstractAuditableWithUTCDateTimeCustom<Long> 
     @Column(name = "split_date", nullable = false)
     private LocalDate splitDate;
 
-    @OneToMany(mappedBy = "audit", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @OneToMany(mappedBy = "audit", fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST, CascadeType.MERGE })
     private List<FeeSplitDetail> splitDetails = new ArrayList<>();
 
     protected FeeSplitAudit() {
         //
     }
 
-    public static FeeSplitAudit createNew(final String transactionId, final Charge charge, 
-            final BigDecimal totalFeeAmount, final LocalDate splitDate) {
+    public static FeeSplitAudit createNew(final String transactionId, final Charge charge, final BigDecimal totalFeeAmount,
+            final LocalDate splitDate) {
         return new FeeSplitAudit(transactionId, charge, totalFeeAmount, splitDate);
     }
 
-    private FeeSplitAudit(final String transactionId, final Charge charge, 
-            final BigDecimal totalFeeAmount, final LocalDate splitDate) {
+    private FeeSplitAudit(final String transactionId, final Charge charge, final BigDecimal totalFeeAmount, final LocalDate splitDate) {
         this.transactionId = transactionId;
         this.charge = charge;
         this.totalFeeAmount = totalFeeAmount;
@@ -76,8 +79,6 @@ public class FeeSplitAudit extends AbstractAuditableWithUTCDateTimeCustom<Long> 
     }
 
     public BigDecimal getTotalSplitAmount() {
-        return this.splitDetails.stream()
-                .map(FeeSplitDetail::getSplitAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return this.splitDetails.stream().map(FeeSplitDetail::getSplitAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }

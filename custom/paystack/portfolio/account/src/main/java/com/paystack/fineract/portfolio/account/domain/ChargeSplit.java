@@ -38,8 +38,7 @@ import org.apache.fineract.portfolio.fund.domain.Fund;
 
 @Entity
 @Table(name = "m_charge_split", uniqueConstraints = {
-    @UniqueConstraint(columnNames = { "charge_id", "fund_id" }, name = "unique_charge_fund_split")
-})
+        @UniqueConstraint(columnNames = { "charge_id", "fund_id" }, name = "unique_charge_fund_split") })
 @Getter
 @Setter
 public class ChargeSplit extends AbstractAuditableWithUTCDateTimeCustom<Long> {
@@ -69,13 +68,13 @@ public class ChargeSplit extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         //
     }
 
-    public static ChargeSplit createNew(final Charge charge, final Fund fund, final String splitType,
-            final BigDecimal splitValue, final GLAccount glAccount) {
+    public static ChargeSplit createNew(final Charge charge, final Fund fund, final String splitType, final BigDecimal splitValue,
+            final GLAccount glAccount) {
         return new ChargeSplit(charge, fund, splitType, splitValue, glAccount);
     }
 
-    private ChargeSplit(final Charge charge, final Fund fund, final String splitType,
-            final BigDecimal splitValue, final GLAccount glAccount) {
+    private ChargeSplit(final Charge charge, final Fund fund, final String splitType, final BigDecimal splitValue,
+            final GLAccount glAccount) {
         this.charge = charge;
         this.fund = fund;
         this.splitType = splitType;
@@ -84,8 +83,7 @@ public class ChargeSplit extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         this.active = true;
     }
 
-    public static ChargeSplit fromJson(final JsonCommand command, final Charge charge, final Fund fund,
-            final GLAccount glAccount) {
+    public static ChargeSplit fromJson(final JsonCommand command, final Charge charge, final Fund fund, final GLAccount glAccount) {
         final String splitType = command.stringValueOfParameterNamed("splitType");
         final BigDecimal splitValue = command.bigDecimalValueOfParameterNamed("splitValue");
         return new ChargeSplit(charge, fund, splitType, splitValue, glAccount);

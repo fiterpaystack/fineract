@@ -18,6 +18,10 @@
  */
 package com.paystack.fineract.portfolio.account.service;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
 import com.paystack.fineract.portfolio.account.domain.ChargeStakeholderSplit;
 import com.paystack.fineract.portfolio.account.domain.ChargeStakeholderSplitRepository;
 import java.math.BigDecimal;
@@ -41,10 +45,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ChargeStakeholderSplitServiceTest {

@@ -38,20 +38,18 @@ public interface FeeSplitAuditRepository extends JpaRepository<FeeSplitAudit, Lo
     List<FeeSplitAudit> findAuditsByDateRange(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
     @Query("SELECT fsa FROM FeeSplitAudit fsa WHERE fsa.charge.id = :chargeId AND fsa.splitDate >= :startDate AND fsa.splitDate <= :endDate")
-    List<FeeSplitAudit> findAuditsByChargeAndDateRange(@Param("chargeId") Long chargeId, 
-            @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+    List<FeeSplitAudit> findAuditsByChargeAndDateRange(@Param("chargeId") Long chargeId, @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
 
     @Query("SELECT fsa FROM FeeSplitAudit fsa JOIN fsa.splitDetails fsd WHERE fsd.fund.id = :fundId AND fsa.splitDate >= :startDate AND fsa.splitDate <= :endDate")
-    List<FeeSplitAudit> findAuditsByFundAndDateRange(@Param("fundId") Long fundId, 
-            @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+    List<FeeSplitAudit> findAuditsByFundAndDateRange(@Param("fundId") Long fundId, @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
 
     /**
      * Find fee split audits by office ID through transaction relationships
      */
-    @Query("SELECT DISTINCT fsa FROM FeeSplitAudit fsa " +
-           "JOIN SavingsAccountTransaction sat ON sat.refNo = fsa.transactionId " +
-           "JOIN SavingsAccount sa ON sa.id = sat.savingsAccount.id " +
-           "JOIN Client c ON c.id = sa.client.id " +
-           "WHERE c.office.id = :officeId")
+    @Query("SELECT DISTINCT fsa FROM FeeSplitAudit fsa " + "JOIN SavingsAccountTransaction sat ON sat.refNo = fsa.transactionId "
+            + "JOIN SavingsAccount sa ON sa.id = sat.savingsAccount.id " + "JOIN Client c ON c.id = sa.client.id "
+            + "WHERE c.office.id = :officeId")
     List<FeeSplitAudit> findByOfficeId(@Param("officeId") Long officeId);
 }

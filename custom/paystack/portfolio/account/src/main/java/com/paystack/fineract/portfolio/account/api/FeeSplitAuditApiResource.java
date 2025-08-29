@@ -18,32 +18,16 @@
  */
 package com.paystack.fineract.portfolio.account.api;
 
-import java.util.List;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.fineract.infrastructure.core.api.ApiRequestParameterHelper;
-import org.apache.fineract.infrastructure.core.data.ApiParameterError;
-import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
-import org.apache.fineract.infrastructure.core.data.PaginationParameters;
-import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
-import org.apache.fineract.infrastructure.core.serialization.ApiRequestJsonSerializationSettings;
-import org.apache.fineract.infrastructure.core.serialization.ToApiJsonSerializer;
-import org.apache.fineract.infrastructure.core.service.Page;
-import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import com.paystack.fineract.portfolio.account.domain.FeeSplitAudit;
 import com.paystack.fineract.portfolio.account.domain.FeeSplitAuditRepository;
-import com.paystack.fineract.portfolio.account.domain.FeeSplitDetail;
 import com.paystack.fineract.portfolio.account.domain.FeeSplitDetailRepository;
-import com.paystack.fineract.portfolio.account.service.FeeSplitAuditService;
 import com.paystack.fineract.portfolio.account.dto.FeeSplitAuditResponse;
 import com.paystack.fineract.portfolio.account.dto.FeeSplitDetailResponse;
 import com.paystack.fineract.portfolio.account.dto.FeeSplitSummaryResponse;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.apache.fineract.infrastructure.core.api.DateParam;
-import org.springframework.format.annotation.DateTimeFormat;
-
+import com.paystack.fineract.portfolio.account.service.FeeSplitAuditService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
@@ -54,13 +38,24 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriInfo;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.stereotype.Component;
-
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.fineract.infrastructure.core.api.ApiRequestParameterHelper;
+import org.apache.fineract.infrastructure.core.api.DateParam;
+import org.apache.fineract.infrastructure.core.data.ApiParameterError;
+import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
+import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
+import org.apache.fineract.infrastructure.core.serialization.ApiRequestJsonSerializationSettings;
+import org.apache.fineract.infrastructure.core.serialization.ToApiJsonSerializer;
+import org.apache.fineract.infrastructure.core.service.Page;
+import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Component;
 
 /**
  * REST API for Fee Split Audit operations
@@ -86,17 +81,11 @@ public class FeeSplitAuditApiResource {
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Retrieve Fee Split Audits", description = "Get paginated list of fee split audit records")
-    public String retrieveAllFeeSplitAudits(
-            @Context final UriInfo uriInfo,
-            @QueryParam("officeId") final Long officeId,
-            @QueryParam("fromDate") final DateParam fromDateParam,
-            @QueryParam("toDate") final DateParam toDateParam,
-            @QueryParam("transactionId") final String transactionId,
-            @QueryParam("page") @DefaultValue("0") final int page,
-            @QueryParam("size") @DefaultValue("20") final int size,
-            @QueryParam("sort") @DefaultValue("splitDate") final String sort,
-            @QueryParam("direction") @DefaultValue("desc") final String direction,
-            @QueryParam("locale") final String locale,
+    public String retrieveAllFeeSplitAudits(@Context final UriInfo uriInfo, @QueryParam("officeId") final Long officeId,
+            @QueryParam("fromDate") final DateParam fromDateParam, @QueryParam("toDate") final DateParam toDateParam,
+            @QueryParam("transactionId") final String transactionId, @QueryParam("page") @DefaultValue("0") final int page,
+            @QueryParam("size") @DefaultValue("20") final int size, @QueryParam("sort") @DefaultValue("splitDate") final String sort,
+            @QueryParam("direction") @DefaultValue("desc") final String direction, @QueryParam("locale") final String locale,
             @QueryParam("dateFormat") final String rawDateFormat) {
 
         this.context.authenticatedUser();
@@ -119,8 +108,8 @@ public class FeeSplitAuditApiResource {
         Pageable pageable = PageRequest.of(page, size, sortObj);
 
         // Retrieve audits with filters
-        org.springframework.data.domain.Page<FeeSplitAudit> auditPage = 
-            feeSplitAuditService.retrieveFeeSplitAudits(officeId, fromDate, toDate, transactionId, pageable);
+        org.springframework.data.domain.Page<FeeSplitAudit> auditPage = feeSplitAuditService.retrieveFeeSplitAudits(officeId, fromDate,
+                toDate, transactionId, pageable);
 
         // Convert to API response format
         final ApiRequestJsonSerializationSettings settings = this.apiRequestParameterHelper.process(uriInfo.getQueryParameters());
@@ -137,7 +126,8 @@ public class FeeSplitAuditApiResource {
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Retrieve Fee Split Audit", description = "Get a specific fee split audit by ID")
-    public String retrieveFeeSplitAudit(@Context final UriInfo uriInfo, @PathParam("auditId") @Parameter(description = "auditId") final Long auditId) {
+    public String retrieveFeeSplitAudit(@Context final UriInfo uriInfo,
+            @PathParam("auditId") @Parameter(description = "auditId") final Long auditId) {
         this.context.authenticatedUser();
 
         final FeeSplitAuditResponse audit = this.feeSplitAuditService.getFeeSplitAuditById(auditId);
@@ -154,7 +144,8 @@ public class FeeSplitAuditApiResource {
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Retrieve Fee Split Audit Details", description = "Get fee split details for a specific audit")
-    public String retrieveFeeSplitAuditDetails(@Context final UriInfo uriInfo, @PathParam("auditId") @Parameter(description = "auditId") final Long auditId) {
+    public String retrieveFeeSplitAuditDetails(@Context final UriInfo uriInfo,
+            @PathParam("auditId") @Parameter(description = "auditId") final Long auditId) {
         this.context.authenticatedUser();
 
         final List<FeeSplitDetailResponse> details = this.feeSplitAuditService.getFeeSplitDetailsByAuditId(auditId);
@@ -171,7 +162,8 @@ public class FeeSplitAuditApiResource {
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Retrieve Fee Split Audits by Charge", description = "Get fee split audits for a specific charge")
-    public String retrieveFeeSplitAuditsByCharge(@Context final UriInfo uriInfo, @PathParam("chargeId") @Parameter(description = "chargeId") final Long chargeId) {
+    public String retrieveFeeSplitAuditsByCharge(@Context final UriInfo uriInfo,
+            @PathParam("chargeId") @Parameter(description = "chargeId") final Long chargeId) {
         this.context.authenticatedUser();
 
         final List<FeeSplitAuditResponse> audits = this.feeSplitAuditService.retrieveFeeSplitAuditsByCharge(chargeId);
@@ -188,7 +180,8 @@ public class FeeSplitAuditApiResource {
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Retrieve Fee Split Audits by Office", description = "Get fee split audits for a specific office")
-    public String retrieveFeeSplitAuditsByOffice(@Context final UriInfo uriInfo, @PathParam("officeId") @Parameter(description = "officeId") final Long officeId) {
+    public String retrieveFeeSplitAuditsByOffice(@Context final UriInfo uriInfo,
+            @PathParam("officeId") @Parameter(description = "officeId") final Long officeId) {
         this.context.authenticatedUser();
 
         final List<FeeSplitAuditResponse> audits = this.feeSplitAuditService.retrieveFeeSplitAuditsByOffice(officeId);
@@ -205,14 +198,10 @@ public class FeeSplitAuditApiResource {
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Retrieve Fee Split Summary", description = "Get fee split summary statistics")
-    public String retrieveFeeSplitSummary(
-            @Context final UriInfo uriInfo,
-            @QueryParam("officeId") final Long officeId,
-            @QueryParam("fromDate") final DateParam fromDateParam,
-            @QueryParam("toDate") final DateParam toDateParam,
-            @QueryParam("locale") final String locale,
-            @QueryParam("dateFormat") final String rawDateFormat) {
-        
+    public String retrieveFeeSplitSummary(@Context final UriInfo uriInfo, @QueryParam("officeId") final Long officeId,
+            @QueryParam("fromDate") final DateParam fromDateParam, @QueryParam("toDate") final DateParam toDateParam,
+            @QueryParam("locale") final String locale, @QueryParam("dateFormat") final String rawDateFormat) {
+
         this.context.authenticatedUser();
 
         // Convert DateParam to LocalDate
@@ -236,8 +225,7 @@ public class FeeSplitAuditApiResource {
      */
     private void validatePaginationParameters(final int page, final int size) {
         final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
-        final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors)
-                .resource("feeSplitAudit");
+        final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("feeSplitAudit");
 
         if (page < 0) {
             baseDataValidator.reset().parameter("page").value(page)

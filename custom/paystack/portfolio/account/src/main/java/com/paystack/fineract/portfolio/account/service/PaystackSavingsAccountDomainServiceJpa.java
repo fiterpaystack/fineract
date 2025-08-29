@@ -332,21 +332,22 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             }
 
             Money moneyToPay = org.apache.fineract.organisation.monetary.domain.Money.of(account.getCurrency(), amountToPay);
-            ChargePaymentResult result = savingsAccountChargePaymentWrapperService.payChargeWithVat(account, charge, moneyToPay, transactionDate, refNo,
-                    backdatedTxnsAllowedTill);
-            
+            ChargePaymentResult result = savingsAccountChargePaymentWrapperService.payChargeWithVat(account, charge, moneyToPay,
+                    transactionDate, refNo, backdatedTxnsAllowedTill);
+
             // Save transactions to ensure they have IDs for fee split processing
             if (result.getFeeTransaction() != null) {
                 log.info("Saving fee transaction to generate ID: {}", result.getFeeTransaction().getId());
                 saveTransactionToGenerateTransactionId(result.getFeeTransaction());
                 log.info("Fee transaction saved with ID: {}", result.getFeeTransaction().getId());
             }
-            if (result.getVatResult() != null && result.getVatResult().isVatApplied() && result.getVatResult().getVatTransaction() != null) {
+            if (result.getVatResult() != null && result.getVatResult().isVatApplied()
+                    && result.getVatResult().getVatTransaction() != null) {
                 log.info("Saving VAT transaction to generate ID: {}", result.getVatResult().getVatTransaction().getId());
                 saveTransactionToGenerateTransactionId(result.getVatResult().getVatTransaction());
                 log.info("VAT transaction saved with ID: {}", result.getVatResult().getVatTransaction().getId());
             }
-            
+
             // Now process fee split with saved transactions
             if (result.getFeeTransaction() != null && charge.getCharge().isEnableFeeSplit()) {
                 log.info("Processing fee split for saved transaction: {}", result.getFeeTransaction().getId());

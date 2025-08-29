@@ -22,10 +22,9 @@ import com.paystack.fineract.portfolio.account.domain.FeeSplitAudit;
 import com.paystack.fineract.portfolio.account.domain.FeeSplitDetail;
 import com.paystack.fineract.portfolio.account.dto.FeeSplitAuditResponse;
 import com.paystack.fineract.portfolio.account.dto.FeeSplitDetailResponse;
-import org.springframework.stereotype.Service;
-
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.stereotype.Service;
 
 /**
  * Service for mapping domain entities to DTOs for clean API responses
@@ -41,15 +40,11 @@ public class FeeSplitResponseMapper {
             return null;
         }
 
-        return FeeSplitDetailResponse.builder()
-                .id(detail.getId())
-                .fundName(detail.getFund() != null ? detail.getFund().getName() : null)
-                .splitAmount(detail.getSplitAmount())
-                .splitPercentage(detail.getSplitPercentage())
+        return FeeSplitDetailResponse.builder().id(detail.getId()).fundName(detail.getFund() != null ? detail.getFund().getName() : null)
+                .splitAmount(detail.getSplitAmount()).splitPercentage(detail.getSplitPercentage())
                 .glAccountName(detail.getGlAccount() != null ? detail.getGlAccount().getName() : null)
                 .glAccountId(detail.getGlAccount() != null ? detail.getGlAccount().getId() : null)
-                .journalEntryId(detail.getJournalEntry() != null ? detail.getJournalEntry().getId() : null)
-                .build();
+                .journalEntryId(detail.getJournalEntry() != null ? detail.getJournalEntry().getId() : null).build();
     }
 
     /**
@@ -60,9 +55,7 @@ public class FeeSplitResponseMapper {
             return List.of();
         }
 
-        return details.stream()
-                .map(this::toFeeSplitDetailResponse)
-                .collect(Collectors.toList());
+        return details.stream().map(this::toFeeSplitDetailResponse).collect(Collectors.toList());
     }
 
     /**
@@ -73,19 +66,12 @@ public class FeeSplitResponseMapper {
             return null;
         }
 
-        return FeeSplitAuditResponse.builder()
-                .id(audit.getId())
-                .transactionId(audit.getTransactionId())
+        return FeeSplitAuditResponse.builder().id(audit.getId()).transactionId(audit.getTransactionId())
                 .chargeId(audit.getCharge() != null ? audit.getCharge().getId() : null)
-                .chargeName(audit.getCharge() != null ? audit.getCharge().getName() : null)
-                .totalFeeAmount(audit.getTotalFeeAmount())
-                .splitDate(audit.getSplitDate())
-                .splitDetails(toFeeSplitDetailResponses(audit.getSplitDetails()))
-                .createdBy(audit.getCreatedBy().orElse(null))
-                .createdDate(audit.getCreatedDate().orElse(null))
-                .lastModifiedBy(audit.getLastModifiedBy().orElse(null))
-                .lastModifiedDate(audit.getLastModifiedDate().orElse(null))
-                .build();
+                .chargeName(audit.getCharge() != null ? audit.getCharge().getName() : null).totalFeeAmount(audit.getTotalFeeAmount())
+                .splitDate(audit.getSplitDate()).splitDetails(toFeeSplitDetailResponses(audit.getSplitDetails()))
+                .createdBy(audit.getCreatedBy().orElse(null)).createdDate(audit.getCreatedDate().orElse(null))
+                .lastModifiedBy(audit.getLastModifiedBy().orElse(null)).lastModifiedDate(audit.getLastModifiedDate().orElse(null)).build();
     }
 
     /**
@@ -96,8 +82,6 @@ public class FeeSplitResponseMapper {
             return List.of();
         }
 
-        return audits.stream()
-                .map(this::toFeeSplitAuditResponse)
-                .collect(Collectors.toList());
+        return audits.stream().map(this::toFeeSplitAuditResponse).collect(Collectors.toList());
     }
 }

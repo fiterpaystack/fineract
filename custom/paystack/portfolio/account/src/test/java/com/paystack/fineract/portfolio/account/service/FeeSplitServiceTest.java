@@ -18,26 +18,24 @@
  */
 package com.paystack.fineract.portfolio.account.service;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
 import com.paystack.fineract.portfolio.account.domain.ChargeStakeholderSplit;
 import com.paystack.fineract.portfolio.account.domain.ChargeStakeholderSplitRepository;
 import com.paystack.fineract.portfolio.account.domain.FeeSplitAudit;
 import com.paystack.fineract.portfolio.account.domain.FeeSplitAuditRepository;
-import com.paystack.fineract.portfolio.account.domain.FeeSplitDetail;
 import com.paystack.fineract.portfolio.account.domain.FeeSplitDetailRepository;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import org.apache.fineract.accounting.glaccount.domain.GLAccount;
 import org.apache.fineract.accounting.journalentry.domain.JournalEntry;
 import org.apache.fineract.accounting.journalentry.service.AccountingProcessorHelper;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
-import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.portfolio.charge.domain.Charge;
-import org.apache.fineract.portfolio.client.domain.ClientChargePaidBy;
 import org.apache.fineract.portfolio.client.domain.ClientTransaction;
-import org.apache.fineract.portfolio.fund.domain.Fund;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,10 +43,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class FeeSplitServiceTest {
@@ -147,7 +141,7 @@ class FeeSplitServiceTest {
         ChargeStakeholderSplit invalidSplit = mock(ChargeStakeholderSplit.class);
         when(invalidSplit.isPercentageSplit()).thenReturn(true);
         when(invalidSplit.getSplitValue()).thenReturn(new BigDecimal("150.00"));
-        
+
         List<ChargeStakeholderSplit> invalidSplits = Arrays.asList(invalidSplit);
         when(splitRepository.findActiveSplitsByChargeId(1L)).thenReturn(invalidSplits);
 
@@ -163,7 +157,7 @@ class FeeSplitServiceTest {
         ChargeStakeholderSplit invalidSplit = mock(ChargeStakeholderSplit.class);
         when(invalidSplit.isFlatAmountSplit()).thenReturn(true);
         when(invalidSplit.getSplitValue()).thenReturn(new BigDecimal("150.00"));
-        
+
         List<ChargeStakeholderSplit> invalidSplits = Arrays.asList(invalidSplit);
         when(splitRepository.findActiveSplitsByChargeId(1L)).thenReturn(invalidSplits);
 
@@ -178,7 +172,7 @@ class FeeSplitServiceTest {
         // Given
         SavingsAccountTransaction savingsTransaction = mock(SavingsAccountTransaction.class);
         when(savingsTransaction.getId()).thenReturn(1L);
-        
+
         when(splitRepository.findActiveSplitsByChargeId(1L)).thenReturn(splits);
         when(auditRepository.save(any(FeeSplitAudit.class))).thenReturn(mock(FeeSplitAudit.class));
         when(accountingHelper.persistJournalEntry(any(JournalEntry.class))).thenReturn(mock(JournalEntry.class));

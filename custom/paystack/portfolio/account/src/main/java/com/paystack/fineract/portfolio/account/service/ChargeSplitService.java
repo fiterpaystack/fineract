@@ -18,14 +18,14 @@
  */
 package com.paystack.fineract.portfolio.account.service;
 
+import static org.apache.fineract.infrastructure.core.data.ApiParameterError.parameterError;
+
 import com.paystack.fineract.portfolio.account.data.ChargeSplitData;
 import com.paystack.fineract.portfolio.account.domain.ChargeSplit;
 import com.paystack.fineract.portfolio.account.domain.ChargeSplitRepository;
 import java.math.BigDecimal;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,9 +34,7 @@ import org.apache.fineract.accounting.glaccount.domain.GLAccountRepository;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
-import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
-import static org.apache.fineract.infrastructure.core.data.ApiParameterError.parameterError;
 import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.charge.domain.ChargeRepositoryWrapper;
 import org.apache.fineract.portfolio.fund.domain.Fund;
@@ -63,25 +61,22 @@ public class ChargeSplitService {
 
             // Validate and get fund
             Long fundId = command.longValueOfParameterNamed("fundId");
-            Fund fund = fundRepository.findById(fundId)
-                    .orElseThrow(() -> new PlatformApiDataValidationException("error.msg.fund.not.found", 
-                            "Fund with id " + fundId + " not found", 
-                            List.of(parameterError("error.msg.fund.not.found", 
-                                    "Fund with id " + fundId + " not found", "fundId", fundId))));
+            Fund fund = fundRepository.findById(fundId).orElseThrow(() -> new PlatformApiDataValidationException("error.msg.fund.not.found",
+                    "Fund with id " + fundId + " not found",
+                    List.of(parameterError("error.msg.fund.not.found", "Fund with id " + fundId + " not found", "fundId", fundId))));
 
             // Validate and get GL account
             Long glAccountId = command.longValueOfParameterNamed("glAccountId");
             GLAccount glAccount = glAccountRepository.findById(glAccountId)
-                    .orElseThrow(() -> new PlatformApiDataValidationException("error.msg.gl.account.not.found", 
-                            "GL Account with id " + glAccountId + " not found", 
-                            List.of(parameterError("error.msg.gl.account.not.found", 
+                    .orElseThrow(() -> new PlatformApiDataValidationException("error.msg.gl.account.not.found",
+                            "GL Account with id " + glAccountId + " not found", List.of(parameterError("error.msg.gl.account.not.found",
                                     "GL Account with id " + glAccountId + " not found", "glAccountId", glAccountId))));
 
             // Check if split already exists
             if (splitRepository.findByChargeIdAndFundId(chargeId, fundId).isPresent()) {
-                throw new PlatformApiDataValidationException("error.msg.split.already.exists", 
+                throw new PlatformApiDataValidationException("error.msg.split.already.exists",
                         "Split already exists for charge " + chargeId + " and fund " + fundId,
-                        List.of(parameterError("error.msg.split.already.exists", 
+                        List.of(parameterError("error.msg.split.already.exists",
                                 "Split already exists for charge " + chargeId + " and fund " + fundId, "chargeId", chargeId)));
             }
 
@@ -94,12 +89,9 @@ public class ChargeSplitService {
             // Save split
             ChargeSplit savedSplit = splitRepository.save(split);
 
-            log.info("Created charge stakeholder split: {} for charge: {} and fund: {}", 
-                    savedSplit.getId(), chargeId, fundId);
+            log.info("Created charge stakeholder split: {} for charge: {} and fund: {}", savedSplit.getId(), chargeId, fundId);
 
-            return new CommandProcessingResultBuilder()
-                    .withEntityId(savedSplit.getId())
-                    .build();
+            return new CommandProcessingResultBuilder().withEntityId(savedSplit.getId()).build();
 
         } catch (Exception e) {
             log.error("Error creating charge stakeholder split", e);
@@ -111,11 +103,9 @@ public class ChargeSplitService {
     public CommandProcessingResult updateSplit(Long splitId, JsonCommand command) {
         try {
             // Get existing split
-            ChargeSplit split = splitRepository.findById(splitId)
-                    .orElseThrow(() -> new PlatformApiDataValidationException("error.msg.split.not.found", 
-                            "Split with id " + splitId + " not found",
-                            List.of(parameterError("error.msg.split.not.found", 
-                                    "Split with id " + splitId + " not found", "splitId", splitId))));
+            ChargeSplit split = splitRepository.findById(splitId).orElseThrow(() -> new PlatformApiDataValidationException(
+                    "error.msg.split.not.found", "Split with id " + splitId + " not found",
+                    List.of(parameterError("error.msg.split.not.found", "Split with id " + splitId + " not found", "splitId", splitId))));
 
             // Update split
             Map<String, Object> changes = split.update(command);
@@ -123,11 +113,9 @@ public class ChargeSplitService {
             // If fund is being updated, validate it exists
             if (changes.containsKey("fundId")) {
                 Long fundId = command.longValueOfParameterNamed("fundId");
-                Fund fund = fundRepository.findById(fundId)
-                        .orElseThrow(() -> new PlatformApiDataValidationException("error.msg.fund.not.found", 
-                                "Fund with id " + fundId + " not found",
-                                List.of(parameterError("error.msg.fund.not.found", 
-                                        "Fund with id " + fundId + " not found", "fundId", fundId))));
+                Fund fund = fundRepository.findById(fundId).orElseThrow(() -> new PlatformApiDataValidationException(
+                        "error.msg.fund.not.found", "Fund with id " + fundId + " not found",
+                        List.of(parameterError("error.msg.fund.not.found", "Fund with id " + fundId + " not found", "fundId", fundId))));
                 split.setFund(fund);
             }
 
@@ -135,9 +123,8 @@ public class ChargeSplitService {
             if (changes.containsKey("glAccountId")) {
                 Long glAccountId = command.longValueOfParameterNamed("glAccountId");
                 GLAccount glAccount = glAccountRepository.findById(glAccountId)
-                        .orElseThrow(() -> new PlatformApiDataValidationException("error.msg.gl.account.not.found", 
-                                "GL Account with id " + glAccountId + " not found",
-                                List.of(parameterError("error.msg.gl.account.not.found", 
+                        .orElseThrow(() -> new PlatformApiDataValidationException("error.msg.gl.account.not.found",
+                                "GL Account with id " + glAccountId + " not found", List.of(parameterError("error.msg.gl.account.not.found",
                                         "GL Account with id " + glAccountId + " not found", "glAccountId", glAccountId))));
                 split.setGlAccount(glAccount);
             }
@@ -152,10 +139,7 @@ public class ChargeSplitService {
 
             log.info("Updated charge stakeholder split: {}", splitId);
 
-            return new CommandProcessingResultBuilder()
-                    .withEntityId(splitId)
-                    .with(changes)
-                    .build();
+            return new CommandProcessingResultBuilder().withEntityId(splitId).with(changes).build();
 
         } catch (Exception e) {
             log.error("Error updating charge stakeholder split: {}", splitId, e);
@@ -167,11 +151,9 @@ public class ChargeSplitService {
     public CommandProcessingResult deleteSplit(Long splitId) {
         try {
             // Get existing split
-            ChargeSplit split = splitRepository.findById(splitId)
-                    .orElseThrow(() -> new PlatformApiDataValidationException("error.msg.split.not.found", 
-                            "Split with id " + splitId + " not found",
-                            List.of(parameterError("error.msg.split.not.found", 
-                                    "Split with id " + splitId + " not found", "splitId", splitId))));
+            ChargeSplit split = splitRepository.findById(splitId).orElseThrow(() -> new PlatformApiDataValidationException(
+                    "error.msg.split.not.found", "Split with id " + splitId + " not found",
+                    List.of(parameterError("error.msg.split.not.found", "Split with id " + splitId + " not found", "splitId", splitId))));
 
             Long chargeId = split.getCharge().getId();
 
@@ -180,9 +162,7 @@ public class ChargeSplitService {
 
             log.info("Deleted charge stakeholder split: {} for charge: {}", splitId, chargeId);
 
-            return new CommandProcessingResultBuilder()
-                    .withEntityId(splitId)
-                    .build();
+            return new CommandProcessingResultBuilder().withEntityId(splitId).build();
 
         } catch (Exception e) {
             log.error("Error deleting charge stakeholder split: {}", splitId, e);
@@ -192,16 +172,12 @@ public class ChargeSplitService {
 
     public List<ChargeSplitData> getSplitsByChargeId(Long chargeId) {
         List<ChargeSplit> splits = splitRepository.findActiveSplitsByChargeId(chargeId);
-        return splits.stream()
-            .map(ChargeSplitData::fromEntity)
-            .collect(Collectors.toList());
+        return splits.stream().map(ChargeSplitData::fromEntity).collect(Collectors.toList());
     }
 
     public List<ChargeSplitData> getSplitsByFundId(Long fundId) {
         List<ChargeSplit> splits = splitRepository.findByFundIdAndActive(fundId, true);
-        return splits.stream()
-            .map(ChargeSplitData::fromEntity)
-            .collect(Collectors.toList());
+        return splits.stream().map(ChargeSplitData::fromEntity).collect(Collectors.toList());
     }
 
     /**
@@ -213,7 +189,7 @@ public class ChargeSplitService {
 
     private void validateSplitTotals(Long chargeId, ChargeSplit newSplit) {
         List<ChargeSplit> existingSplits = splitRepository.findActiveSplitsByChargeId(chargeId);
-        
+
         BigDecimal totalPercentage = BigDecimal.ZERO;
         BigDecimal totalFlatAmount = BigDecimal.ZERO;
 
@@ -237,9 +213,8 @@ public class ChargeSplitService {
 
         // Validate totals
         if (totalPercentage.compareTo(BigDecimal.valueOf(100)) > 0) {
-            throw new PlatformApiDataValidationException("error.msg.fee.split.total.percentage.exceeds.100", 
-                    "Total percentage splits cannot exceed 100%",
-                    List.of(parameterError("error.msg.fee.split.total.percentage.exceeds.100", 
+            throw new PlatformApiDataValidationException("error.msg.fee.split.total.percentage.exceeds.100",
+                    "Total percentage splits cannot exceed 100%", List.of(parameterError("error.msg.fee.split.total.percentage.exceeds.100",
                             "Total percentage splits cannot exceed 100%", "splitValue", totalPercentage)));
         }
 

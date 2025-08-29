@@ -18,9 +18,6 @@
  */
 package com.paystack.fineract.portfolio.account.service;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.fineract.infrastructure.core.service.Page;
 import com.paystack.fineract.portfolio.account.domain.FeeSplitAudit;
 import com.paystack.fineract.portfolio.account.domain.FeeSplitAuditRepository;
 import com.paystack.fineract.portfolio.account.domain.FeeSplitDetail;
@@ -28,18 +25,17 @@ import com.paystack.fineract.portfolio.account.domain.FeeSplitDetailRepository;
 import com.paystack.fineract.portfolio.account.dto.FeeSplitAuditResponse;
 import com.paystack.fineract.portfolio.account.dto.FeeSplitDetailResponse;
 import com.paystack.fineract.portfolio.account.dto.FeeSplitSummaryResponse;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Service for managing fee split audit operations
@@ -57,12 +53,8 @@ public class FeeSplitAuditService {
      * Retrieve fee split audits with filters and pagination
      */
     @Transactional(readOnly = true)
-    public org.springframework.data.domain.Page<FeeSplitAudit> retrieveFeeSplitAudits(
-            final Long officeId,
-            final LocalDate fromDate,
-            final LocalDate toDate,
-            final String transactionId,
-            final Pageable pageable) {
+    public org.springframework.data.domain.Page<FeeSplitAudit> retrieveFeeSplitAudits(final Long officeId, final LocalDate fromDate,
+            final LocalDate toDate, final String transactionId, final Pageable pageable) {
 
         Specification<FeeSplitAudit> spec = Specification.where(null);
 
@@ -79,8 +71,7 @@ public class FeeSplitAuditService {
         }
 
         if (transactionId != null && !transactionId.trim().isEmpty()) {
-            spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("transactionId")), 
-                "%" + transactionId.toLowerCase() + "%"));
+            spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("transactionId")), "%" + transactionId.toLowerCase() + "%"));
         }
 
         return feeSplitAuditRepository.findAll(spec, pageable);
@@ -115,10 +106,7 @@ public class FeeSplitAuditService {
      * Retrieve fee split summary statistics
      */
     @Transactional(readOnly = true)
-    public FeeSplitSummaryResponse retrieveFeeSplitSummary(
-            final Long officeId,
-            final LocalDate fromDate,
-            final LocalDate toDate) {
+    public FeeSplitSummaryResponse retrieveFeeSplitSummary(final Long officeId, final LocalDate fromDate, final LocalDate toDate) {
 
         Specification<FeeSplitAudit> spec = Specification.where(null);
 
@@ -135,24 +123,16 @@ public class FeeSplitAuditService {
 
         List<FeeSplitAudit> audits = feeSplitAuditRepository.findAll(spec);
 
-        BigDecimal totalFeeAmount = audits.stream()
-            .map(FeeSplitAudit::getTotalFeeAmount)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-            
-        BigDecimal totalSplitAmount = audits.stream()
-            .flatMap(audit -> audit.getSplitDetails().stream())
-            .map(FeeSplitDetail::getSplitAmount)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalFeeAmount = audits.stream().map(FeeSplitAudit::getTotalFeeAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalSplitAmount = audits.stream().flatMap(audit -> audit.getSplitDetails().stream()).map(FeeSplitDetail::getSplitAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // Note: Office grouping is not available since FeeSplitAudit doesn't have office information
         Map<String, Object> auditsByOffice = new HashMap<>();
 
-        return FeeSplitSummaryResponse.builder()
-                .totalAudits((long) audits.size())
-                .totalFeeAmount(totalFeeAmount)
-                .totalSplitAmount(totalSplitAmount)
-                .auditsByOffice(auditsByOffice)
-                .build();
+        return FeeSplitSummaryResponse.builder().totalAudits((long) audits.size()).totalFeeAmount(totalFeeAmount)
+                .totalSplitAmount(totalSplitAmount).auditsByOffice(auditsByOffice).build();
     }
 
     /**
@@ -188,7 +168,7 @@ public class FeeSplitAuditService {
     @Transactional(readOnly = true)
     public FeeSplitAuditResponse getFeeSplitAuditById(final Long auditId) {
         FeeSplitAudit audit = feeSplitAuditRepository.findById(auditId)
-            .orElseThrow(() -> new RuntimeException("Fee split audit not found with id: " + auditId));
+                .orElseThrow(() -> new RuntimeException("Fee split audit not found with id: " + auditId));
         return feeSplitResponseMapper.toFeeSplitAuditResponse(audit);
     }
 

@@ -42,7 +42,6 @@ import org.apache.fineract.infrastructure.core.service.ExternalIdFactory;
 import org.apache.fineract.organisation.holiday.domain.HolidayRepositoryWrapper;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.organisation.workingdays.domain.WorkingDaysRepositoryWrapper;
-import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.charge.domain.ChargeRepositoryWrapper;
 import org.apache.fineract.portfolio.client.api.ClientApiConstants;
 import org.apache.fineract.portfolio.client.data.ClientChargeDataValidator;
@@ -157,8 +156,8 @@ public class PaystackClientChargeWritePlatformServiceImpl implements ClientCharg
         journalEntryWritePlatformService.createJournalEntriesForClientTransactions(accountingBridgeData);
     }
 
-    private void validatePaymentTransaction(Client client, ClientCharge clientCharge, DateTimeFormatter fmt, 
-                                          LocalDate transactionDate, BigDecimal amountPaid) {
+    private void validatePaymentTransaction(Client client, ClientCharge clientCharge, DateTimeFormatter fmt, LocalDate transactionDate,
+            BigDecimal amountPaid) {
         final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
         final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors)
                 .resource(ClientApiConstants.CLIENT_CHARGES_RESOURCE_NAME);

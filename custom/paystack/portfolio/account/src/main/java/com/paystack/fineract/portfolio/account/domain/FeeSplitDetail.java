@@ -18,14 +18,20 @@
  */
 package com.paystack.fineract.portfolio.account.domain;
 
-import jakarta.persistence.*;
-
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.fineract.accounting.glaccount.domain.GLAccount;
 import org.apache.fineract.accounting.journalentry.domain.JournalEntry;
-import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
 import org.apache.fineract.portfolio.fund.domain.Fund;
 
 @Entity
@@ -65,14 +71,12 @@ public class FeeSplitDetail {
         //
     }
 
-    public static FeeSplitDetail createNew(final FeeSplitAudit audit, final Fund fund, 
-            final BigDecimal splitAmount, final BigDecimal splitPercentage, 
-            final GLAccount glAccount, final JournalEntry journalEntry) {
+    public static FeeSplitDetail createNew(final FeeSplitAudit audit, final Fund fund, final BigDecimal splitAmount,
+            final BigDecimal splitPercentage, final GLAccount glAccount, final JournalEntry journalEntry) {
         return new FeeSplitDetail(audit, fund, splitAmount, splitPercentage, glAccount, journalEntry);
     }
 
-    private FeeSplitDetail(final FeeSplitAudit audit, final Fund fund, 
-            final BigDecimal splitAmount, final BigDecimal splitPercentage, 
+    private FeeSplitDetail(final FeeSplitAudit audit, final Fund fund, final BigDecimal splitAmount, final BigDecimal splitPercentage,
             final GLAccount glAccount, final JournalEntry journalEntry) {
         this.audit = audit;
         this.fund = fund;

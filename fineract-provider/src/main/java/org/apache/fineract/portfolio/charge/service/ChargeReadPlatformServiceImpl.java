@@ -281,8 +281,8 @@ public class ChargeReadPlatformServiceImpl implements ChargeReadPlatformService 
                     + "c.fee_interval as feeInterval, c.fee_frequency as feeFrequency,c.min_cap as minCap,c.max_cap as maxCap, "
                     + "c.income_or_liability_account_id as glAccountId , acc.name as glAccountName, acc.gl_code as glCode, "
                     + "tg.id as taxGroupId, c.is_payment_type as isPaymentType, pt.id as paymentTypeId, pt.value as paymentTypeName, tg.name as taxGroupName, "
-                    + "c.enable_fee_split as enableFeeSplit "
-                    + "from m_charge c " + "join m_organisation_currency oc on c.currency_code = oc.code "
+                    + "c.enable_fee_split as enableFeeSplit " + "from m_charge c "
+                    + "join m_organisation_currency oc on c.currency_code = oc.code "
                     + " LEFT JOIN acc_gl_account acc on acc.id = c.income_or_liability_account_id "
                     + " LEFT JOIN m_tax_group tg on tg.id = c.tax_group_id " + " LEFT JOIN m_payment_type pt on pt.id = c.payment_type_id ";
         }

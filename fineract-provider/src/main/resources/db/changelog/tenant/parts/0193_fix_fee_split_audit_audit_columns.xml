@@ -12,7 +12,7 @@
             </not>
         </preConditions>
         <comment>Add missing audit columns to m_fee_split_audit table</comment>
-        
+
         <!-- Add missing audit columns -->
         <addColumn tableName="m_fee_split_audit">
             <column name="last_modified_by" type="BIGINT"/>

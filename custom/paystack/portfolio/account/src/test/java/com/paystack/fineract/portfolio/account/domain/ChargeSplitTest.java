@@ -18,6 +18,9 @@
  */
 package com.paystack.fineract.portfolio.account.domain;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
 import java.math.BigDecimal;
 import java.util.Map;
 import org.apache.fineract.accounting.glaccount.domain.GLAccount;
@@ -29,9 +32,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ChargeSplitTest {
@@ -61,8 +61,7 @@ class ChargeSplitTest {
     @Test
     void testCreateNew_WithValidData_ShouldCreateSplit() {
         // When
-        split = ChargeSplit.createNew(charge, fund, "PERCENTAGE", 
-                new BigDecimal("50.00"), glAccount);
+        split = ChargeSplit.createNew(charge, fund, "PERCENTAGE", new BigDecimal("50.00"), glAccount);
 
         // Then
         assertNotNull(split);
@@ -95,8 +94,7 @@ class ChargeSplitTest {
     @Test
     void testIsPercentageSplit_WhenPercentageType_ShouldReturnTrue() {
         // Given
-        split = ChargeStakeholderSplit.createNew(charge, fund, "PERCENTAGE", 
-                new BigDecimal("50.00"), glAccount);
+        split = ChargeStakeholderSplit.createNew(charge, fund, "PERCENTAGE", new BigDecimal("50.00"), glAccount);
 
         // When & Then
         assertTrue(split.isPercentageSplit());
@@ -106,8 +104,7 @@ class ChargeSplitTest {
     @Test
     void testIsFlatAmountSplit_WhenFlatAmountType_ShouldReturnTrue() {
         // Given
-        split = ChargeStakeholderSplit.createNew(charge, fund, "FLAT_AMOUNT", 
-                new BigDecimal("25.00"), glAccount);
+        split = ChargeStakeholderSplit.createNew(charge, fund, "FLAT_AMOUNT", new BigDecimal("25.00"), glAccount);
 
         // When & Then
         assertTrue(split.isFlatAmountSplit());
@@ -117,8 +114,7 @@ class ChargeSplitTest {
     @Test
     void testCalculateSplitAmount_WhenPercentage_ShouldCalculateCorrectly() {
         // Given
-        split = ChargeStakeholderSplit.createNew(charge, fund, "PERCENTAGE", 
-                new BigDecimal("50.00"), glAccount);
+        split = ChargeStakeholderSplit.createNew(charge, fund, "PERCENTAGE", new BigDecimal("50.00"), glAccount);
         BigDecimal totalFeeAmount = new BigDecimal("100.00");
 
         // When
@@ -131,8 +127,7 @@ class ChargeSplitTest {
     @Test
     void testCalculateSplitAmount_WhenFlatAmount_ShouldReturnSplitValue() {
         // Given
-        split = ChargeStakeholderSplit.createNew(charge, fund, "FLAT_AMOUNT", 
-                new BigDecimal("25.00"), glAccount);
+        split = ChargeStakeholderSplit.createNew(charge, fund, "FLAT_AMOUNT", new BigDecimal("25.00"), glAccount);
         BigDecimal totalFeeAmount = new BigDecimal("100.00");
 
         // When
@@ -145,9 +140,8 @@ class ChargeSplitTest {
     @Test
     void testUpdate_WithValidChanges_ShouldUpdateFields() {
         // Given
-        split = ChargeStakeholderSplit.createNew(charge, fund, "PERCENTAGE", 
-                new BigDecimal("50.00"), glAccount);
-        
+        split = ChargeStakeholderSplit.createNew(charge, fund, "PERCENTAGE", new BigDecimal("50.00"), glAccount);
+
         when(command.isChangeInStringParameterNamed("splitType", "PERCENTAGE")).thenReturn(true);
         when(command.stringValueOfParameterNamed("splitType")).thenReturn("FLAT_AMOUNT");
         when(command.isChangeInBigDecimalParameterNamed("splitValue", new BigDecimal("50.00"))).thenReturn(true);
@@ -171,9 +165,8 @@ class ChargeSplitTest {
     @Test
     void testUpdate_WithNoChanges_ShouldReturnEmptyMap() {
         // Given
-        split = ChargeStakeholderSplit.createNew(charge, fund, "PERCENTAGE", 
-                new BigDecimal("50.00"), glAccount);
-        
+        split = ChargeStakeholderSplit.createNew(charge, fund, "PERCENTAGE", new BigDecimal("50.00"), glAccount);
+
         when(command.isChangeInStringParameterNamed("splitType", "PERCENTAGE")).thenReturn(false);
         when(command.isChangeInBigDecimalParameterNamed("splitValue", new BigDecimal("50.00"))).thenReturn(false);
         when(command.isChangeInBooleanParameterNamed("active", true)).thenReturn(false);
