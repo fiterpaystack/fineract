@@ -32,8 +32,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class ChargeSplitTest {
 
     @Mock
@@ -53,9 +56,13 @@ class ChargeSplitTest {
     @BeforeEach
     void setUp() {
         when(charge.getId()).thenReturn(1L);
+        when(charge.getName()).thenReturn("Test Charge");
         when(fund.getId()).thenReturn(1L);
         when(fund.getName()).thenReturn("Test Fund");
         when(glAccount.getId()).thenReturn(1L);
+        when(glAccount.getName()).thenReturn("Test GL Account");
+        when(glAccount.getGlCode()).thenReturn("GL001");
+        when(glAccount.getHierarchy()).thenReturn("Asset:Current:Test");
     }
 
     @Test
@@ -94,7 +101,7 @@ class ChargeSplitTest {
     @Test
     void testIsPercentageSplit_WhenPercentageType_ShouldReturnTrue() {
         // Given
-        split = ChargeStakeholderSplit.createNew(charge, fund, "PERCENTAGE", new BigDecimal("50.00"), glAccount);
+        split = ChargeSplit.createNew(charge, fund, "PERCENTAGE", new BigDecimal("50.00"), glAccount);
 
         // When & Then
         assertTrue(split.isPercentageSplit());
@@ -104,7 +111,7 @@ class ChargeSplitTest {
     @Test
     void testIsFlatAmountSplit_WhenFlatAmountType_ShouldReturnTrue() {
         // Given
-        split = ChargeStakeholderSplit.createNew(charge, fund, "FLAT_AMOUNT", new BigDecimal("25.00"), glAccount);
+        split = ChargeSplit.createNew(charge, fund, "FLAT_AMOUNT", new BigDecimal("25.00"), glAccount);
 
         // When & Then
         assertTrue(split.isFlatAmountSplit());
@@ -114,33 +121,33 @@ class ChargeSplitTest {
     @Test
     void testCalculateSplitAmount_WhenPercentage_ShouldCalculateCorrectly() {
         // Given
-        split = ChargeStakeholderSplit.createNew(charge, fund, "PERCENTAGE", new BigDecimal("50.00"), glAccount);
+        split = ChargeSplit.createNew(charge, fund, "PERCENTAGE", new BigDecimal("50.00"), glAccount);
         BigDecimal totalFeeAmount = new BigDecimal("100.00");
 
         // When
         BigDecimal result = split.calculateSplitAmount(totalFeeAmount);
 
         // Then
-        assertEquals(new BigDecimal("50.00"), result);
+        assertEquals(0, new BigDecimal("50.00").compareTo(result));
     }
 
     @Test
     void testCalculateSplitAmount_WhenFlatAmount_ShouldReturnSplitValue() {
         // Given
-        split = ChargeStakeholderSplit.createNew(charge, fund, "FLAT_AMOUNT", new BigDecimal("25.00"), glAccount);
+        split = ChargeSplit.createNew(charge, fund, "FLAT_AMOUNT", new BigDecimal("25.00"), glAccount);
         BigDecimal totalFeeAmount = new BigDecimal("100.00");
 
         // When
         BigDecimal result = split.calculateSplitAmount(totalFeeAmount);
 
         // Then
-        assertEquals(new BigDecimal("25.00"), result);
+        assertEquals(0, new BigDecimal("25.00").compareTo(result));
     }
 
     @Test
     void testUpdate_WithValidChanges_ShouldUpdateFields() {
         // Given
-        split = ChargeStakeholderSplit.createNew(charge, fund, "PERCENTAGE", new BigDecimal("50.00"), glAccount);
+        split = ChargeSplit.createNew(charge, fund, "PERCENTAGE", new BigDecimal("50.00"), glAccount);
 
         when(command.isChangeInStringParameterNamed("splitType", "PERCENTAGE")).thenReturn(true);
         when(command.stringValueOfParameterNamed("splitType")).thenReturn("FLAT_AMOUNT");
@@ -165,7 +172,7 @@ class ChargeSplitTest {
     @Test
     void testUpdate_WithNoChanges_ShouldReturnEmptyMap() {
         // Given
-        split = ChargeStakeholderSplit.createNew(charge, fund, "PERCENTAGE", new BigDecimal("50.00"), glAccount);
+        split = ChargeSplit.createNew(charge, fund, "PERCENTAGE", new BigDecimal("50.00"), glAccount);
 
         when(command.isChangeInStringParameterNamed("splitType", "PERCENTAGE")).thenReturn(false);
         when(command.isChangeInBigDecimalParameterNamed("splitValue", new BigDecimal("50.00"))).thenReturn(false);

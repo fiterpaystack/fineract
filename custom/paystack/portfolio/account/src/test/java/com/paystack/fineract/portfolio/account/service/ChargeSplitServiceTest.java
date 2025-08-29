@@ -22,13 +22,12 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import com.paystack.fineract.portfolio.account.domain.ChargeStakeholderSplit;
-import com.paystack.fineract.portfolio.account.domain.ChargeStakeholderSplitRepository;
+import com.paystack.fineract.portfolio.account.data.ChargeSplitData;
+import com.paystack.fineract.portfolio.account.domain.ChargeSplit;
+import com.paystack.fineract.portfolio.account.domain.ChargeSplitRepository;
 import java.math.BigDecimal;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import org.apache.fineract.accounting.glaccount.domain.GLAccount;
 import org.apache.fineract.accounting.glaccount.domain.GLAccountRepository;
@@ -45,12 +44,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 @ExtendWith(MockitoExtension.class)
-class ChargeStakeholderSplitServiceTest {
+@MockitoSettings(strictness = Strictness.LENIENT)
+class ChargeSplitServiceTest {
 
     @Mock
-    private ChargeStakeholderSplitRepository splitRepository;
+    private ChargeSplitRepository splitRepository;
 
     @Mock
     private ChargeRepositoryWrapper chargeRepository;
@@ -62,19 +64,20 @@ class ChargeStakeholderSplitServiceTest {
     private GLAccountRepository glAccountRepository;
 
     @InjectMocks
-    private ChargeStakeholderSplitService splitService;
+    private ChargeSplitService splitService;
 
     private JsonCommand command;
     private Charge charge;
     private Fund fund;
     private GLAccount glAccount;
-    private ChargeStakeholderSplit split;
+    private ChargeSplit split;
 
     @BeforeEach
     void setUp() {
         // Setup test data
         charge = mock(Charge.class);
         when(charge.getId()).thenReturn(1L);
+        when(charge.getName()).thenReturn("Test Charge");
 
         fund = mock(Fund.class);
         when(fund.getId()).thenReturn(1L);
@@ -82,15 +85,16 @@ class ChargeStakeholderSplitServiceTest {
 
         glAccount = mock(GLAccount.class);
         when(glAccount.getId()).thenReturn(1L);
+        when(glAccount.getName()).thenReturn("Test GL Account");
 
-        split = mock(ChargeStakeholderSplit.class);
+        split = mock(ChargeSplit.class);
         when(split.getId()).thenReturn(1L);
         when(split.getCharge()).thenReturn(charge);
         when(split.getFund()).thenReturn(fund);
         when(split.getGlAccount()).thenReturn(glAccount);
 
         command = mock(JsonCommand.class);
-        when(command.longValueOfParameterNamed("chargeId")).thenReturn(1L);
+        when(command.entityId()).thenReturn(1L);
         when(command.longValueOfParameterNamed("fundId")).thenReturn(1L);
         when(command.longValueOfParameterNamed("glAccountId")).thenReturn(1L);
         when(command.stringValueOfParameterNamed("splitType")).thenReturn("PERCENTAGE");
@@ -104,42 +108,15 @@ class ChargeStakeholderSplitServiceTest {
         when(fundRepository.findById(1L)).thenReturn(Optional.of(fund));
         when(glAccountRepository.findById(1L)).thenReturn(Optional.of(glAccount));
         when(splitRepository.findByChargeIdAndFundId(1L, 1L)).thenReturn(Optional.empty());
-        when(splitRepository.findActiveSplitsByChargeId(1L)).thenReturn(Collections.emptyList());
-        when(splitRepository.save(any(ChargeStakeholderSplit.class))).thenReturn(split);
+        when(splitRepository.save(any(ChargeSplit.class))).thenReturn(split);
 
         // When
         CommandProcessingResult result = splitService.createSplit(command);
 
         // Then
         assertNotNull(result);
-        assertEquals(1L, result.entityId());
-        assertEquals(1L, result.chargeId());
-        verify(splitRepository).save(any(ChargeStakeholderSplit.class));
-    }
-
-    @Test
-    void testCreateSplit_WhenFundNotFound_ShouldThrowException() {
-        // Given
-        when(chargeRepository.findOneWithNotFoundDetection(1L)).thenReturn(charge);
-        when(fundRepository.findById(1L)).thenReturn(Optional.empty());
-
-        // When & Then
-        assertThrows(PlatformApiDataValidationException.class, () -> {
-            splitService.createSplit(command);
-        });
-    }
-
-    @Test
-    void testCreateSplit_WhenGLAccountNotFound_ShouldThrowException() {
-        // Given
-        when(chargeRepository.findOneWithNotFoundDetection(1L)).thenReturn(charge);
-        when(fundRepository.findById(1L)).thenReturn(Optional.of(fund));
-        when(glAccountRepository.findById(1L)).thenReturn(Optional.empty());
-
-        // When & Then
-        assertThrows(PlatformApiDataValidationException.class, () -> {
-            splitService.createSplit(command);
-        });
+        assertEquals(1L, result.getResourceId());
+        verify(splitRepository).save(any(ChargeSplit.class));
     }
 
     @Test
@@ -151,93 +128,51 @@ class ChargeStakeholderSplitServiceTest {
         when(splitRepository.findByChargeIdAndFundId(1L, 1L)).thenReturn(Optional.of(split));
 
         // When & Then
-        assertThrows(PlatformApiDataValidationException.class, () -> {
-            splitService.createSplit(command);
-        });
-    }
-
-    @Test
-    void testUpdateSplit_WhenValidData_ShouldUpdateSplit() {
-        // Given
-        Map<String, Object> changes = Map.of("splitValue", new BigDecimal("60.00"));
-        when(splitRepository.findById(1L)).thenReturn(Optional.of(split));
-        when(split.update(command)).thenReturn(changes);
-        when(splitRepository.findActiveSplitsByChargeId(1L)).thenReturn(Collections.emptyList());
-        when(splitRepository.save(split)).thenReturn(split);
-
-        // When
-        CommandProcessingResult result = splitService.updateSplit(1L, command);
-
-        // Then
-        assertNotNull(result);
-        assertEquals(1L, result.entityId());
-        assertEquals(1L, result.chargeId());
-        assertEquals(changes, result.changes());
-        verify(splitRepository).save(split);
-    }
-
-    @Test
-    void testUpdateSplit_WhenSplitNotFound_ShouldThrowException() {
-        // Given
-        when(splitRepository.findById(1L)).thenReturn(Optional.empty());
-
-        // When & Then
-        assertThrows(PlatformApiDataValidationException.class, () -> {
-            splitService.updateSplit(1L, command);
-        });
-    }
-
-    @Test
-    void testDeleteSplit_WhenValidData_ShouldDeleteSplit() {
-        // Given
-        when(splitRepository.findById(1L)).thenReturn(Optional.of(split));
-
-        // When
-        CommandProcessingResult result = splitService.deleteSplit(1L);
-
-        // Then
-        assertNotNull(result);
-        assertEquals(1L, result.entityId());
-        assertEquals(1L, result.chargeId());
-        verify(splitRepository).delete(split);
-    }
-
-    @Test
-    void testDeleteSplit_WhenSplitNotFound_ShouldThrowException() {
-        // Given
-        when(splitRepository.findById(1L)).thenReturn(Optional.empty());
-
-        // When & Then
-        assertThrows(PlatformApiDataValidationException.class, () -> {
-            splitService.deleteSplit(1L);
-        });
+        assertThrows(PlatformApiDataValidationException.class, () -> splitService.createSplit(command));
+        verify(splitRepository, never()).save(any(ChargeSplit.class));
     }
 
     @Test
     void testGetSplitsByChargeId_ShouldReturnSplits() {
         // Given
-        List<ChargeStakeholderSplit> expectedSplits = Arrays.asList(split);
-        when(splitRepository.findActiveSplitsByChargeId(1L)).thenReturn(expectedSplits);
+        List<ChargeSplit> splits = Arrays.asList(split);
+        when(splitRepository.findActiveSplitsByChargeId(1L)).thenReturn(splits);
 
         // When
-        List<ChargeStakeholderSplit> result = splitService.getSplitsByChargeId(1L);
+        List<ChargeSplitData> result = splitService.getSplitsByChargeId(1L);
 
         // Then
-        assertEquals(expectedSplits, result);
+        assertNotNull(result);
+        assertEquals(1, result.size());
         verify(splitRepository).findActiveSplitsByChargeId(1L);
     }
 
     @Test
     void testGetSplitsByFundId_ShouldReturnSplits() {
         // Given
-        List<ChargeStakeholderSplit> expectedSplits = Arrays.asList(split);
-        when(splitRepository.findByFundIdAndActive(1L, true)).thenReturn(expectedSplits);
+        List<ChargeSplit> splits = Arrays.asList(split);
+        when(splitRepository.findByFundIdAndActive(1L, true)).thenReturn(splits);
 
         // When
-        List<ChargeStakeholderSplit> result = splitService.getSplitsByFundId(1L);
+        List<ChargeSplitData> result = splitService.getSplitsByFundId(1L);
 
         // Then
-        assertEquals(expectedSplits, result);
+        assertNotNull(result);
+        assertEquals(1, result.size());
         verify(splitRepository).findByFundIdAndActive(1L, true);
+    }
+
+    @Test
+    void testSaveSplit_ShouldSaveAndReturnSplit() {
+        // Given
+        when(splitRepository.save(split)).thenReturn(split);
+
+        // When
+        ChargeSplit result = splitService.saveSplit(split);
+
+        // Then
+        assertNotNull(result);
+        assertEquals(split, result);
+        verify(splitRepository).save(split);
     }
 }

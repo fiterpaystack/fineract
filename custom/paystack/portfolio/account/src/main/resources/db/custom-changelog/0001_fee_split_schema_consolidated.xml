@@ -2,10 +2,10 @@
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
 
     <!-- Add fee split support to existing charge table -->
-    <changeSet id="add-fee-split-to-charge" author="paystack">
+    <changeSet id="paystack-0001-add-fee-split-to-charge" author="paystack">
         <preConditions onFail="MARK_RAN">
             <not>
                 <columnExists tableName="m_charge" columnName="enable_fee_split"/>
@@ -20,7 +20,7 @@
     </changeSet>
 
     <!-- Create charge split configuration table (directly as m_charge_split) -->
-    <changeSet id="create-charge-split-table" author="paystack">
+    <changeSet id="paystack-0001-create-charge-split-table" author="paystack">
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="m_charge_split"/>
@@ -99,7 +99,7 @@
     </changeSet>
 
     <!-- Create fee split audit table -->
-    <changeSet id="create-fee-split-audit-table" author="paystack">
+    <changeSet id="paystack-0001-create-fee-split-audit-table" author="paystack">
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="m_fee_split_audit"/>
@@ -152,7 +152,7 @@
     </changeSet>
 
     <!-- Create fee split detail table -->
-    <changeSet id="create-fee-split-detail-table" author="paystack">
+    <changeSet id="paystack-0001-create-fee-split-detail-table" author="paystack">
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="m_fee_split_detail"/>

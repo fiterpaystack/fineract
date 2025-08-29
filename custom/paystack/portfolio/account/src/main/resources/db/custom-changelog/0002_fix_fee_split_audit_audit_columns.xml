@@ -2,10 +2,10 @@
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
 
     <!-- Fix missing audit columns in m_fee_split_audit table -->
-    <changeSet id="fix-fee-split-audit-audit-columns" author="paystack">
+    <changeSet id="paystack-0002-fix-fee-split-audit-audit-columns" author="paystack">
         <preConditions onFail="MARK_RAN">
             <not>
                 <columnExists tableName="m_fee_split_audit" columnName="last_modified_by"/>

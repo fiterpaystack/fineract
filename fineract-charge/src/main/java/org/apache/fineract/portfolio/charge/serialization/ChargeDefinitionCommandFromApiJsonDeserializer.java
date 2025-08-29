@@ -46,7 +46,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
-public final class ChargeDefinitionCommandFromApiJsonDeserializer {
+public class ChargeDefinitionCommandFromApiJsonDeserializer {
 
     public static final String NAME = "name";
     public static final String AMOUNT = "amount";
