@@ -25,7 +25,7 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
 
-    <changeSet id="create-savings-account-extension-table" author="paystack">
+    <changeSet id="paystack-0003-create-savings-account-extension-table" author="paystack">
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="ps_m_savings_account"/>

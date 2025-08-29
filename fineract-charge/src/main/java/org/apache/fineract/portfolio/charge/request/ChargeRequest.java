@@ -52,4 +52,5 @@ public class ChargeRequest implements Serializable {
     private BigDecimal minCap;
     private BigDecimal maxCap;
     private Long taxGroupId;
+    private Boolean enableFeeSplit;
 }

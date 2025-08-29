@@ -53,6 +53,8 @@ public class ChargeData implements Comparable<ChargeData>, Serializable {
     private final boolean freeWithdrawal = Boolean.FALSE;
     @Builder.Default
     private final boolean isPaymentType = Boolean.FALSE;
+    @Builder.Default
+    private final boolean enableFeeSplit = Boolean.FALSE;
 
     private final Integer freeWithdrawalChargeFrequency;
     private final Integer restartFrequency;

@@ -85,6 +85,9 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
     private final AccountTransfersReadPlatformService accountTransfersReadPlatformService;
     private final SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService;
     private final ClientChargeOverrideReadService clientChargeOverrideReadService;
+    private final ChargeRepositoryWrapper chargeRepositoryWrapper;
+    private final SavingsAccountChargeRepositoryWrapper savingsAccountChargeRepositoryWrapper;
+    private final FeeSplitService feeSplitService;
 
     public PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl(PlatformSecurityContext context,
             SavingsAccountDataValidator fromApiJsonDeserializer, SavingsAccountRepositoryWrapper savingAccountRepositoryWrapper,
@@ -102,7 +105,7 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
             StandingInstructionRepository standingInstructionRepository, BusinessEventNotifierService businessEventNotifierService,
             GSIMRepositoy gsimRepository, SavingsAccountInterestPostingService savingsAccountInterestPostingService,
             ErrorHandler errorHandler, SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService,
-            SavingsVatPostProcessorService vatService, ClientChargeOverrideReadService clientChargeOverrideReadService) {
+            ClientChargeOverrideReadService clientChargeOverrideReadService, FeeSplitService feeSplitService) {
         super(context, fromApiJsonDeserializer, savingAccountRepositoryWrapper, staffRepository, savingsAccountTransactionRepository,
                 savingAccountAssembler, savingsAccountTransactionDataValidator, savingsAccountChargeDataValidator,
                 paymentDetailWritePlatformService, journalEntryWritePlatformService, savingsAccountDomainService, noteRepository,
@@ -114,6 +117,9 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
         this.accountTransfersReadPlatformService = accountTransfersReadPlatformService;
         this.savingsAccountChargePaymentWrapperService = savingsAccountChargePaymentWrapperService;
         this.clientChargeOverrideReadService = clientChargeOverrideReadService;
+        this.chargeRepositoryWrapper = chargeRepository;
+        this.savingsAccountChargeRepositoryWrapper = savingsAccountChargeRepository;
+        this.feeSplitService = feeSplitService;
     }
 
     @Override
@@ -172,6 +178,11 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
         this.savingAccountRepositoryWrapper.saveAndFlush(account);
 
         postJournalEntries(account, existingTransactionIds, existingReversedTransactionIds, backdatedTxnsAllowedTill);
+
+        // Process fee split if enabled for this charge
+        if (savingsAccountCharge.getCharge().isEnableFeeSplit()) {
+            feeSplitService.processFeeSplitForSavings(chargePaymentResult.getFeeTransaction(), amountPaid);
+        }
 
         return chargePaymentResult.getFeeTransaction();
     }
