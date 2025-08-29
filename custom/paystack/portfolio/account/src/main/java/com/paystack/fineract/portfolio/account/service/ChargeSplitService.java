@@ -191,24 +191,21 @@ public class ChargeSplitService {
         List<ChargeSplit> existingSplits = splitRepository.findActiveSplitsByChargeId(chargeId);
 
         BigDecimal totalPercentage = BigDecimal.ZERO;
-        BigDecimal totalFlatAmount = BigDecimal.ZERO;
 
         // Add existing splits
         for (ChargeSplit split : existingSplits) {
             if (split.getId() != null && !split.getId().equals(newSplit.getId())) { // Exclude the new/updated split
                 if (split.isPercentageSplit()) {
                     totalPercentage = totalPercentage.add(split.getSplitValue());
-                } else if (split.isFlatAmountSplit()) {
-                    totalFlatAmount = totalFlatAmount.add(split.getSplitValue());
                 }
+                // Note: Flat amount splits are not validated here as we can't validate against total fee amount
+                // This validation will be done at transaction time in FeeSplitService
             }
         }
 
         // Add new/updated split
         if (newSplit.isPercentageSplit()) {
             totalPercentage = totalPercentage.add(newSplit.getSplitValue());
-        } else if (newSplit.isFlatAmountSplit()) {
-            totalFlatAmount = totalFlatAmount.add(newSplit.getSplitValue());
         }
 
         // Validate totals

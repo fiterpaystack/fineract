@@ -27,20 +27,37 @@ public class ChargeSplitApiResourceSwagger {
 
     public static class PostChargeSplitResponse {
 
-        public Long resourceId;
-        public Long chargeId;
+        private Long resourceId;
+        private Long chargeId;
+
+        public Long getResourceId() { return resourceId; }
+        public void setResourceId(Long resourceId) { this.resourceId = resourceId; }
+        public Long getChargeId() { return chargeId; }
+        public void setChargeId(Long chargeId) { this.chargeId = chargeId; }
     }
 
     public static class PutChargeSplitResponse {
 
-        public Long resourceId;
-        public Long chargeId;
-        public Map<String, Object> changes;
+        private Long resourceId;
+        private Long chargeId;
+        private Map<String, Object> changes;
+
+        public Long getResourceId() { return resourceId; }
+        public void setResourceId(Long resourceId) { this.resourceId = resourceId; }
+        public Long getChargeId() { return chargeId; }
+        public void setChargeId(Long chargeId) { this.chargeId = chargeId; }
+        public Map<String, Object> getChanges() { return changes; }
+        public void setChanges(Map<String, Object> changes) { this.changes = changes; }
     }
 
     public static class DeleteChargeSplitResponse {
 
-        public Long resourceId;
-        public Long chargeId;
+        private Long resourceId;
+        private Long chargeId;
+
+        public Long getResourceId() { return resourceId; }
+        public void setResourceId(Long resourceId) { this.resourceId = resourceId; }
+        public Long getChargeId() { return chargeId; }
+        public void setChargeId(Long chargeId) { this.chargeId = chargeId; }
     }
 }

@@ -186,7 +186,7 @@ public class FeeSplitService {
                 log.warn("No savings account found for transaction: {}", savingsTransaction.getId());
             }
         } catch (Exception e) {
-            log.error("Error getting charge from savings transaction: {}", e.getMessage(), e);
+            log.error("Error getting charge from savings transaction", e);
         }
 
         return null;
@@ -232,7 +232,7 @@ public class FeeSplitService {
             log.debug("Audit record created: {}", audit.getId());
             return audit;
         } catch (Exception e) {
-            log.error("Error creating audit record: {}", e.getMessage(), e);
+            log.error("Error creating audit record", e);
             throw e;
         }
     }
@@ -268,7 +268,7 @@ public class FeeSplitService {
             audit.addSplitDetail(detail);
 
         } catch (Exception e) {
-            log.error("Error processing individual client split: {}", e.getMessage(), e);
+            log.error("Error processing individual client split", e);
             throw e;
         }
     }
@@ -306,7 +306,7 @@ public class FeeSplitService {
             audit.addSplitDetail(detail);
 
         } catch (Exception e) {
-            log.error("Error processing individual split: {}", e.getMessage(), e);
+            log.error("Error processing individual split", e);
             throw e;
         }
     }
@@ -363,7 +363,7 @@ public class FeeSplitService {
             return journalEntries;
 
         } catch (Exception e) {
-            log.error("Error creating balanced journal entries for client split: {}", e.getMessage(), e);
+            log.error("Error creating balanced journal entries for client split", e);
             throw e;
         }
     }
@@ -420,7 +420,7 @@ public class FeeSplitService {
             return journalEntries;
 
         } catch (Exception e) {
-            log.error("Error creating balanced journal entries for savings split: {}", e.getMessage(), e);
+            log.error("Error creating balanced journal entries for savings split", e);
             throw e;
         }
     }
@@ -466,7 +466,7 @@ public class FeeSplitService {
             return finalAccount;
 
         } catch (Exception e) {
-            log.error("Failed to get original income account for charge {}: {}", charge.getId(), e.getMessage(), e);
+            log.error("Failed to get original income account for charge {}: {}", charge.getId(), e.getMessage());
             throw new PlatformApiDataValidationException(
                     List.of(ApiParameterError.parameterError("error.msg.fee.split.income.account.not.found",
                             "Original income account not found for charge: " + charge.getId(), "chargeId", charge.getId())),
@@ -500,7 +500,7 @@ public class FeeSplitService {
                             "No income account found for client charge: " + charge.getId(), "chargeId", charge.getId())));
 
         } catch (Exception e) {
-            log.error("Failed to get original income account for client charge {}: {}", charge.getId(), e.getMessage(), e);
+            log.error("Failed to get original income account for client charge {}: {}", charge.getId(), e.getMessage());
             throw new PlatformApiDataValidationException(
                     List.of(ApiParameterError.parameterError("error.msg.fee.split.income.account.not.found",
                             "Original income account not found for client charge: " + charge.getId(), "chargeId", charge.getId())),
