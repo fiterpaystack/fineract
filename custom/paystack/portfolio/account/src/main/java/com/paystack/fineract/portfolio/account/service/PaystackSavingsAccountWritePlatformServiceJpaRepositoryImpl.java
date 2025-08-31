@@ -218,30 +218,34 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
         }
         account.undoTransaction(transactionId);
 
-        // Handle cascading reversals for deposits with fees and VAT
-        if (savingsAccountTransaction.isDeposit()) {
-            // Check for deposit fee at transactionId + 1
-            final SavingsAccountTransaction depositFeeTransaction = this.savingsAccountTransactionRepository
-                    .findOneByIdAndSavingsAccountId(transactionId + 1, savingsId);
-            if (depositFeeTransaction != null && depositFeeTransaction.isChargeTransactionAndNotReversed()) {
-                account.undoTransaction(transactionId + 1);
+        Long emtLevyPossibleId = transactionId + 1;
+        final SavingsAccountTransaction nextSavingsAccountTransaction = this.savingsAccountTransactionRepository
+                .findOneByIdAndSavingsAccountId(transactionId + 1, savingsId);
 
-                // Check for VAT on fees at transactionId + 2
-                final SavingsAccountTransaction vatTransaction = this.savingsAccountTransactionRepository
-                        .findOneByIdAndSavingsAccountId(transactionId + 2, savingsId);
-                if (vatTransaction != null && vatTransaction.isVatonFeesAndNotReversed()) {
-                    account.undoTransaction(transactionId + 2);
-                }
+        if (savingsAccountTransaction.isChargeTransaction() && nextSavingsAccountTransaction.isVatonFeesAndNotReversed()) {
+            emtLevyPossibleId = emtLevyPossibleId + 1;
+            account.undoTransaction(transactionId + 1);
+        }
+
+        if (nextSavingsAccountTransaction != null && (nextSavingsAccountTransaction.isWithdrawalFeeAndNotReversed()
+                || nextSavingsAccountTransaction.isDepositFeeAndNotReversed())) {
+            account.undoTransaction(transactionId + 1);
+            emtLevyPossibleId = emtLevyPossibleId + 1;
+
+            final SavingsAccountTransaction vatTransaction = this.savingsAccountTransactionRepository
+                    .findOneByIdAndSavingsAccountId(transactionId + 2, savingsId);
+            if (vatTransaction != null && vatTransaction.isVatonFeesAndNotReversed()) {
+                account.undoTransaction(transactionId + 2);
+                emtLevyPossibleId = emtLevyPossibleId + 1;
             }
         }
 
-        // Handle withdrawal fees (existing Fineract logic)
-        if (savingsAccountTransaction.isWithdrawal()) {
-            final SavingsAccountTransaction nextSavingsAccountTransaction = this.savingsAccountTransactionRepository
-                    .findOneByIdAndSavingsAccountId(transactionId + 1, savingsId);
-            if (nextSavingsAccountTransaction != null && nextSavingsAccountTransaction.isWithdrawalFeeAndNotReversed()) {
-                account.undoTransaction(transactionId + 1);
-            }
+        final SavingsAccountTransaction possibleEmtLevyTransaction = this.savingsAccountTransactionRepository
+                .findOneByIdAndSavingsAccountId(emtLevyPossibleId, savingsId);
+
+        if (possibleEmtLevyTransaction != null && possibleEmtLevyTransaction.isEmtLevyAndNotReversed()
+                && !savingsAccountTransaction.isChargeTransaction()) {
+            account.undoTransaction(emtLevyPossibleId);
         }
 
         boolean isInterestTransfer = false;

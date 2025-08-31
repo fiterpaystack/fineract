@@ -52,7 +52,8 @@ public enum SavingsAccountTransactionType {
     ESCHEAT(19, "savingsAccountTransactionType.escheat", TransactionEntryType.DEBIT), //
     AMOUNT_HOLD(20, "savingsAccountTransactionType.onHold", TransactionEntryType.DEBIT), //
     AMOUNT_RELEASE(21, "savingsAccountTransactionType.release", TransactionEntryType.CREDIT), //
-    VAT_ON_FEES(22, "savingsAccountTransactionType.vat", TransactionEntryType.DEBIT); //
+    VAT_ON_FEES(22, "savingsAccountTransactionType.vat", TransactionEntryType.DEBIT), //
+    EMT_LEVY(24, "savingsAccountTransactionType.emtLevy", TransactionEntryType.DEBIT); // new EMT levy transaction
 
     private static final Map<Integer, SavingsAccountTransactionType> BY_ID = Arrays.stream(values())
             .collect(Collectors.toMap(SavingsAccountTransactionType::getValue, v -> v));
@@ -141,7 +142,7 @@ public enum SavingsAccountTransactionType {
     }
 
     public boolean isChargeTransaction() {
-        return isPayCharge() || isWithdrawalFee() || isDepositFee() || isAnnualFee();
+        return isPayCharge() || isWithdrawalFee() || isDepositFee() || isAnnualFee() || isEmtLevy() || isVatOnFees();
     }
 
     public boolean isWaiveCharge() {
@@ -209,5 +210,9 @@ public enum SavingsAccountTransactionType {
 
     public boolean isVatOnFees() {
         return this == VAT_ON_FEES;
+    }
+
+    public boolean isEmtLevy() {
+        return this == EMT_LEVY;
     }
 }

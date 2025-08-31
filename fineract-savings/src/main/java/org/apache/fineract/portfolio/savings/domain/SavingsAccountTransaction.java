@@ -893,4 +893,17 @@ public final class SavingsAccountTransaction extends AbstractAuditableWithUTCDat
     public boolean isVatonFeesAndNotReversed() {
         return getTransactionType().isVatOnFees() && isNotReversed();
     }
+
+    public boolean isEmtLevyAndNotReversed() {
+        return getTransactionType().isEmtLevy() && isNotReversed();
+    }
+
+    public static SavingsAccountTransaction emtLevy(final SavingsAccount savingsAccount, final Office office, final LocalDate date,
+            final Money amount, final String refNo) {
+        final boolean isReversed = false;
+        final boolean isManualTransaction = false;
+        final Boolean lienTransaction = false;
+        return new SavingsAccountTransaction(savingsAccount, office, SavingsAccountTransactionType.EMT_LEVY.getValue(), date, amount,
+                isReversed, isManualTransaction, lienTransaction, refNo);
+    }
 }

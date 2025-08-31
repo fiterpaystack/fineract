@@ -176,6 +176,12 @@ public final class SavingsAccountSummary {
                         this.accountBalance = Money.of(currency, this.accountBalance).minus(transactionAmount).getAmount();
                     }
                 break;
+                case EMT_LEVY:
+                    if (transaction.isEmtLevyAndNotReversed()) {
+                        this.totalFeeCharge = Money.of(currency, this.totalFeeCharge).plus(transactionAmount).getAmount();
+                        this.accountBalance = Money.of(currency, this.accountBalance).minus(transactionAmount).getAmount();
+                    }
+                break;
                 case OVERDRAFT_INTEREST:
                     if (transaction.isOverdraftInterestAndNotReversed()) {
                         this.totalOverdraftInterestDerived = Money.of(currency, this.totalOverdraftInterestDerived).plus(transactionAmount)
