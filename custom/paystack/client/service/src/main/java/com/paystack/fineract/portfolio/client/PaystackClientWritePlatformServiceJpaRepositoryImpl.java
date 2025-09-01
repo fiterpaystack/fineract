@@ -18,6 +18,7 @@
  */
 package com.paystack.fineract.portfolio.client;
 
+import com.paystack.fineract.portfolio.account.data.SavingsAccountTransactionLimitValidator;
 import java.util.Collections;
 import org.apache.fineract.commands.service.CommandProcessingService;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormatRepositoryWrapper;
@@ -36,7 +37,9 @@ import org.apache.fineract.organisation.office.domain.OfficeRepositoryWrapper;
 import org.apache.fineract.organisation.staff.domain.StaffRepositoryWrapper;
 import org.apache.fineract.portfolio.account.service.AccountNumberGenerator;
 import org.apache.fineract.portfolio.address.service.AddressWritePlatformService;
+import org.apache.fineract.portfolio.client.api.ClientApiConstants;
 import org.apache.fineract.portfolio.client.data.ClientDataValidator;
+import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientNonPersonRepositoryWrapper;
 import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
 import org.apache.fineract.portfolio.client.service.ClientFamilyMembersWritePlatformService;
@@ -54,6 +57,9 @@ import org.springframework.stereotype.Service;
 @Primary
 public class PaystackClientWritePlatformServiceJpaRepositoryImpl extends ClientWritePlatformServiceJpaRepositoryImpl {
 
+    private final SavingsAccountTransactionLimitValidator savingsAccountTransactionLimitValidator;
+    private final ClientRepositoryWrapper clientRepository;
+
     public PaystackClientWritePlatformServiceJpaRepositoryImpl(PlatformSecurityContext context, ClientRepositoryWrapper clientRepository,
             ClientNonPersonRepositoryWrapper clientNonPersonRepository, OfficeRepositoryWrapper officeRepositoryWrapper,
             NoteRepository noteRepository, GroupRepository groupRepository, ClientDataValidator fromApiJsonDeserializer,
@@ -64,6 +70,7 @@ public class PaystackClientWritePlatformServiceJpaRepositoryImpl extends ClientW
             CommandProcessingService commandProcessingService, ConfigurationDomainService configurationDomainService,
             AccountNumberFormatRepositoryWrapper accountNumberFormatRepository, FromJsonHelper fromApiJsonHelper,
             AddressWritePlatformService addressWritePlatformService,
+            SavingsAccountTransactionLimitValidator savingsAccountTransactionLimitValidator,
             ClientFamilyMembersWritePlatformService clientFamilyMembersWritePlatformService,
             BusinessEventNotifierService businessEventNotifierService,
             EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService, ExternalIdFactory externalIdFactory) {
@@ -73,6 +80,8 @@ public class PaystackClientWritePlatformServiceJpaRepositoryImpl extends ClientW
                 configurationDomainService, accountNumberFormatRepository, fromApiJsonHelper, addressWritePlatformService,
                 clientFamilyMembersWritePlatformService, businessEventNotifierService, entityDatatableChecksWritePlatformService,
                 externalIdFactory);
+        this.savingsAccountTransactionLimitValidator = savingsAccountTransactionLimitValidator;
+        this.clientRepository = clientRepository;
     }
 
     @Override
@@ -94,6 +103,17 @@ public class PaystackClientWritePlatformServiceJpaRepositoryImpl extends ClientW
                     "The parameter Mobile Number is required", "mobileNo");
             throw new PlatformApiDataValidationException(Collections.singletonList(error));
         }
+
+        // Update client's saving accounts to UNBLOCKDEBIT or BLOCKDEBIT as per classification
+        final Client clientForUpdate = clientRepository.findOneWithNotFoundDetection(clientId);
+        if (command.isChangeInLongParameterNamed(ClientApiConstants.clientClassificationIdParamName,
+                clientForUpdate.clientClassificationId())) {
+
+            final Long newClassificationId = command.longValueOfParameterNamed(ClientApiConstants.clientClassificationIdParamName);
+            savingsAccountTransactionLimitValidator.updateClientSavingsAccountsSubStatusForClassification(clientForUpdate,
+                    newClassificationId);
+        }
+
         return super.updateClient(clientId, command);
     }
 }
