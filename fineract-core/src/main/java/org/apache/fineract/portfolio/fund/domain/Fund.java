@@ -79,4 +79,8 @@ public class Fund extends AbstractPersistableCustom<Long> {
 
         return actualChanges;
     }
+
+    public String getName() {
+        return this.name;
+    }
 }
