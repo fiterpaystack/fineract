@@ -25,8 +25,8 @@ import com.paystack.fineract.portfolio.account.data.VatApplicationResult;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.organisation.monetary.domain.Money;
@@ -60,18 +60,15 @@ public class SavingsVatPostProcessorService {
         }
 
         // Calculate VAT amount
-        BigDecimal vatAmount = calculateVatAmount(amount, charge);
+        Map<TaxComponent, BigDecimal> taxComponentAmounts = calculateVatAmount(amount, charge);
+        BigDecimal totalAmount = taxComponentAmounts.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        if (vatAmount.compareTo(BigDecimal.ZERO) > 0) {
+        if (totalAmount.compareTo(BigDecimal.ZERO) > 0) {
             // Create VAT transaction
-            SavingsAccountTransaction vatTxn = createVatTransaction(account, vatAmount, transactionDate,
-                    charge.getCharge().getTaxGroup().getTaxGroupMappings().stream().collect(
-                            Collectors.toMap(TaxGroupMappings::getTaxComponent, mapping -> mapping.getTaxComponent().getPercentage()))
-
-            );
+            SavingsAccountTransaction vatTxn = createVatTransaction(account, totalAmount, transactionDate, taxComponentAmounts);
 
             return VatApplicationResult
-                    .success(vatTxn, vatAmount, charge.getCharge().getTaxGroup().getTaxGroupMappings().stream()
+                    .success(vatTxn, totalAmount, charge.getCharge().getTaxGroup().getTaxGroupMappings().stream()
                             .map(t -> t.getTaxComponent().getPercentage()).reduce(BigDecimal.ZERO, BigDecimal::add))
                     .setBackdatedTransaction(isBackdatedTransaction);
 
@@ -86,7 +83,7 @@ public class SavingsVatPostProcessorService {
 
     }
 
-    private BigDecimal calculateVatAmount(BigDecimal feeAmount, SavingsAccountCharge charge) {
+    private Map<TaxComponent, BigDecimal> calculateVatAmount(BigDecimal feeAmount, SavingsAccountCharge charge) {
         Charge chargeDefinition = charge.getCharge();
 
         // First try to get VAT rate from charge's tax group
@@ -94,18 +91,20 @@ public class SavingsVatPostProcessorService {
             return calculateVatFromTaxGroup(feeAmount, chargeDefinition.getTaxGroup());
         }
 
-        return BigDecimal.ZERO;
+        return new HashMap<>();
     }
 
-    private BigDecimal calculateVatFromTaxGroup(BigDecimal feeAmount, TaxGroup taxGroup) {
-        BigDecimal totalVat = BigDecimal.ZERO;
+    private Map<TaxComponent, BigDecimal> calculateVatFromTaxGroup(BigDecimal feeAmount, TaxGroup taxGroup) {
+
+        Map<TaxComponent, BigDecimal> totalVat = new HashMap<>();
 
         for (TaxGroupMappings mapping : taxGroup.getTaxGroupMappings()) {
             TaxComponent taxComponent = mapping.getTaxComponent();
             if (taxComponent != null && taxComponent.getPercentage() != null) {
                 BigDecimal vatAmount = feeAmount.multiply(taxComponent.getPercentage()).divide(BigDecimal.valueOf(100), 2,
                         RoundingMode.HALF_UP);
-                totalVat = totalVat.add(vatAmount);
+                totalVat.put(taxComponent, vatAmount);
+
             }
         }
 

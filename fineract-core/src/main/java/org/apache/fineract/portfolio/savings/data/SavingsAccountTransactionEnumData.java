@@ -51,6 +51,7 @@ public class SavingsAccountTransactionEnumData implements Serializable {
     private final boolean amountRelease;
     private final boolean accrual;
     private final boolean vat;
+    private final boolean emtLevy;
 
     public SavingsAccountTransactionEnumData(final Long id, final String code, final String value) {
         this.id = id;
@@ -78,6 +79,7 @@ public class SavingsAccountTransactionEnumData implements Serializable {
         this.amountHold = transactionType == SavingsAccountTransactionType.AMOUNT_HOLD;
         this.amountRelease = transactionType == SavingsAccountTransactionType.AMOUNT_RELEASE;
         this.vat = transactionType == SavingsAccountTransactionType.VAT_ON_FEES;
+        this.emtLevy = transactionType == SavingsAccountTransactionType.EMT_LEVY;
     }
 
     public boolean isIncomeFromInterest() {

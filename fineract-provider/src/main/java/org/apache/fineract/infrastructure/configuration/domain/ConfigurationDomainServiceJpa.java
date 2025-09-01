@@ -19,6 +19,7 @@
 package org.apache.fineract.infrastructure.configuration.domain;
 
 import jakarta.validation.constraints.NotNull;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -532,5 +533,29 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     public String getAssetOwnerTransferOustandingInterestStrategy() {
         return getGlobalConfigurationPropertyData(
                 GlobalConfigurationConstants.ASSET_OWNER_TRANSFER_OUTSTANDING_INTEREST_CALCULATION_STRATEGY).getStringValue();
+    }
+
+    // Paystack change.
+    @Override
+    public boolean isEmtLevyEnabled() {
+        return getGlobalConfigurationPropertyData(GlobalConfigurationConstants.EMT_LEVY).isEnabled();
+    }
+
+    @Override
+    public BigDecimal retrieveEmtLevyAmount() {
+        final var prop = getGlobalConfigurationPropertyData(GlobalConfigurationConstants.EMT_LEVY);
+        if (!prop.isEnabled() || prop.getValue() == null) {
+            return BigDecimal.ZERO; // treat as disabled
+        }
+        return new BigDecimal(prop.getValue());
+    }
+
+    @Override
+    public BigDecimal retrieveEmtLevyThreshold() {
+        final var prop = getGlobalConfigurationPropertyData(GlobalConfigurationConstants.EMT_LEVY_BASE_THRESHOLD);
+        if (prop.getValue() == null) {
+            return BigDecimal.ZERO;
+        }
+        return new BigDecimal(prop.getValue());
     }
 }

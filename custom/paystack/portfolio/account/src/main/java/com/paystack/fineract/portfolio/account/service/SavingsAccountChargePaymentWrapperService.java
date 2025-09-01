@@ -65,44 +65,41 @@ public class SavingsAccountChargePaymentWrapperService {
     public ChargePaymentResult payChargeWithVat(SavingsAccount account, SavingsAccountCharge charge, Money amount,
             LocalDate transactionDate, String refNo, boolean isBackdatedTransaction) {
 
-        log.info("=== FEE SPLIT DEBUG: Starting payChargeWithVat ===");
-        log.info("Account ID: {}, Charge ID: {}, Amount: {}, Transaction Date: {}, Ref: {}", account.getId(), charge.getId(),
-                amount.getAmount(), transactionDate, refNo);
-        log.info("Charge Definition ID: {}, Enable Fee Split: {}", charge.getCharge().getId(), charge.getCharge().isEnableFeeSplit());
-        log.info("Charge Type: {}, Charge Time Type: {}", charge.getCharge().isSavingsCharge() ? "SAVINGS" : "OTHER",
-                charge.getCharge().getChargeTimeType());
+        // Create fee transaction first (added to account)
+        SavingsAccountTransaction feeTransaction = account.payCharge(charge, amount, transactionDate, isBackdatedTransaction, refNo);
 
-        // Step 2: Apply VAT if applicable
+        // Compute VAT but DO NOT attach yet
         VatApplicationResult vatResult = vatService.processVatForFeeTransaction(amount.getAmount(), transactionDate, charge, account,
                 isBackdatedTransaction);
-        log.info("VAT Processing Result: Applied={}, Amount={}", vatResult.isVatApplied(), vatResult.getVatAmount());
 
-        // Step 1: Pay the charge (creates fee transaction)
-        SavingsAccountTransaction feeTransaction = account.payCharge(charge, amount, transactionDate, isBackdatedTransaction, refNo);
-        log.info("Fee Transaction Created: ID={}, Amount={}, Date={}", feeTransaction.getId(), feeTransaction.getAmount(),
-                feeTransaction.getTransactionDate());
+        return new ChargePaymentResult(feeTransaction, vatResult); // caller will attach VAT after persisting fee
+    }
 
-        // Transaction should now have an ID since it's saved in the calling method
-        log.info("Fee transaction ID after creation: {}", feeTransaction.getId());
-
-        // Step 3: Update account if VAT was applied
-        if (vatResult.isVatApplied()) {
-            // The VAT amount needs to be deducted from account balance
-            updateAccountForVat(account, vatResult);
-            log.info("Account updated for VAT");
+    // Make VAT attachment method public so caller can invoke after fee persistence
+    public void attachVatAfterFeePersist(SavingsAccount account, VatApplicationResult vatResult) {
+        if (vatResult == null || !vatResult.isVatApplied()) {
+            return;
         }
-
-        // Step 4: Process fee split if enabled for this charge
-        log.info("Checking if fee split should be processed...");
-        log.info("Charge enableFeeSplit value: {}", charge.getCharge().isEnableFeeSplit());
-        log.info("Charge object type: {}", charge.getCharge().getClass().getSimpleName());
-
-        // Fee split processing is now handled by the calling method after transaction is saved
-        log.info("Fee split processing will be handled by calling method after transaction is saved");
-
-        log.info("=== FEE SPLIT DEBUG: payChargeWithVat completed ===");
-        // Return comprehensive result
-        return new ChargePaymentResult(feeTransaction, vatResult);
+        if (vatResult.isBackdatedTransaction()) {
+            account.getSavingsAccountTransactionsWithPivotConfig().add(vatResult.getVatTransaction());
+            account.getSummary().updateSummaryWithPivotConfig(account.getCurrency(), savingsAccountTransactionSummaryWrapper,
+                    vatResult.getVatTransaction(), account.getSavingsAccountTransactionsWithPivotConfig());
+            Optional<PaystackSavingsAccount> paystackAccountOpt = paystackSavingsAccountRepository.findBySavingsAccount(account);
+            if (paystackAccountOpt.isPresent()) {
+                PaystackSavingsAccount paystackAccount = paystackAccountOpt.get();
+                BigDecimal newVatTotal = paystackAccount.getTotalVatAmountDerived().add(vatResult.getVatAmount());
+                paystackAccount.setTotalVatAmountDerived(newVatTotal);
+                paystackSavingsAccountRepository.save(paystackAccount);
+            } else {
+                PaystackSavingsAccount extendedAccount = new PaystackSavingsAccount();
+                extendedAccount.setTotalVatAmountDerived(vatResult.getVatAmount());
+                extendedAccount.setSavingsAccount(account);
+                extendedAccount.setId(account.getId());
+                paystackSavingsAccountRepository.save(extendedAccount);
+            }
+        } else {
+            account.addTransaction(vatResult.getVatTransaction());
+        }
     }
 
     public ChargePaymentResult payChargeWithVat(final SavingsAccount account, final SavingsAccountCharge savingsAccountCharge,
@@ -194,31 +191,5 @@ public class SavingsAccountChargePaymentWrapperService {
         }
 
         return this.payChargeWithVat(account, savingsAccountCharge, chargePaid, transactionDate, refNo, backdatedTxnsAllowedTill);
-    }
-
-    private void updateAccountForVat(SavingsAccount account, VatApplicationResult vatResult) {
-
-        if (vatResult.isBackdatedTransaction()) {
-            account.getSavingsAccountTransactionsWithPivotConfig().add(vatResult.getVatTransaction());
-            account.getSummary().updateSummaryWithPivotConfig(account.getCurrency(), savingsAccountTransactionSummaryWrapper,
-                    vatResult.getVatTransaction(), account.getSavingsAccountTransactionsWithPivotConfig());
-
-            Optional<PaystackSavingsAccount> paystackAccountOpt = paystackSavingsAccountRepository.findBySavingsAccount(account);
-            if (paystackAccountOpt.isPresent()) {
-                PaystackSavingsAccount paystackAccount = paystackAccountOpt.get();
-                BigDecimal newVatTotal = paystackAccount.getTotalVatAmountDerived().add(vatResult.getVatAmount());
-                paystackAccount.setTotalVatAmountDerived(newVatTotal);
-                paystackSavingsAccountRepository.save(paystackAccount);
-            } else {
-                PaystackSavingsAccount extendedAccount = new PaystackSavingsAccount();
-                extendedAccount.setTotalVatAmountDerived(vatResult.getVatAmount());
-                extendedAccount.setSavingsAccount(account);
-                extendedAccount.setId(account.getId());
-                paystackSavingsAccountRepository.save(extendedAccount);
-            }
-
-        } else {
-            account.addTransaction(vatResult.getVatTransaction());
-        }
     }
 }

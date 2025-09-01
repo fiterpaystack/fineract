@@ -180,6 +180,8 @@ public final class SavingsEnumerations {
                         SavingsAccountTransactionType.AMOUNT_RELEASE.getCode(), "Release Amount");
             case VAT_ON_FEES -> new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.VAT_ON_FEES.getValue().longValue(),
                     SavingsAccountTransactionType.VAT_ON_FEES.getCode(), "VAT on Fees");
+            case EMT_LEVY -> new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.EMT_LEVY.getValue().longValue(),
+                    SavingsAccountTransactionType.EMT_LEVY.getCode(), "EMT Levy");
             default -> optionData;
         };
         return optionData;

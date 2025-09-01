@@ -77,7 +77,11 @@ public final class GlobalConfigurationConstants {
     public static final String ENABLE_PAYMENT_HUB_INTEGRATION = "enable-payment-hub-integration";
     public static final String ENABLE_IMMEDIATE_CHARGE_ACCRUAL_POST_MATURITY = "enable-immediate-charge-accrual-post-maturity";
     public static final String ASSET_OWNER_TRANSFER_OUTSTANDING_INTEREST_CALCULATION_STRATEGY = "outstanding-interest-calculation-strategy-for-external-asset-transfer";
+
+    // Paystack change
     public static final String CBN_INSTITUTION_CODE = "cbn-institution-code";
+    public static final String EMT_LEVY = "emt-levy";
+    public static final String EMT_LEVY_BASE_THRESHOLD = "emt-levy-base-threshold";
 
     private GlobalConfigurationConstants() {}
 }
