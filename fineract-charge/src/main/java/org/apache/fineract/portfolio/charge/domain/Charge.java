@@ -21,11 +21,9 @@ package org.apache.fineract.portfolio.charge.domain;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import jakarta.persistence.*;
-
 import java.math.BigDecimal;
 import java.time.MonthDay;
 import java.util.*;
-
 import org.apache.fineract.accounting.glaccount.data.GLAccountData;
 import org.apache.fineract.accounting.glaccount.domain.GLAccount;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
@@ -187,7 +185,8 @@ public class Charge extends AbstractPersistableCustom<Long> {
 
         return new Charge(name, amount, currencyCode, chargeAppliesTo, chargeTimeType, chargeCalculationType, penalty, active, paymentMode,
                 feeOnMonthDay, feeInterval, minCap, maxCap, feeFrequency, enableFreeWithdrawalCharge, freeWithdrawalFrequency,
-                restartCountFrequency, countFrequencyType, account, taxGroup, enablePaymentType, paymentType, enableFeeSplit, varyingCharge);
+                restartCountFrequency, countFrequencyType, account, taxGroup, enablePaymentType, paymentType, enableFeeSplit,
+                varyingCharge);
     }
 
     protected Charge() {}
@@ -840,7 +839,7 @@ public class Charge extends AbstractPersistableCustom<Long> {
     }
 
     public void updateChargeSlabs(JsonCommand command, final Map<String, Object> actualChanges,
-                                  final DataValidatorBuilder baseDataValidator, String currencyCode) {
+            final DataValidatorBuilder baseDataValidator, String currencyCode) {
 
         final String idParamName = "id";
         final String deleteParamName = "delete";
@@ -945,9 +944,8 @@ public class Charge extends AbstractPersistableCustom<Long> {
         }
 
         for (ChargeSlab slab : chargeSlabs) {
-            if (transactionAmount.compareTo(slab.getFromAmount()) >= 0 &&
-                    (slab.getToAmount() == null || slab.getToAmount().equals(BigDecimal.ZERO)
-                            || transactionAmount.compareTo(slab.getToAmount()) <= 0)) {
+            if (transactionAmount.compareTo(slab.getFromAmount()) >= 0 && (slab.getToAmount() == null
+                    || slab.getToAmount().equals(BigDecimal.ZERO) || transactionAmount.compareTo(slab.getToAmount()) <= 0)) {
 
                 return slab.getValue();
             }

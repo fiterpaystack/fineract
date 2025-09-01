@@ -24,5 +24,4 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface ChargeSlabRepository extends JpaRepository<ChargeSlab, Long>, JpaSpecificationExecutor<ChargeSlab> {
-}
+public interface ChargeSlabRepository extends JpaRepository<ChargeSlab, Long>, JpaSpecificationExecutor<ChargeSlab> {}

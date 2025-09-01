@@ -19,26 +19,24 @@
 
 package org.apache.fineract.portfolio.charge.domain;
 
+import static org.apache.fineract.portfolio.charge.api.ChargesApiConstants.fromAmountParamName;
+import static org.apache.fineract.portfolio.charge.api.ChargesApiConstants.toAmountParamName;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import java.math.BigDecimal;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-
+import java.math.BigDecimal;
 import java.util.*;
-
 import lombok.*;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
-
-import static org.apache.fineract.portfolio.charge.api.ChargesApiConstants.fromAmountParamName;
-import static org.apache.fineract.portfolio.charge.api.ChargesApiConstants.toAmountParamName;
 
 @Entity
 @Table(name = "m_fee_charge_slab")
@@ -59,7 +57,6 @@ public class ChargeSlab extends AbstractPersistableCustom<Long> {
 
     @Column(name = "to_amount")
     private BigDecimal toAmount;
-
 
     public static List<ChargeSlab> assembleFrom(JsonCommand command, Charge charge) {
 
@@ -102,15 +99,13 @@ public class ChargeSlab extends AbstractPersistableCustom<Long> {
     }
 
     public void update(final JsonCommand command, final Map<String, Object> actualChanges, final DataValidatorBuilder baseDataValidator,
-                       final Locale locale) {
-
+            final Locale locale) {
 
         if (command.isChangeInBigDecimalParameterNamed(fromAmountParamName, this.fromAmount, locale)) {
             final BigDecimal newValue = command.bigDecimalValueOfParameterNamed(fromAmountParamName, locale);
             actualChanges.put(fromAmountParamName, newValue);
             this.fromAmount = newValue;
         }
-
 
         if (command.isChangeInBigDecimalParameterNamed(toAmountParamName, this.toAmount, locale)) {
             final BigDecimal newValue = command.bigDecimalValueOfParameterNamed(toAmountParamName, locale);
@@ -128,7 +123,7 @@ public class ChargeSlab extends AbstractPersistableCustom<Long> {
     }
 
     public void validateChargeSlabPlatformRules(final JsonCommand chartSlabsCommand, final DataValidatorBuilder baseDataValidator,
-                                                Locale locale) {
+            Locale locale) {
         if (isfromAmountGreaterThantoAmount()) {
             final Integer fromAmount = chartSlabsCommand.integerValueOfParameterNamed(fromAmountParamName, locale);
             baseDataValidator.parameter(fromAmountParamName).value(fromAmount).failWithCode("from.period.is.greater.than.to.period");
@@ -195,7 +190,7 @@ public class ChargeSlab extends AbstractPersistableCustom<Long> {
             }
             return that.fromAmount.compareTo(this.fromAmount) < 0;
         }
-        return this.fromAmount.compareTo(that.toAmount) <= 0 && that.fromAmount.compareTo(this.toAmount) <=0;
+        return this.fromAmount.compareTo(that.toAmount) <= 0 && that.fromAmount.compareTo(this.toAmount) <= 0;
     }
 
     public boolean isRateChartHasGap(final ChargeSlab that) {
