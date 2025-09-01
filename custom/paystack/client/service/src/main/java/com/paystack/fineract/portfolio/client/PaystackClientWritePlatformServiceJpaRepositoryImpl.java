@@ -18,9 +18,8 @@
  */
 package com.paystack.fineract.portfolio.client;
 
-import java.util.Collections;
-
 import com.paystack.fineract.portfolio.account.data.SavingsAccountTransactionLimitValidator;
+import java.util.Collections;
 import org.apache.fineract.commands.service.CommandProcessingService;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormatRepositoryWrapper;
 import org.apache.fineract.infrastructure.codes.domain.CodeValueRepositoryWrapper;
@@ -70,7 +69,8 @@ public class PaystackClientWritePlatformServiceJpaRepositoryImpl extends ClientW
             SavingsApplicationProcessWritePlatformService savingsApplicationProcessWritePlatformService,
             CommandProcessingService commandProcessingService, ConfigurationDomainService configurationDomainService,
             AccountNumberFormatRepositoryWrapper accountNumberFormatRepository, FromJsonHelper fromApiJsonHelper,
-            AddressWritePlatformService addressWritePlatformService, SavingsAccountTransactionLimitValidator savingsAccountTransactionLimitValidator,
+            AddressWritePlatformService addressWritePlatformService,
+            SavingsAccountTransactionLimitValidator savingsAccountTransactionLimitValidator,
             ClientFamilyMembersWritePlatformService clientFamilyMembersWritePlatformService,
             BusinessEventNotifierService businessEventNotifierService,
             EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService, ExternalIdFactory externalIdFactory) {
@@ -109,8 +109,7 @@ public class PaystackClientWritePlatformServiceJpaRepositoryImpl extends ClientW
         if (command.isChangeInLongParameterNamed(ClientApiConstants.clientClassificationIdParamName,
                 clientForUpdate.clientClassificationId())) {
 
-            final Long newClassificationId = command
-                    .longValueOfParameterNamed(ClientApiConstants.clientClassificationIdParamName);
+            final Long newClassificationId = command.longValueOfParameterNamed(ClientApiConstants.clientClassificationIdParamName);
             savingsAccountTransactionLimitValidator.updateSavingsAccountsForClassification(clientForUpdate, newClassificationId);
         }
 

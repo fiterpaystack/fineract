@@ -50,7 +50,7 @@ public class SavingsAccountTransactionLimitValidator {
 
     public void isDepositTransactionExceedsLimits(Client client, SavingsAccount savingsAccount, LocalDate transactionDate,
             BigDecimal transactionAmount) {
-        if(client.getClientClassification() != null) {
+        if (client.getClientClassification() != null) {
             Optional<SavingsClientClassificationLimitMapping> mappingOptional = savingsClientClassificationMappingRepository
                     .findByClassificationId(client.getClientClassification().getId());
             if (mappingOptional.isPresent()) {
@@ -84,9 +84,11 @@ public class SavingsAccountTransactionLimitValidator {
             this.savingsAccountRepository.save(account);
         }
         // BLOCKDEBIT NOTE
-        String noteWithoutTransaction = "Savings Account : " + account.getId() + " is blocked for debit transactions  because the transaction limit : "
-                + limitName + " exceeds the limit set by Client's classification %s";
-        String note = String.format(noteWithoutTransaction, transactionAmount != null ? "with transaction value : " + transactionAmount : "");
+        String noteWithoutTransaction = "Savings Account : " + account.getId()
+                + " is blocked for debit transactions  because the transaction limit : " + limitName
+                + " exceeds the limit set by Client's classification %s";
+        String note = String.format(noteWithoutTransaction,
+                transactionAmount != null ? "with transaction value : " + transactionAmount : "");
         final Note newNote = Note.savingNote(account, note);
         this.noteRepository.saveAndFlush(newNote);
     }
@@ -99,8 +101,9 @@ public class SavingsAccountTransactionLimitValidator {
         }
 
         // UNBLOCKDEBIT NOTE
-        final String note = "Savings Account : " + account.getId() + " is un blocked for debit transactions  because the transaction limit : "
-                + limitName + " is within the limit set by Client's classification limit";
+        final String note = "Savings Account : " + account.getId()
+                + " is un blocked for debit transactions  because the transaction limit : " + limitName
+                + " is within the limit set by Client's classification limit";
         final Note newNote = Note.savingNote(account, note);
         this.noteRepository.saveAndFlush(newNote);
     }
@@ -121,14 +124,18 @@ public class SavingsAccountTransactionLimitValidator {
                         globalLimit.getTransactionLimits().getBalanceCumulative());
                 Money runningBalance = savingsAccount.getSummary().getAccountBalance(savingsAccount.getCurrency());
 
-                // if the account is blocked debit, then check the balance cumulative limit against the new classification to unblock
+                // if the account is blocked debit, then check the balance cumulative limit against the new
+                // classification to unblock
                 SavingsAccountSubStatusEnum currentSubStatus = SavingsAccountSubStatusEnum.fromInt(savingsAccount.getSubStatus());
-                if ( currentSubStatus.hasStateOf(SavingsAccountSubStatusEnum.BLOCK_DEBIT) && (runningBalance.isLessThan(balanceCumulativeLimitMoney) || runningBalance.isEqualTo(balanceCumulativeLimitMoney))) {
+                if (currentSubStatus.hasStateOf(SavingsAccountSubStatusEnum.BLOCK_DEBIT)
+                        && (runningBalance.isLessThan(balanceCumulativeLimitMoney)
+                                || runningBalance.isEqualTo(balanceCumulativeLimitMoney))) {
                     markSavingsAccountAsUnBlockDebitWithNote(savingsAccount, "Balance Cumulative Limit");
                 }
 
                 // check the balance cumulative limit against the new classification to block
-                if ( !currentSubStatus.hasStateOf(SavingsAccountSubStatusEnum.BLOCK_DEBIT) && runningBalance.isGreaterThan(balanceCumulativeLimitMoney)) {
+                if (!currentSubStatus.hasStateOf(SavingsAccountSubStatusEnum.BLOCK_DEBIT)
+                        && runningBalance.isGreaterThan(balanceCumulativeLimitMoney)) {
                     markSavingsAccountAsBlockDebitWithNote(savingsAccount, "Balance Cumulative Limit", null);
                 }
             }
