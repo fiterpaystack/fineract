@@ -1,7 +1,9 @@
 package com.paystack.fineract.portfolio.charge.service;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import org.apache.fineract.accounting.glaccount.domain.GLAccountRepositoryWrapper;
-import org.apache.fineract.commands.api.MakercheckersApiResource;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.entityaccess.service.FineractEntityAccessUtil;
@@ -16,14 +18,9 @@ import org.apache.fineract.portfolio.charge.service.ChargeWritePlatformServiceJp
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProductRepository;
 import org.apache.fineract.portfolio.paymenttype.domain.PaymentTypeRepositoryWrapper;
 import org.apache.fineract.portfolio.tax.domain.TaxGroupRepositoryWrapper;
-import org.springframework.context.annotation.Primary;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 /**
  * Extended charge write platform service for Paystack custom module. Reuses all core functionality including fee split
@@ -33,15 +30,16 @@ import java.util.Optional;
 @Order(2)
 public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformServiceJpaRepositoryImpl
         implements ChargeWritePlatformService {
+
     private final ChargeRepository chargeRepository;
     private final ChargeSlabRepository chargeSlabRepository;
     private final ChargeDefinitionCommandFromApiJsonDeserializer fromApiJsonDeserializer;
 
     public PaystackChargeWritePlatformServiceImpl(PlatformSecurityContext context,
-                                                  ChargeDefinitionCommandFromApiJsonDeserializer fromApiJsonDeserializer, ChargeRepository chargeRepository,
-                                                  LoanProductRepository loanProductRepository, JdbcTemplate jdbcTemplate, FineractEntityAccessUtil fineractEntityAccessUtil,
-                                                  GLAccountRepositoryWrapper glAccountRepository, TaxGroupRepositoryWrapper taxGroupRepository,
-                                                  PaymentTypeRepositoryWrapper paymentTyperepositoryWrapper, ChargeSlabRepository chargeSlabRepository) {
+            ChargeDefinitionCommandFromApiJsonDeserializer fromApiJsonDeserializer, ChargeRepository chargeRepository,
+            LoanProductRepository loanProductRepository, JdbcTemplate jdbcTemplate, FineractEntityAccessUtil fineractEntityAccessUtil,
+            GLAccountRepositoryWrapper glAccountRepository, TaxGroupRepositoryWrapper taxGroupRepository,
+            PaymentTypeRepositoryWrapper paymentTyperepositoryWrapper, ChargeSlabRepository chargeSlabRepository) {
         super(context, fromApiJsonDeserializer, chargeRepository, loanProductRepository, jdbcTemplate, fineractEntityAccessUtil,
                 glAccountRepository, taxGroupRepository, paymentTyperepositoryWrapper);
 
