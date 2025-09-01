@@ -311,7 +311,7 @@ public class PaystackChargeReadPlatformServiceImpl extends ChargeReadPlatformSer
         }
     }
 
-    private static class ChargeSlabMapper implements RowMapper<ChargeSlabData> {
+    private static final class ChargeSlabMapper implements RowMapper<ChargeSlabData> {
 
         public String getSchema() {
             return "c.id as id, c.from_amount as fromAmount, c.to_amount as toAmount, c.fee_amount as value from m_fee_charge_slab c";
