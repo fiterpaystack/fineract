@@ -84,6 +84,7 @@
 
         <!-- Charge Module Entities -->
         <class>org.apache.fineract.portfolio.charge.domain.Charge</class>
+        <class>org.apache.fineract.portfolio.charge.domain.ChargeSlab</class>
 
         <exclude-unlisted-classes>false</exclude-unlisted-classes>
         <properties>

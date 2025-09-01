@@ -248,7 +248,7 @@ public class SavingsAccountDataValidator {
                     baseDataValidator.reset().parameter(chargeIdParamName).value(chargeId).longGreaterThanZero();
 
                     final BigDecimal amount = this.fromApiJsonHelper.extractBigDecimalNamed(amountParamName, savingsChargeElement, locale);
-                    baseDataValidator.reset().parameter(amountParamName).value(amount).notNull().positiveAmount();
+                    baseDataValidator.reset().parameter(amountParamName).value(amount).notNull().zeroOrPositiveAmount();
 
                     if (this.fromApiJsonHelper.parameterExists(feeOnMonthDayParamName, savingsChargeElement)) {
                         final MonthDay monthDay = this.fromApiJsonHelper.extractMonthDayNamed(feeOnMonthDayParamName, savingsChargeElement,

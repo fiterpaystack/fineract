@@ -16,17 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.charge.api;
 
-public final class ChargesApiConstants {
+package org.apache.fineract.portfolio.charge.domain;
 
-    private ChargesApiConstants() {
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.stereotype.Repository;
 
-    }
-
-    public static final String glAccountIdParamName = "incomeAccountId";
-    public static final String taxGroupIdParamName = "taxGroupId";
-    public static final String fromAmountParamName = "fromAmount";
-    public static final String toAmountParamName = "toAmount";
-
+@Repository
+public interface ChargeSlabRepository extends JpaRepository<ChargeSlab, Long>, JpaSpecificationExecutor<ChargeSlab> {
 }

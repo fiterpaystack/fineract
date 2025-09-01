@@ -16,17 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.charge.api;
+package org.apache.fineract.portfolio.charge.request;
 
-public final class ChargesApiConstants {
+import java.util.List;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-    private ChargesApiConstants() {
+@Data
+@NoArgsConstructor
+public class ChartRequest {
 
+    private List<ChartSlabRequest> chartSlabs;
+
+    public List<ChartSlabRequest> getChartSlabs() {
+        return chartSlabs;
     }
 
-    public static final String glAccountIdParamName = "incomeAccountId";
-    public static final String taxGroupIdParamName = "taxGroupId";
-    public static final String fromAmountParamName = "fromAmount";
-    public static final String toAmountParamName = "toAmount";
-
+    public void setChartSlabs(List<ChartSlabRequest> chartSlabs) {
+        this.chartSlabs = chartSlabs;
+    }
 }

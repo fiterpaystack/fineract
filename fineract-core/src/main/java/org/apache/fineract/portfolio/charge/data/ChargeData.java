@@ -99,6 +99,9 @@ public class ChargeData implements Comparable<ChargeData>, Serializable {
     private final List<GLAccountData> expenseAccountOptions;
     private final List<GLAccountData> assetAccountOptions;
 
+    private final Boolean varyAmounts;
+    private List<ChargeSlabData> chargeSlabs;
+
     public static ChargeData withTemplate(final ChargeData charge, final ChargeData template) {
         return charge.toBuilder().currencyOptions(template.getCurrencyOptions())
                 .chargeCalculationTypeOptions(template.getChargeCalculationTypeOptions())
@@ -116,7 +119,8 @@ public class ChargeData implements Comparable<ChargeData>, Serializable {
                 .shareChargeCalculationTypeOptions(template.getShareChargeCalculationTypeOptions())
                 .shareChargeTimeTypeOptions(template.getShareChargeTimeTypeOptions())
                 .accountMappingForChargeConfig(template.getAccountMappingForChargeConfig())
-                .expenseAccountOptions(template.getExpenseAccountOptions()).assetAccountOptions(template.getAssetAccountOptions()).build();
+                .expenseAccountOptions(template.getExpenseAccountOptions()).assetAccountOptions(template.getAssetAccountOptions())
+                .varyAmounts(charge.getVaryAmounts()).chargeSlabs(charge.getChargeSlabs()).build();
     }
 
     @Override
@@ -138,5 +142,9 @@ public class ChargeData implements Comparable<ChargeData>, Serializable {
 
     public boolean isIsPaymentType() {
         return this.isPaymentType;
+    }
+
+    public void setChargeSlabs(List<ChargeSlabData> chargeSlabs) {
+        this.chargeSlabs = chargeSlabs;
     }
 }

@@ -23,14 +23,8 @@ import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.time.MonthDay;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
@@ -38,10 +32,7 @@ import org.apache.fineract.infrastructure.core.exception.InvalidJsonException;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.portfolio.charge.api.ChargesApiConstants;
-import org.apache.fineract.portfolio.charge.domain.ChargeAppliesTo;
-import org.apache.fineract.portfolio.charge.domain.ChargeCalculationType;
-import org.apache.fineract.portfolio.charge.domain.ChargePaymentMode;
-import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
+import org.apache.fineract.portfolio.charge.domain.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -74,6 +65,8 @@ public class ChargeDefinitionCommandFromApiJsonDeserializer {
     public static final String PAYMENT_TYPE_ID = "paymentTypeId";
     public static final String ENABLE_FEE_SPLIT = "enableFeeSplit";
     public static final String CHARGE = "charge";
+    public static final String CHART = "chart";
+    public static final String ENABLE_SLABS = "enableSlabs";
     /**
      * The parameters supported for this command.
      */
@@ -81,7 +74,8 @@ public class ChargeDefinitionCommandFromApiJsonDeserializer {
             CURRENCY_OPTIONS, CHARGE_APPLIES_TO, CHARGE_TIME_TYPE, CHARGE_CALCULATION_TYPE, CHARGE_CALCULATION_TYPE_OPTIONS, PENALTY,
             ACTIVE, CHARGE_PAYMENT_MODE, FEE_ON_MONTH_DAY, FEE_INTERVAL, MONTH_DAY_FORMAT, MIN_CAP, MAX_CAP, FEE_FREQUENCY,
             ENABLE_FREE_WITHDRAWAL_CHARGE, FREE_WITHDRAWAL_FREQUENCY, RESTART_COUNT_FREQUENCY, COUNT_FREQUENCY_TYPE, PAYMENT_TYPE_ID,
-            ENABLE_PAYMENT_TYPE, ENABLE_FEE_SPLIT, ChargesApiConstants.glAccountIdParamName, ChargesApiConstants.taxGroupIdParamName));
+            ENABLE_PAYMENT_TYPE, ENABLE_FEE_SPLIT, ChargesApiConstants.glAccountIdParamName, ChargesApiConstants.taxGroupIdParamName,
+            CHART, ENABLE_SLABS));
     private final FromJsonHelper fromApiJsonHelper;
 
     @Autowired
@@ -283,8 +277,10 @@ public class ChargeDefinitionCommandFromApiJsonDeserializer {
         final String currencyCode = this.fromApiJsonHelper.extractStringNamed(CURRENCY_CODE, element);
         baseDataValidator.reset().parameter(CURRENCY_CODE).value(currencyCode).notBlank().notExceedingLengthOf(3);
 
-        final BigDecimal amount = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(AMOUNT, element.getAsJsonObject());
-        baseDataValidator.reset().parameter(AMOUNT).value(amount).notNull().positiveAmount();
+        if (!this.fromApiJsonHelper.parameterExists(CHART, element)) {
+            final BigDecimal amount = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(AMOUNT, element.getAsJsonObject());
+            baseDataValidator.reset().parameter(AMOUNT).value(amount).notNull().positiveAmount();
+        }
 
         if (this.fromApiJsonHelper.parameterExists(PENALTY, element)) {
             final Boolean penalty = this.fromApiJsonHelper.extractBooleanNamed(PENALTY, element);
@@ -338,9 +334,11 @@ public class ChargeDefinitionCommandFromApiJsonDeserializer {
             baseDataValidator.reset().parameter(CURRENCY_CODE).value(currencyCode).notBlank().notExceedingLengthOf(3);
         }
 
-        if (this.fromApiJsonHelper.parameterExists(AMOUNT, element)) {
-            final BigDecimal amount = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(AMOUNT, element.getAsJsonObject());
-            baseDataValidator.reset().parameter(AMOUNT).value(amount).notNull().positiveAmount();
+        if (!this.fromApiJsonHelper.parameterExists(CHART, element)) {
+            if (this.fromApiJsonHelper.parameterExists(AMOUNT, element)) {
+                final BigDecimal amount = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(AMOUNT, element.getAsJsonObject());
+                baseDataValidator.reset().parameter(AMOUNT).value(amount).notNull().positiveAmount();
+            }
         }
 
         if (this.fromApiJsonHelper.parameterExists(MIN_CAP, element)) {
@@ -512,5 +510,37 @@ public class ChargeDefinitionCommandFromApiJsonDeserializer {
         if (!dataValidationErrors.isEmpty()) {
             throw new PlatformApiDataValidationException(dataValidationErrors);
         }
+    }
+
+    public void validateChartSlabs(Collection<ChargeSlab> chartSlabs) {
+        final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+        final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("charge");
+
+        List<ChargeSlab> chartSlabsList = new ArrayList<>(chartSlabs);
+
+        chartSlabsList.sort(Comparator.comparing(ChargeSlab::getFromAmount));
+
+        for (int i = 0; i < chartSlabsList.size(); i++) {
+            ChargeSlab iSlabs = chartSlabsList.get(i);
+            if (!iSlabs.isValidChart()) {
+                baseDataValidator.parameter(ChargesApiConstants.fromAmountParamName).failWithCode("cannot.be.blank");
+            }
+
+            if (i + 1 < chartSlabsList.size()) {
+                ChargeSlab nextSlabs = chartSlabsList.get(i + 1);
+                if (iSlabs.isValidChart() && nextSlabs.isValidChart()) {
+                    if (iSlabs.isRateChartOverlapping(nextSlabs)) {
+                        baseDataValidator.failWithCodeNoParameterAddedToErrorCode("chart.slabs.range.overlapping", iSlabs.getFromAmount(),
+                                iSlabs.getFromAmount(), nextSlabs.getFromAmount(), nextSlabs.getToAmount());
+                    } else if (iSlabs.isRateChartHasGap(nextSlabs)) {
+                        baseDataValidator.failWithCodeNoParameterAddedToErrorCode("chart.slabs.range.has.gap", iSlabs.getFromAmount(),
+                                iSlabs.getToAmount(), nextSlabs.getFromAmount(), nextSlabs.getToAmount());
+                    }
+                }
+            } else if (iSlabs.isNotProperPriodEnd()) {
+                baseDataValidator.failWithCodeNoParameterAddedToErrorCode("chart.slabs.range.end.incorrect", iSlabs.getToAmount());
+            }
+        }
+        this.throwExceptionIfValidationWarningsExist(dataValidationErrors);
     }
 }

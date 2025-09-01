@@ -934,4 +934,8 @@ public class SavingsAccountCharge extends AbstractAuditableWithUTCDateTimeCustom
     public boolean canOverriteSavingAccountRules() {
         return (!this.isSavingsActivation() && !this.isWithdrawalFee());
     }
+
+    public BigDecimal getAmount() {
+        return this.amount;
+    }
 }
