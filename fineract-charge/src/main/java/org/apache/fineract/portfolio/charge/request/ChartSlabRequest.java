@@ -18,13 +18,14 @@
  */
 package org.apache.fineract.portfolio.charge.request;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
-public class ChartSlabRequest {
+public class ChartSlabRequest implements Serializable {
 
     private BigDecimal fromAmount;
 

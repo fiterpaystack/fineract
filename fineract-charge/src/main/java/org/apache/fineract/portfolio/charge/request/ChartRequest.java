@@ -18,13 +18,14 @@
  */
 package org.apache.fineract.portfolio.charge.request;
 
+import java.io.Serializable;
 import java.util.List;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
-public class ChartRequest {
+public class ChartRequest implements Serializable {
 
     private List<ChartSlabRequest> chartSlabs;
 
