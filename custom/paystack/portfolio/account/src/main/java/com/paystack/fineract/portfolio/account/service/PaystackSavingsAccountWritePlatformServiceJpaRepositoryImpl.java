@@ -222,7 +222,8 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
         final SavingsAccountTransaction nextSavingsAccountTransaction = this.savingsAccountTransactionRepository
                 .findOneByIdAndSavingsAccountId(transactionId + 1, savingsId);
 
-        if (savingsAccountTransaction.isChargeTransaction() && nextSavingsAccountTransaction.isVatonFeesAndNotReversed()) {
+        if (nextSavingsAccountTransaction != null && savingsAccountTransaction.isChargeTransaction()
+                && nextSavingsAccountTransaction.isVatonFeesAndNotReversed()) {
             emtLevyPossibleId = emtLevyPossibleId + 1;
             account.undoTransaction(transactionId + 1);
         }

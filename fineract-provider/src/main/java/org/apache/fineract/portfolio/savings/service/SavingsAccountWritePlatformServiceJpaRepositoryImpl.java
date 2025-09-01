@@ -1449,7 +1449,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         existingReversedTransactionIds.addAll(account.findCurrentReversedTransactionIdsWithPivotDateConfig());
     }
 
-    protected void postJournalEntries(final SavingsAccount savingsAccount, final Set<Long> existingTransactionIds,
+    public void postJournalEntries(final SavingsAccount savingsAccount, final Set<Long> existingTransactionIds,
             final Set<Long> existingReversedTransactionIds, final boolean backdatedTxnsAllowedTill) {
 
         boolean isAccountTransfer = false;
