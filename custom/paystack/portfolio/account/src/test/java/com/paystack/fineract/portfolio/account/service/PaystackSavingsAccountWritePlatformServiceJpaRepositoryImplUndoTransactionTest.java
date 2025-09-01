@@ -133,6 +133,9 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImplUndoTran
     @Mock
     private SavingsAccount account;
 
+    @Mock
+    private FeeSplitService feeSplitService;
+
     private PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl service;
 
     private MockedStatic<DateUtils> dateUtilsMock;
@@ -154,8 +157,8 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImplUndoTran
                 accountAssociationsReadPlatformService, chargeRepository, savingsAccountChargeRepository, holidayRepository,
                 workingDaysRepository, configurationDomainService, depositAccountOnHoldTransactionRepository,
                 entityDatatableChecksWritePlatformService, appUserRepository, standingInstructionRepository, businessEventNotifierService,
-                gsimRepository, savingsAccountInterestPostingService, errorHandler, savingsAccountChargePaymentWrapperService, vatService,
-                clientChargeOverrideReadService));
+                gsimRepository, savingsAccountInterestPostingService, errorHandler, savingsAccountChargePaymentWrapperService,
+                clientChargeOverrideReadService, feeSplitService));
 
         when(configurationDomainService.isSavingsInterestPostingAtCurrentPeriodEnd()).thenReturn(false);
         when(configurationDomainService.retrieveFinancialYearBeginningMonth()).thenReturn(1);

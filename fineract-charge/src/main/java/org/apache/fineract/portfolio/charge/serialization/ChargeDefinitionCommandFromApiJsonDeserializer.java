@@ -46,7 +46,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
-public final class ChargeDefinitionCommandFromApiJsonDeserializer {
+public class ChargeDefinitionCommandFromApiJsonDeserializer {
 
     public static final String NAME = "name";
     public static final String AMOUNT = "amount";
@@ -72,6 +72,7 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
     public static final String COUNT_FREQUENCY_TYPE = "countFrequencyType";
     public static final String ENABLE_PAYMENT_TYPE = "enablePaymentType";
     public static final String PAYMENT_TYPE_ID = "paymentTypeId";
+    public static final String ENABLE_FEE_SPLIT = "enableFeeSplit";
     public static final String CHARGE = "charge";
     /**
      * The parameters supported for this command.
@@ -80,7 +81,7 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
             CURRENCY_OPTIONS, CHARGE_APPLIES_TO, CHARGE_TIME_TYPE, CHARGE_CALCULATION_TYPE, CHARGE_CALCULATION_TYPE_OPTIONS, PENALTY,
             ACTIVE, CHARGE_PAYMENT_MODE, FEE_ON_MONTH_DAY, FEE_INTERVAL, MONTH_DAY_FORMAT, MIN_CAP, MAX_CAP, FEE_FREQUENCY,
             ENABLE_FREE_WITHDRAWAL_CHARGE, FREE_WITHDRAWAL_FREQUENCY, RESTART_COUNT_FREQUENCY, COUNT_FREQUENCY_TYPE, PAYMENT_TYPE_ID,
-            ENABLE_PAYMENT_TYPE, ChargesApiConstants.glAccountIdParamName, ChargesApiConstants.taxGroupIdParamName));
+            ENABLE_PAYMENT_TYPE, ENABLE_FEE_SPLIT, ChargesApiConstants.glAccountIdParamName, ChargesApiConstants.taxGroupIdParamName));
     private final FromJsonHelper fromApiJsonHelper;
 
     @Autowired
@@ -387,6 +388,12 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
                     final Integer paymentTypeId = this.fromApiJsonHelper.extractIntegerNamed(PAYMENT_TYPE_ID, element, Locale.getDefault());
                     baseDataValidator.reset().parameter(PAYMENT_TYPE_ID).value(paymentTypeId).integerGreaterThanZero();
                 }
+            }
+
+            Boolean enableFeeSplit = false;
+            if (this.fromApiJsonHelper.parameterExists(ENABLE_FEE_SPLIT, element)) {
+                enableFeeSplit = this.fromApiJsonHelper.extractBooleanNamed(ENABLE_FEE_SPLIT, element);
+                baseDataValidator.reset().parameter(ENABLE_FEE_SPLIT).value(enableFeeSplit).notNull();
             }
         }
 

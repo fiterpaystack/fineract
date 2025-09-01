@@ -76,6 +76,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
     private final SavingsAccountTransactionSummaryWrapper savingsAccountTransactionSummaryWrapper;
     private final SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService;
     private final ClientChargeOverrideReadService clientChargeOverrideReadService;
+    private final FeeSplitService feeSplitService;
     private final SavingsAccountTransactionLimitValidator savingsAccountTransactionLimitValidator;
     private final PaystackSavingsProductAttributesRepository savingsProductAttributesRepository;
 
@@ -89,13 +90,14 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             SavingsAccountTransactionSummaryWrapper savingsAccountTransactionSummaryWrapper,
             SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService,
             ClientChargeOverrideReadService clientChargeOverrideReadService,
-            PaystackSavingsProductAttributesRepository savingsProductAttributesRepository) {
+            PaystackSavingsProductAttributesRepository savingsProductAttributesRepository, FeeSplitService feeSplitService) {
         super(savingsAccountRepository, savingsAccountTransactionRepository, applicationCurrencyRepositoryWrapper,
                 journalEntryWritePlatformService, configurationDomainService, context, depositAccountOnHoldTransactionRepository,
                 businessEventNotifierService);
         this.savingsAccountTransactionSummaryWrapper = savingsAccountTransactionSummaryWrapper;
         this.savingsAccountChargePaymentWrapperService = savingsAccountChargePaymentWrapperService;
         this.clientChargeOverrideReadService = clientChargeOverrideReadService;
+        this.feeSplitService = feeSplitService;
         this.savingsAccountTransactionLimitValidator = savingsAccountTransactionLimitValidator;
         this.savingsProductAttributesRepository = savingsProductAttributesRepository;
     }
@@ -478,6 +480,11 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             // Attach VAT (updates summary/backdated list or balance) before persisting
             savingsAccountChargePaymentWrapperService.attachVatAfterFeePersist(account, result.getVatResult());
             saveTransactionToGenerateTransactionId(result.getVatResult().getVatTransaction());
+        }
+
+        // Now process fee split with saved transactions
+        if (result.getFeeTransaction() != null && charge.getCharge().isEnableFeeSplit()) {
+            feeSplitService.processFeeSplitForSavings(result.getFeeTransaction(), amount.getAmount());
         }
 
         this.savingsAccountRepository.saveAndFlush(account);

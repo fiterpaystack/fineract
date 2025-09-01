@@ -23,6 +23,9 @@
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
     <changeSet  author="faheem"  id="1">
+        <preConditions onFail="MARK_RAN">
+            <indexExists indexName="m_client_mobile_no_key" tableName="m_client"/>
+        </preConditions>
         <dropUniqueConstraint  constraintName="m_client_mobile_no_key" tableName="m_client"/>
     </changeSet>
 </databaseChangeLog>
