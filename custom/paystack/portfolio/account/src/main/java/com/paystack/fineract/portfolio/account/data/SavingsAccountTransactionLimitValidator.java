@@ -108,7 +108,7 @@ public class SavingsAccountTransactionLimitValidator {
         this.noteRepository.saveAndFlush(newNote);
     }
 
-    public void updateSavingsAccountsForClassification(Client client, Long newClassificationId) {
+    public void updateClientSavingsAccountsSubStatusForClassification(Client client, Long newClassificationId) {
         final List<SavingsAccount> clientSavingAccounts = this.savingsAccountRepository.findSavingAccountByClientId(client.getId());
         for (final SavingsAccount savingsAccount : clientSavingAccounts) {
             Optional<SavingsClientClassificationLimitMapping> mappingOptional = savingsClientClassificationMappingRepository

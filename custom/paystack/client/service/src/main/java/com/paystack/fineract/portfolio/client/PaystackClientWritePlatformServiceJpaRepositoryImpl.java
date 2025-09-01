@@ -110,7 +110,8 @@ public class PaystackClientWritePlatformServiceJpaRepositoryImpl extends ClientW
                 clientForUpdate.clientClassificationId())) {
 
             final Long newClassificationId = command.longValueOfParameterNamed(ClientApiConstants.clientClassificationIdParamName);
-            savingsAccountTransactionLimitValidator.updateSavingsAccountsForClassification(clientForUpdate, newClassificationId);
+            savingsAccountTransactionLimitValidator.updateClientSavingsAccountsSubStatusForClassification(clientForUpdate,
+                    newClassificationId);
         }
 
         return super.updateClient(clientId, command);
