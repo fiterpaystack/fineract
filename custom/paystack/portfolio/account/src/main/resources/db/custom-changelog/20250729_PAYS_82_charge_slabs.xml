@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <!-- Add charge slabs support -->
+    <changeSet author="paystack" id="add_varying_charge_slab">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_fee_charge_slab"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_fee_charge_slab">
+            <column name="id"  type="bigint(20)" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="charge_id" type="bigint(20)">
+                <constraints references="m_charge(id)" foreignKeyName="FK_charge_id_charge_slab_id" nullable="false"/>
+            </column>
+            <column name="from_amount" type="integer"/>
+            <column name="to_amount" type="integer"/>
+            <column name="fee_amount" type="decimal(19,6)"/>
+        </createTable>
+
+    </changeSet>
+
+    <changeSet author="paystack" id="add_varying_charge_slab_flag">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_charge" columnName="has_varying_charge"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="m_charge">
+            <column name="has_varying_charge" type="boolean"/>
+        </addColumn>
+
+    </changeSet>
+
+</databaseChangeLog>

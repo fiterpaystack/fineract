@@ -14,6 +14,7 @@ import org.apache.fineract.infrastructure.entityaccess.service.FineractEntityAcc
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.organisation.monetary.service.CurrencyReadPlatformService;
 import org.apache.fineract.portfolio.charge.data.ChargeData;
+import org.apache.fineract.portfolio.charge.data.ChargeSlabData;
 import org.apache.fineract.portfolio.charge.service.ChargeDropdownReadPlatformService;
 import org.apache.fineract.portfolio.charge.service.ChargeReadPlatformService;
 import org.apache.fineract.portfolio.charge.service.ChargeReadPlatformServiceImpl;
@@ -24,6 +25,7 @@ import org.apache.fineract.portfolio.tax.data.TaxGroupData;
 import org.apache.fineract.portfolio.tax.service.TaxReadPlatformService;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -35,6 +37,8 @@ import org.springframework.stereotype.Service;
 @Order(2)
 public class PaystackChargeReadPlatformServiceImpl extends ChargeReadPlatformServiceImpl implements ChargeReadPlatformService {
 
+    private final JdbcTemplate jdbcTemplate;
+
     public PaystackChargeReadPlatformServiceImpl(CurrencyReadPlatformService currencyReadPlatformService,
             ChargeDropdownReadPlatformService chargeDropdownReadPlatformService, JdbcTemplate jdbcTemplate,
             DropdownReadPlatformService dropdownReadPlatformService, FineractEntityAccessUtil fineractEntityAccessUtil,
@@ -43,6 +47,7 @@ public class PaystackChargeReadPlatformServiceImpl extends ChargeReadPlatformSer
         super(currencyReadPlatformService, chargeDropdownReadPlatformService, jdbcTemplate, dropdownReadPlatformService,
                 fineractEntityAccessUtil, accountingDropdownReadPlatformService, taxReadPlatformService, configurationDomainServiceJpa,
                 namedParameterJdbcTemplate);
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     /**
@@ -60,7 +65,15 @@ public class PaystackChargeReadPlatformServiceImpl extends ChargeReadPlatformSer
             sql += officeClause;
 
             sql = sql + " ;";
-            return getJdbcTemplate().queryForObject(sql, rm, new Object[] { chargeId }); // NOSONAR
+            ChargeData chargeData = getJdbcTemplate().queryForObject(sql, rm, new Object[] { chargeId }); // NOSONAR
+            if (chargeData != null && chargeData.getVaryAmounts()) {
+                ChargeSlabMapper slabMapper = new ChargeSlabMapper();
+                final String slabSQL = "select " + slabMapper.getSchema() + " where c.charge_id = ? order by c.from_amount asc";
+                List<ChargeSlabData> slabData = this.jdbcTemplate.query(slabSQL, slabMapper, new Object[] { chargeId });
+                chargeData.setChargeSlabs(slabData);
+            }
+
+            return chargeData;
         } catch (final org.springframework.dao.EmptyResultDataAccessException e) {
             throw new org.apache.fineract.portfolio.charge.exception.ChargeNotFoundException(chargeId, e);
         }
@@ -194,7 +207,7 @@ public class PaystackChargeReadPlatformServiceImpl extends ChargeReadPlatformSer
                     + "c.fee_interval as feeInterval, c.fee_frequency as feeFrequency,c.min_cap as minCap,c.max_cap as maxCap, "
                     + "c.income_or_liability_account_id as glAccountId , acc.name as glAccountName, acc.gl_code as glCode, "
                     + "tg.id as taxGroupId, c.is_payment_type as isPaymentType, pt.id as paymentTypeId, pt.value as paymentTypeName, tg.name as taxGroupName, "
-                    + "c.enable_fee_split as enableFeeSplit " + "from m_charge c "
+                    + "c.enable_fee_split as enableFeeSplit, " + "c.has_varying_charge as varyingCharge " + "from m_charge c "
                     + "join m_organisation_currency oc on c.currency_code = oc.code "
                     + " LEFT JOIN acc_gl_account acc on acc.id = c.income_or_liability_account_id "
                     + " LEFT JOIN m_tax_group tg on tg.id = c.tax_group_id " + " LEFT JOIN m_payment_type pt on pt.id = c.payment_type_id ";
@@ -285,6 +298,8 @@ public class PaystackChargeReadPlatformServiceImpl extends ChargeReadPlatformSer
             // Extract our custom fee split field
             final boolean enableFeeSplit = rs.getBoolean("enableFeeSplit");
 
+            final Boolean varyingCharge = rs.getBoolean("varyingCharge");
+
             // Build ChargeData with our custom field
             return ChargeData.builder().id(id).name(name).amount(amount).currency(currency).chargeTimeType(chargeTimeType)
                     .chargeAppliesTo(chargeAppliesToType).chargeCalculationType(chargeCalculationType).chargePaymentMode(chargePaymentMode)
@@ -292,7 +307,24 @@ public class PaystackChargeReadPlatformServiceImpl extends ChargeReadPlatformSer
                     .freeWithdrawalChargeFrequency(freeWithdrawalChargeFrequency).restartFrequency(restartFrequency)
                     .restartFrequencyEnum(restartFrequencyEnum).isPaymentType(isPaymentType).paymentTypeOptions(paymentTypeData)
                     .minCap(minCap).maxCap(maxCap).feeFrequency(feeFrequencyType).incomeOrLiabilityAccount(glAccountData)
-                    .taxGroup(taxGroupData).enableFeeSplit(enableFeeSplit).build();
+                    .taxGroup(taxGroupData).enableFeeSplit(enableFeeSplit).varyAmounts(varyingCharge).build();
+        }
+    }
+
+    private static final class ChargeSlabMapper implements RowMapper<ChargeSlabData> {
+
+        public String getSchema() {
+            return "c.id as id, c.from_amount as fromAmount, c.to_amount as toAmount, c.fee_amount as value from m_fee_charge_slab c";
+        }
+
+        @Override
+        public ChargeSlabData mapRow(ResultSet rs, int rowNum) throws SQLException {
+            final Long id = rs.getLong("id");
+            final BigDecimal fromAmount = rs.getBigDecimal("fromAmount");
+            final BigDecimal toAmount = rs.getBigDecimal("toAmount");
+            final BigDecimal value = rs.getBigDecimal("value");
+
+            return new ChargeSlabData(id, fromAmount, toAmount, value);
         }
     }
 }

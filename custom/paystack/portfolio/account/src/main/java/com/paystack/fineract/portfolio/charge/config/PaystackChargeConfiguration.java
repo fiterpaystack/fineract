@@ -10,6 +10,7 @@ import org.apache.fineract.infrastructure.entityaccess.service.FineractEntityAcc
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.organisation.monetary.service.CurrencyReadPlatformService;
 import org.apache.fineract.portfolio.charge.domain.ChargeRepository;
+import org.apache.fineract.portfolio.charge.domain.ChargeSlabRepository;
 import org.apache.fineract.portfolio.charge.service.ChargeDropdownReadPlatformService;
 import org.apache.fineract.portfolio.charge.service.ChargeReadPlatformService;
 import org.apache.fineract.portfolio.charge.service.ChargeWritePlatformService;
@@ -56,8 +57,10 @@ public class PaystackChargeConfiguration {
             PaystackChargeDefinitionCommandFromApiJsonDeserializer fromApiJsonDeserializer, // Use custom deserializer
             ChargeRepository chargeRepository, LoanProductRepository loanProductRepository, JdbcTemplate jdbcTemplate,
             FineractEntityAccessUtil fineractEntityAccessUtil, GLAccountRepositoryWrapper glAccountRepository,
-            TaxGroupRepositoryWrapper taxGroupRepository, PaymentTypeRepositoryWrapper paymentTyperepositoryWrapper) {
+            TaxGroupRepositoryWrapper taxGroupRepository, PaymentTypeRepositoryWrapper paymentTyperepositoryWrapper,
+            ChargeSlabRepository chargeSlabRepository) {
         return new PaystackChargeWritePlatformServiceImpl(context, fromApiJsonDeserializer, chargeRepository, loanProductRepository,
-                jdbcTemplate, fineractEntityAccessUtil, glAccountRepository, taxGroupRepository, paymentTyperepositoryWrapper);
+                jdbcTemplate, fineractEntityAccessUtil, glAccountRepository, taxGroupRepository, paymentTyperepositoryWrapper,
+                chargeSlabRepository);
     }
 }
