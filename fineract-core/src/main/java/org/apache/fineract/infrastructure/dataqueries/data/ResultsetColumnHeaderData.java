@@ -43,6 +43,7 @@ public final class ResultsetColumnHeaderData implements Serializable {
     private final boolean isColumnIndexed;
     private final List<ResultsetColumnValueData> columnValues;
     private final String columnCode;
+    private boolean visible = true;
 
     public static ResultsetColumnHeaderData basic(final String columnName, final String columnType, DatabaseType dialect) {
         final Long columnLength = null;
@@ -253,6 +254,14 @@ public final class ResultsetColumnHeaderData implements Serializable {
         BINARY, //
         CODELOOKUP, //
         CODEVALUE; //
+    }
+
+    public boolean isVisible() {
+        return visible;
+    }
+
+    public void setVisible(boolean visible) {
+        this.visible = visible;
     }
 
 }
