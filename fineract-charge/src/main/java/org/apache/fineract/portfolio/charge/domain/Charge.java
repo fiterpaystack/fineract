@@ -251,7 +251,7 @@ public class Charge extends AbstractPersistableCustom<Long> {
             }
 
             // Special validation for DEPOSIT_FEE charges
-            if (ChargeTimeType.fromInt(getChargeTimeType()).isDepositFee() ) {
+            if (ChargeTimeType.fromInt(getChargeTimeType()).isDepositFee()) {
                 if (!isAllowedDepositsChargeCalculationType()) {
                     baseDataValidator.reset().parameter("chargeCalculationType").value(this.chargeCalculation)
                             .failWithCodeNoParameterAddedToErrorCode("not.allowed.charge.calculation.type.for.deposits");
@@ -274,13 +274,13 @@ public class Charge extends AbstractPersistableCustom<Long> {
                 this.restartFrequencyEnum = restartFrequencyEnum.getValue();
             }
 
-        if (enablePaymentType) {
-            if (paymentType != null) {
+            if (enablePaymentType) {
+                if (paymentType != null) {
 
-                this.enablePaymentType = true;
-                this.paymentType = paymentType;
+                    this.enablePaymentType = true;
+                    this.paymentType = paymentType;
+                }
             }
-        }
 
             this.enableFeeSplit = enableFeeSplit;
             this.hasVaryingCharge = hasVaryingCharge;
