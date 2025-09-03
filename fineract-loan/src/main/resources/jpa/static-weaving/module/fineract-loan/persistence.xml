@@ -78,6 +78,7 @@
 
         <!-- Charge Module Entities -->
         <class>org.apache.fineract.portfolio.charge.domain.Charge</class>
+        <class>org.apache.fineract.portfolio.charge.domain.ChargeSlab</class>
 
         <!-- Loan Module Entities -->
         <class>org.apache.fineract.portfolio.delinquency.domain.DelinquencyBucketMappings</class>

@@ -18,21 +18,28 @@
  */
 package org.apache.fineract.portfolio.charge.domain;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.time.MonthDay;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import org.apache.fineract.accounting.glaccount.data.GLAccountData;
 import org.apache.fineract.accounting.glaccount.domain.GLAccount;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
@@ -137,11 +144,17 @@ public class Charge extends AbstractPersistableCustom<Long> {
     @Column(name = "enable_fee_split", nullable = false)
     private boolean enableFeeSplit = false;
 
+    @Column(name = "has_varying_charge")
+    private Boolean hasVaryingCharge;
+
+    @OneToMany(mappedBy = "charge", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private Set<ChargeSlab> chargeSlabs = new HashSet<>();
+
     public static Charge fromJson(final JsonCommand command, final GLAccount account, final TaxGroup taxGroup,
             final PaymentType paymentType) {
 
         final String name = command.stringValueOfParameterNamed("name");
-        final BigDecimal amount = command.bigDecimalValueOfParameterNamed("amount");
+        BigDecimal amount = command.bigDecimalValueOfParameterNamed("amount");
         final String currencyCode = command.stringValueOfParameterNamed("currencyCode");
 
         final ChargeAppliesTo chargeAppliesTo = ChargeAppliesTo.fromInt(command.integerValueOfParameterNamed("chargeAppliesTo"));
@@ -180,9 +193,16 @@ public class Charge extends AbstractPersistableCustom<Long> {
             countFrequencyType = PeriodFrequencyType.fromInt(command.integerValueOfParameterNamed("countFrequencyType"));
         }
 
+        boolean varyingCharge = false;
+        varyingCharge = command.booleanPrimitiveValueOfParameterNamed("enableSlabs");
+        if (varyingCharge) {
+            amount = BigDecimal.ZERO;
+        }
+
         return new Charge(name, amount, currencyCode, chargeAppliesTo, chargeTimeType, chargeCalculationType, penalty, active, paymentMode,
                 feeOnMonthDay, feeInterval, minCap, maxCap, feeFrequency, enableFreeWithdrawalCharge, freeWithdrawalFrequency,
-                restartCountFrequency, countFrequencyType, account, taxGroup, enablePaymentType, paymentType, enableFeeSplit);
+                restartCountFrequency, countFrequencyType, account, taxGroup, enablePaymentType, paymentType, enableFeeSplit,
+                varyingCharge);
     }
 
     protected Charge() {}
@@ -192,7 +212,8 @@ public class Charge extends AbstractPersistableCustom<Long> {
             final ChargePaymentMode paymentMode, final MonthDay feeOnMonthDay, final Integer feeInterval, final BigDecimal minCap,
             final BigDecimal maxCap, final Integer feeFrequency, final boolean enableFreeWithdrawalCharge,
             final Integer freeWithdrawalFrequency, final Integer restartFrequency, final PeriodFrequencyType restartFrequencyEnum,
-            final GLAccount account, final TaxGroup taxGroup, final boolean enablePaymentType, final PaymentType paymentType, final boolean enableFeeSplit) {
+            final GLAccount account, final TaxGroup taxGroup, final boolean enablePaymentType, final PaymentType paymentType,
+            final boolean enableFeeSplit, final Boolean hasVaryingCharge) {
         this.name = name;
         this.amount = amount;
         this.currencyCode = currencyCode;
@@ -261,8 +282,8 @@ public class Charge extends AbstractPersistableCustom<Long> {
             }
         }
 
-        this.enableFeeSplit = enableFeeSplit;
-
+            this.enableFeeSplit = enableFeeSplit;
+            this.hasVaryingCharge = hasVaryingCharge;
         } else if (isLoanCharge()) {
 
             if (penalty && (chargeTime.isTimeOfDisbursement() || chargeTime.isTrancheDisbursement())) {
@@ -669,6 +690,19 @@ public class Charge extends AbstractPersistableCustom<Long> {
             }
         }
 
+        if (command.isChangeInBooleanParameterNamed(enableFeeSplitParamName, this.enableFeeSplit)) {
+            final Boolean newValue = command.booleanPrimitiveValueOfParameterNamed(enableFeeSplitParamName);
+            actualChanges.put(enableFeeSplitParamName, newValue);
+            this.enableFeeSplit = newValue;
+        }
+
+        if (command.hasParameter("chart")) {
+            this.setHasVaryingCharge(true);
+            updateChargeSlabs(command, actualChanges, baseDataValidator, currencyCode);
+        } else {
+            this.setHasVaryingCharge(false);
+        }
+
         if (!dataValidationErrors.isEmpty()) {
             throw new PlatformApiDataValidationException(dataValidationErrors);
         }
@@ -716,8 +750,8 @@ public class Charge extends AbstractPersistableCustom<Long> {
                 .freeWithdrawal(this.enableFreeWithdrawal).freeWithdrawalChargeFrequency(this.freeWithdrawalFrequency)
                 .restartFrequency(this.restartFrequency).restartFrequencyEnum(this.restartFrequencyEnum)
                 .isPaymentType(this.enablePaymentType).paymentTypeOptions(paymentTypeData).minCap(this.minCap).maxCap(this.maxCap)
-                .feeFrequency(feeFrequencyType).incomeOrLiabilityAccount(accountData).taxGroup(taxGroupData).enableFeeSplit(this.enableFeeSplit).build();
-
+                .feeFrequency(feeFrequencyType).incomeOrLiabilityAccount(accountData).taxGroup(taxGroupData)
+                .enableFeeSplit(this.enableFeeSplit).varyAmounts(this.hasVaryingCharge).build();
     }
 
     public Integer getChargePaymentMode() {
@@ -816,5 +850,133 @@ public class Charge extends AbstractPersistableCustom<Long> {
     public int hashCode() {
         return Objects.hash(name, amount, currencyCode, chargeAppliesTo, chargeTimeType, chargeCalculation, chargePaymentMode, feeOnDay,
                 feeInterval, feeOnMonth, penalty, active, deleted, minCap, maxCap, feeFrequency, account, taxGroup);
+    }
+
+    public Boolean getHasVaryingCharge() {
+        if (this.hasVaryingCharge == null) {
+            return false;
+        } else {
+            return this.hasVaryingCharge;
+        }
+    }
+
+    public void updateChargeSlabs(JsonCommand command, final Map<String, Object> actualChanges,
+            final DataValidatorBuilder baseDataValidator, String currencyCode) {
+
+        final String idParamName = "id";
+        final String deleteParamName = "delete";
+        final Map<String, Object> deletechargeSlabs = new HashMap<>();
+        final Map<String, Object> chargeSlabsChanges = new HashMap<>();
+        final Locale locale = command.extractLocale();
+        if (command.hasParameter("chart")) {
+            final JsonArray array = command.jsonElement("chart").getAsJsonObject().getAsJsonArray("chartSlabs");
+
+            Set<ChargeSlab> existing = new HashSet<>(this.setOfChargeSlabs());
+            Set<Long> existingIds = new HashSet<>();
+            array.forEach(t -> {
+                JsonCommand chartSlabsCommand = JsonCommand.fromExistingCommand(command, t);
+                if (chartSlabsCommand.parameterExists(idParamName)) {
+                    existingIds.add(chartSlabsCommand.longValueOfParameterNamed(idParamName));
+                }
+            });
+
+            // Remove non existing
+            existing.forEach(t -> {
+                if (!existingIds.contains(t.getId())) {
+                    this.removeChargeSlab(t);
+                    deletechargeSlabs.put(idParamName, t.getId());
+                }
+            });
+
+            if (array != null) {
+                for (int i = 0; i < array.size(); i++) {
+                    final JsonObject chargeSlabsElement = array.get(i).getAsJsonObject();
+                    JsonCommand chargeSlabsCommand = JsonCommand.fromExistingCommand(command, chargeSlabsElement);
+                    if (chargeSlabsCommand.parameterExists(idParamName)) {
+                        final Long chartSlabId = chargeSlabsCommand.longValueOfParameterNamed(idParamName);
+                        final ChargeSlab chargeSlab = this.findChargeSlab(chartSlabId);
+                        if (chargeSlab == null) {
+                            baseDataValidator.parameter(idParamName).value(chartSlabId).failWithCode("no.chart.slab.associated.with.id");
+                        } else if (chargeSlabsCommand.parameterExists(deleteParamName)) {
+                            if (this.removeChargeSlab(chargeSlab)) {
+                                deletechargeSlabs.put(idParamName, chartSlabId);
+                            }
+                        } else {
+                            chargeSlab.update(chargeSlabsCommand, chargeSlabsChanges, baseDataValidator, locale);
+                        }
+                    } else {
+
+                        final ChargeSlab chargeSlab = ChargeSlab.assembleFrom(chargeSlabsCommand, this, locale);
+
+                        this.addChargeSlabs(chargeSlab);
+                    }
+                }
+            }
+        }
+
+        // add chart slab changes to actual changes list.
+        if (!chargeSlabsChanges.isEmpty()) {
+            actualChanges.put("chargeSlabs", chargeSlabsChanges);
+        }
+
+        // add deleted chart Slabs to actual changes
+        if (!deletechargeSlabs.isEmpty()) {
+            actualChanges.put("deletedchargeSlabs", deletechargeSlabs);
+        }
+    }
+
+    public void addChargeSlabs(ChargeSlab chargeSlabs) {
+        this.setOfChargeSlabs().add(chargeSlabs);
+    }
+
+    private boolean removeChargeSlab(ChargeSlab chartSlab) {
+        final Set<ChargeSlab> chargeSlabs = setOfChargeSlabs();
+        return chargeSlabs.remove(chartSlab);
+    }
+
+    public Set<ChargeSlab> setOfChargeSlabs() {
+        this.chargeSlabs.isEmpty();
+        if (this.chargeSlabs == null) {
+            this.chargeSlabs = new HashSet<>();
+        } else {
+
+            this.chargeSlabs.size();
+        }
+        return this.chargeSlabs;
+    }
+
+    public ChargeSlab findChargeSlab(Long chartSlabId) {
+        final Set<ChargeSlab> chargeSlabs = setOfChargeSlabs();
+
+        for (ChargeSlab chargeSlab : chargeSlabs) {
+            if (chargeSlab.getId().equals(chartSlabId)) {
+                return chargeSlab;
+            }
+        }
+        return null;
+    }
+
+    public void setHasVaryingCharge(Boolean hasVaryingCharge) {
+        this.hasVaryingCharge = hasVaryingCharge;
+    }
+
+    public BigDecimal calculateChargeAmount(BigDecimal transactionAmount) {
+        if (chargeSlabs.isEmpty()) {
+            return this.amount; // fallback to existing fixed amount
+        }
+
+        for (ChargeSlab slab : chargeSlabs) {
+            if (transactionAmount.compareTo(slab.getFromAmount()) >= 0 && (slab.getToAmount() == null
+                    || slab.getToAmount().equals(BigDecimal.ZERO) || transactionAmount.compareTo(slab.getToAmount()) <= 0)) {
+
+                return slab.getValue();
+            }
+        }
+
+        return BigDecimal.ZERO;
+    }
+
+    private boolean isPercentageOfWithdrawal() {
+        return ChargeCalculationType.fromInt(getChargeCalculation()).isPercentageOfAmount();
     }
 }

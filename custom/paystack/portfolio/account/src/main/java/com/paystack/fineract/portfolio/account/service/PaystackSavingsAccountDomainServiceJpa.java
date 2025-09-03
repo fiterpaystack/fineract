@@ -286,8 +286,13 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             BigDecimal amountToPay = BigDecimal.ZERO;
 
             if (calc != null && ChargeCalculationType.fromInt(calc).isPercentageOfAmount()) {
+                BigDecimal pctResolved = BigDecimal.ZERO;
                 // 1) Set the percentage from client override (client -> savings -> product)
-                BigDecimal pctResolved = clientChargeOverrideReadService.resolvePrimaryAmount(account.clientId(), charge.getCharge(), null);
+                if (charge.getCharge().getHasVaryingCharge()) {
+                    pctResolved = charge.getCharge().calculateChargeAmount(transactionAmount);
+                } else {
+                    pctResolved = clientChargeOverrideReadService.resolvePrimaryAmount(account.clientId(), charge.getCharge(), null);
+                }
                 charge.update(pctResolved, charge.getDueDate(), null, null);
 
                 // 2) Compute outstanding using the just-updated percentage
@@ -316,8 +321,13 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
                 amountToPay = charge.getAmountOutstanding(account.getCurrency()).getAmount();
             } else {
                 // FLAT: resolve primary amount and set it before computing outstanding
-                BigDecimal flatResolved = clientChargeOverrideReadService.resolvePrimaryAmount(account.clientId(), charge.getCharge(),
-                        charge.amount());
+                BigDecimal flatResolved = BigDecimal.ZERO;
+                if (charge.getCharge().getHasVaryingCharge()) {
+                    flatResolved = charge.getCharge().calculateChargeAmount(transactionAmount);
+                } else {
+                    flatResolved = clientChargeOverrideReadService.resolvePrimaryAmount(account.clientId(), charge.getCharge(),
+                            charge.amount());
+                }
                 charge.update(flatResolved, charge.getDueDate(), null, null);
                 charge.updateWithdralFeeAmount(transactionAmount);
                 amountToPay = charge.getAmountOutstanding(account.getCurrency()).getAmount();

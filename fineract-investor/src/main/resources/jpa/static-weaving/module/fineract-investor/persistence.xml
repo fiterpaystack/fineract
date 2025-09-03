@@ -78,6 +78,7 @@
 
         <!-- Charge Module Entities -->
         <class>org.apache.fineract.portfolio.charge.domain.Charge</class>
+        <class>org.apache.fineract.portfolio.charge.domain.ChargeSlab</class>
 
         <!-- Investor Module Entities -->
         <class>org.apache.fineract.investor.domain.ExternalAssetOwner</class>
