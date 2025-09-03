@@ -18,7 +18,10 @@
  */
 package com.paystack.fineract.infrastructure.dataqueries.service;
 
+import static org.apache.fineract.infrastructure.dataqueries.api.DataTableApiConstant.TABLE_FIELD_ID;
+
 import io.micrometer.common.util.StringUtils;
+import java.util.List;
 import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
 import org.apache.fineract.infrastructure.core.service.database.DatabaseType;
 import org.apache.fineract.infrastructure.core.service.database.DatabaseTypeResolver;
@@ -36,20 +39,19 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-
-import static org.apache.fineract.infrastructure.dataqueries.api.DataTableApiConstant.TABLE_FIELD_ID;
-
 @Service
 @Primary
 public class PayStackDatatableUtil extends DatatableUtil {
+
     private final GenericDataService genericDataService;
     private final SqlValidator sqlValidator;
     private final DatabaseSpecificSQLGenerator sqlGenerator;
     private final ColumnValidator columnValidator;
     private final DatabaseTypeResolver databaseTypeResolver;
 
-    public PayStackDatatableUtil(SearchUtil searchUtil, JdbcTemplate jdbcTemplate, SqlValidator sqlValidator, PlatformSecurityContext context, GenericDataService genericDataService, DatabaseSpecificSQLGenerator sqlGenerator, ColumnValidator columnValidator, DatabaseTypeResolver databaseTypeResolver) {
+    public PayStackDatatableUtil(SearchUtil searchUtil, JdbcTemplate jdbcTemplate, SqlValidator sqlValidator,
+            PlatformSecurityContext context, GenericDataService genericDataService, DatabaseSpecificSQLGenerator sqlGenerator,
+            ColumnValidator columnValidator, DatabaseTypeResolver databaseTypeResolver) {
         super(searchUtil, jdbcTemplate, sqlValidator, context, genericDataService, sqlGenerator, columnValidator);
 
         this.genericDataService = genericDataService;
@@ -61,7 +63,7 @@ public class PayStackDatatableUtil extends DatatableUtil {
 
     @Override
     public GenericResultsetData retrieveDataTableGenericResultSet(final EntityTables entityTable, final String dataTableName,
-                                                                  final Long appTableId, final String order, final Long id) {
+            final Long appTableId, final String order, final Long id) {
         final List<ResultsetColumnHeaderData> columnHeaders = genericDataService.fillResultsetColumnHeaders(dataTableName);
         final boolean multiRow = isMultirowDatatable(columnHeaders);
 
@@ -85,12 +87,12 @@ public class PayStackDatatableUtil extends DatatableUtil {
         if (StringUtils.isNotBlank(newColumnNames.toString())) {
             DatabaseType dialect = databaseTypeResolver.databaseType();
             sql = sql + selectColumns;
-            for(String key : newColumnNames.toString().split(",")) {
+            for (String key : newColumnNames.toString().split(",")) {
                 if (key.isBlank()) {
                     continue;
                 }
-                ResultsetColumnHeaderData header = ResultsetColumnHeaderData.detailed(key, "BIGINT", 32L, true, false,
-                        null, null, false, false, dialect);
+                ResultsetColumnHeaderData header = ResultsetColumnHeaderData.detailed(key, "BIGINT", 32L, true, false, null, null, false,
+                        false, dialect);
                 header.setVisible(false);
                 columnHeaders.add(header);
             }

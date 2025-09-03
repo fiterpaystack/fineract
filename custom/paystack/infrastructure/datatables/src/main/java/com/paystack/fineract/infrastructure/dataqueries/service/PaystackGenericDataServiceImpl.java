@@ -49,10 +49,10 @@ public class PaystackGenericDataServiceImpl extends GenericDataServiceImpl {
 
     private final CodeValueReadPlatformService codeValueReadPlatformService;
     private final JdbcTemplate jdbcTemplate;
+
     public PaystackGenericDataServiceImpl(JdbcTemplate jdbcTemplate, RoutingDataSource dataSource,
-            DatabaseIndependentQueryService databaseIndependentQueryService,
-            DatatableKeywordGenerator datatableKeywordGenerator, DatabaseTypeResolver databaseTypeResolver,
-            CodeValueReadPlatformService codeValueReadPlatformService) {
+            DatabaseIndependentQueryService databaseIndependentQueryService, DatatableKeywordGenerator datatableKeywordGenerator,
+            DatabaseTypeResolver databaseTypeResolver, CodeValueReadPlatformService codeValueReadPlatformService) {
         super(jdbcTemplate, dataSource, databaseIndependentQueryService, datatableKeywordGenerator, databaseTypeResolver);
 
         this.codeValueReadPlatformService = codeValueReadPlatformService;
