@@ -259,11 +259,12 @@ public class Charge extends AbstractPersistableCustom<Long> {
             }
 
             if (!(ChargeTimeType.fromInt(getChargeTimeType()).isWithdrawalFee()
-                    || ChargeTimeType.fromInt(getChargeTimeType()).isSavingsNoActivityFee())
+                    || ChargeTimeType.fromInt(getChargeTimeType()).isSavingsNoActivityFee()
+                    || ChargeTimeType.fromInt(getChargeTimeType()).isDepositFee())
                     && ChargeCalculationType.fromInt(getChargeCalculation()).isPercentageOfAmount()) {
                 baseDataValidator.reset().parameter("chargeCalculationType").value(this.chargeCalculation)
                         .failWithCodeNoParameterAddedToErrorCode(
-                                "savings.charge.calculation.type.percentage.allowed.only.for.withdrawal.or.NoActivity");
+                                "savings.charge.calculation.type.percentage.allowed.only.for.withdrawal.or.NoActivity.or.deposit");
             }
 
             if (enableFreeWithdrawalCharge) {
@@ -283,7 +284,6 @@ public class Charge extends AbstractPersistableCustom<Long> {
 
             this.enableFeeSplit = enableFeeSplit;
             this.hasVaryingCharge = hasVaryingCharge;
-
         } else if (isLoanCharge()) {
 
             if (penalty && (chargeTime.isTimeOfDisbursement() || chargeTime.isTrancheDisbursement())) {
@@ -534,6 +534,13 @@ public class Charge extends AbstractPersistableCustom<Long> {
             this.enablePaymentType = newValue;
         }
 
+        final String enableFeeSplitParamName = "enableFeeSplit";
+        if (command.isChangeInBooleanParameterNamed(enableFeeSplitParamName, this.enableFeeSplit)) {
+            final boolean newValue = command.booleanPrimitiveValueOfParameterNamed(enableFeeSplitParamName);
+            actualChanges.put(enableFeeSplitParamName, newValue);
+            this.enableFeeSplit = newValue;
+        }
+
         final String paymentTypeParamName = "paymentTypeId";
         if (command.isChangeInLongParameterNamed(paymentTypeParamName, getPaymentTypeId())) {
             final Long newValue = command.longValueOfParameterNamed(paymentTypeParamName);
@@ -567,11 +574,12 @@ public class Charge extends AbstractPersistableCustom<Long> {
                 }
 
                 if (!(ChargeTimeType.fromInt(getChargeTimeType()).isWithdrawalFee()
-                        || ChargeTimeType.fromInt(getChargeTimeType()).isSavingsNoActivityFee())
+                        || ChargeTimeType.fromInt(getChargeTimeType()).isSavingsNoActivityFee()
+                        || ChargeTimeType.fromInt(getChargeTimeType()).isDepositFee())
                         && ChargeCalculationType.fromInt(getChargeCalculation()).isPercentageOfAmount()) {
                     baseDataValidator.reset().parameter("chargeCalculationType").value(this.chargeCalculation)
                             .failWithCodeNoParameterAddedToErrorCode(
-                                    "charge.calculation.type.percentage.allowed.only.for.withdrawal.or.noactivity");
+                                    "charge.calculation.type.percentage.allowed.only.for.withdrawal.or.noactivity.or.deposit");
                 }
             } else if (isClientCharge()) {
                 if (!isAllowedClientChargeCalculationType()) {
@@ -682,7 +690,6 @@ public class Charge extends AbstractPersistableCustom<Long> {
             }
         }
 
-        final String enableFeeSplitParamName = "enableFeeSplit";
         if (command.isChangeInBooleanParameterNamed(enableFeeSplitParamName, this.enableFeeSplit)) {
             final Boolean newValue = command.booleanPrimitiveValueOfParameterNamed(enableFeeSplitParamName);
             actualChanges.put(enableFeeSplitParamName, newValue);
@@ -745,7 +752,6 @@ public class Charge extends AbstractPersistableCustom<Long> {
                 .isPaymentType(this.enablePaymentType).paymentTypeOptions(paymentTypeData).minCap(this.minCap).maxCap(this.maxCap)
                 .feeFrequency(feeFrequencyType).incomeOrLiabilityAccount(accountData).taxGroup(taxGroupData)
                 .enableFeeSplit(this.enableFeeSplit).varyAmounts(this.hasVaryingCharge).build();
-
     }
 
     public Integer getChargePaymentMode() {
