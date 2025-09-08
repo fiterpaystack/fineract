@@ -78,7 +78,7 @@ public class PayStackDatatableUtil extends DatatableUtil {
         for (ResultsetColumnHeaderData columnHeader : columnHeaders) {
             if (columnHeader.getColumnDisplayType().equals(ResultsetColumnHeaderData.DisplayType.CODELOOKUP)) {
                 newColumnNames.append(",").append(columnHeader.getColumnCode()).append("Id");
-                selectColumns.append(", mcv").append(index).append(".id as ").append(columnHeader.getColumnCode()).append("Id");
+                selectColumns.append(", mcv").append(index).append(".id as \"").append(columnHeader.getColumnCode()).append("Id\"");
                 joinClause.append(" join m_code_value mcv").append(index).append(" on dt.")
                         .append(sqlGenerator.escape(columnHeader.getColumnName())).append(" = mcv").append(index).append(".id");
             }
