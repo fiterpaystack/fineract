@@ -407,8 +407,8 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
                 .build();
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW,
-            noRollbackFor = { PlatformApiDataValidationException.class, AbstractPlatformDomainRuleException.class, GeneralPlatformDomainRuleException.class})
+    @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = { PlatformApiDataValidationException.class,
+            AbstractPlatformDomainRuleException.class, GeneralPlatformDomainRuleException.class })
     @Override
     public CommandProcessingResult applyAnnualFee(final Long savingsAccountChargeId, final Long accountId) {
         getAppUserIfPresent();
