@@ -19,7 +19,6 @@
 package com.paystack.fineract.portfolio.savings.jobs.applyannualfeeforsavings;
 
 import org.apache.fineract.infrastructure.jobs.service.JobName;
-import org.apache.fineract.portfolio.savings.jobs.applyannualfeeforsavings.ApplyAnnualFeeForSavingsTasklet;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountChargeReadPlatformService;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountWritePlatformService;
 import org.springframework.batch.core.Job;
@@ -50,25 +49,19 @@ public class PaystackApplyAnnualFeeForSavingsConfig {
     @Primary
     protected Step applyAnnualFeeForSavingsStep() {
         return new StepBuilder(JobName.APPLY_ANNUAL_FEE_FOR_SAVINGS.name(), jobRepository)
-                .tasklet(applyAnnualFeeForSavingsTasklet(), transactionManager)
-                .build();
+                .tasklet(applyAnnualFeeForSavingsTasklet(), transactionManager).build();
     }
 
     @Bean
     @Primary
     public Job applyAnnualFeeForSavingsJob() {
-        return new JobBuilder(JobName.APPLY_ANNUAL_FEE_FOR_SAVINGS.name(), jobRepository)
-                .start(applyAnnualFeeForSavingsStep())
-                .incrementer(new RunIdIncrementer())
-                .build();
+        return new JobBuilder(JobName.APPLY_ANNUAL_FEE_FOR_SAVINGS.name(), jobRepository).start(applyAnnualFeeForSavingsStep())
+                .incrementer(new RunIdIncrementer()).build();
     }
 
     @Bean
     @Primary
     public PaystackApplyAnnualFeeForSavingsTasklet applyAnnualFeeForSavingsTasklet() {
-        return new PaystackApplyAnnualFeeForSavingsTasklet(
-                savingsAccountChargeReadPlatformService,
-                savingsAccountWritePlatformService
-        );
+        return new PaystackApplyAnnualFeeForSavingsTasklet(savingsAccountChargeReadPlatformService, savingsAccountWritePlatformService);
     }
 }

@@ -56,9 +56,8 @@ public class PaystackApplyAnnualFeeForSavingsTasklet implements Tasklet {
             } catch (final PlatformApiDataValidationException e) {
                 for (final ApiParameterError error : e.getErrors()) {
                     exceptions.add(e);
-                    log.error("Apply annual fee for savings failed for account {} with message: {}",
-                            savingsAccountReference.getAccountNo(), error.getDeveloperMessage());
-
+                    log.error("Apply annual fee for savings failed for account {} with message: {}", savingsAccountReference.getAccountNo(),
+                            error.getDeveloperMessage());
 
                 }
             } catch (final Exception ex) {
@@ -68,8 +67,7 @@ public class PaystackApplyAnnualFeeForSavingsTasklet implements Tasklet {
             }
         }
 
-        log.debug("{}: Records affected by applyDueChargesForSavings: {}",
-                ThreadLocalContextUtil.getTenant().getName(),
+        log.debug("{}: Records affected by applyDueChargesForSavings: {}", ThreadLocalContextUtil.getTenant().getName(),
                 annualFeeData.size());
 
         if (!exceptions.isEmpty()) {
