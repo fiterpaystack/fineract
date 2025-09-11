@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="paystack-0003-add-validity-period-fields" author="paystack">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="m_product_discount_rule"/>
+            <not>
+                <columnExists tableName="m_product_discount_rule" columnName="valid_from"/>
+            </not>
+        </preConditions>
+        <comment>Add validity period fields to product discount rule table</comment>
+
+        <!-- Add validity period columns -->
+        <addColumn tableName="m_product_discount_rule">
+            <column name="valid_from" type="date">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="m_product_discount_rule">
+            <column name="valid_to" type="date">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Add indexes for validity period queries -->
+        <createIndex tableName="m_product_discount_rule" indexName="idx_product_discount_rule_valid_from">
+            <column name="valid_from"/>
+        </createIndex>
+
+        <createIndex tableName="m_product_discount_rule" indexName="idx_product_discount_rule_valid_to">
+            <column name="valid_to"/>
+        </createIndex>
+
+    </changeSet>
+
+</databaseChangeLog>

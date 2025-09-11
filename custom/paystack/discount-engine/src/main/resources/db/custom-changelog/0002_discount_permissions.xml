@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="paystack-0002-discount-permissions" author="paystack">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM m_permission WHERE code = 'CREATE_PRODUCT_DISCOUNT_RULE'
+                </sqlCheck>
+            </not>
+        </preConditions>
+        <comment>Add permissions for discount engine</comment>
+
+        <insert tableName="m_permission">
+            <column name="grouping" value="PRODUCT_DISCOUNT_RULE"/>
+            <column name="code" value="CREATE_PRODUCT_DISCOUNT_RULE"/>
+            <column name="entity_name" value="ProductDiscountRule"/>
+            <column name="action_name" value="CREATE"/>
+        </insert>
+        
+        <insert tableName="m_permission">
+            <column name="grouping" value="PRODUCT_DISCOUNT_RULE"/>
+            <column name="code" value="READ_PRODUCT_DISCOUNT_RULE"/>
+            <column name="entity_name" value="ProductDiscountRule"/>
+            <column name="action_name" value="READ"/>
+        </insert>
+        
+        <insert tableName="m_permission">
+            <column name="grouping" value="PRODUCT_DISCOUNT_RULE"/>
+            <column name="code" value="UPDATE_PRODUCT_DISCOUNT_RULE"/>
+            <column name="entity_name" value="ProductDiscountRule"/>
+            <column name="action_name" value="UPDATE"/>
+        </insert>
+        
+        <insert tableName="m_permission">
+            <column name="grouping" value="PRODUCT_DISCOUNT_RULE"/>
+            <column name="code" value="DELETE_PRODUCT_DISCOUNT_RULE"/>
+            <column name="entity_name" value="ProductDiscountRule"/>
+            <column name="action_name" value="DELETE"/>
+        </insert>
+
+    </changeSet>
+
+</databaseChangeLog>
