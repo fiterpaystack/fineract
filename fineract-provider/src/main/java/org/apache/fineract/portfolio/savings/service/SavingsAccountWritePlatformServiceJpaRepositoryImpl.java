@@ -419,7 +419,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         final LocalDate currentDate = DateUtils.getBusinessLocalDate();
         final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd MM yyyy").withZone(DateUtils.getDateTimeZoneOfTenant());
 
-        while (DateUtils.isEqual(savingsAccountCharge.getDueDate(), currentDate) || DateUtils.isBefore(savingsAccountCharge.getDueDate(), currentDate)) {
+        while (DateUtils.isBefore(savingsAccountCharge.getDueDate(), currentDate)) {
             this.payCharge(savingsAccountCharge, savingsAccountCharge.getDueDate(), savingsAccountCharge.amount(), fmt, false);
         }
 
