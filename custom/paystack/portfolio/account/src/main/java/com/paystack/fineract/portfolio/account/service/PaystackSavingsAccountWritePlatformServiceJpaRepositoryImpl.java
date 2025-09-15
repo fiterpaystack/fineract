@@ -34,7 +34,9 @@ import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDoma
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
+import org.apache.fineract.infrastructure.core.exception.AbstractPlatformDomainRuleException;
 import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
+import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.exception.PlatformServiceUnavailableException;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.dataqueries.service.EntityDatatableChecksWritePlatformService;
@@ -75,6 +77,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -300,5 +303,31 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
     private void throwValidationForActiveStatus(final String actionName) {
         final String errorMessage = "validation.msg.savingsaccount.transaction." + actionName + ".account.is.not.active";
         throw new GeneralPlatformDomainRuleException(errorMessage, "Transaction " + actionName + " is not allowed. Account is not active.");
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = { PlatformApiDataValidationException.class,
+            AbstractPlatformDomainRuleException.class, GeneralPlatformDomainRuleException.class })
+    @Override
+    public CommandProcessingResult applyAnnualFee(final Long savingsAccountChargeId, final Long accountId) {
+        super.getAppUserIfPresent();
+
+        final SavingsAccountCharge savingsAccountCharge = this.savingsAccountChargeRepository
+                .findOneWithNotFoundDetection(savingsAccountChargeId, accountId);
+
+        final LocalDate currentDate = DateUtils.getBusinessLocalDate();
+        final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd MM yyyy").withZone(DateUtils.getDateTimeZoneOfTenant());
+
+        while (DateUtils.isEqual(savingsAccountCharge.getDueDate(), currentDate)
+                || DateUtils.isBefore(savingsAccountCharge.getDueDate(), currentDate)) {
+            this.payCharge(savingsAccountCharge, savingsAccountCharge.getDueDate(), savingsAccountCharge.amount(), fmt, false);
+        }
+
+        return new CommandProcessingResultBuilder() //
+                .withEntityId(savingsAccountCharge.getId()) //
+                .withOfficeId(savingsAccountCharge.savingsAccount().officeId()) //
+                .withClientId(savingsAccountCharge.savingsAccount().clientId()) //
+                .withGroupId(savingsAccountCharge.savingsAccount().groupId()) //
+                .withSavingsId(savingsAccountCharge.savingsAccount().getId()) //
+                .build();
     }
 }

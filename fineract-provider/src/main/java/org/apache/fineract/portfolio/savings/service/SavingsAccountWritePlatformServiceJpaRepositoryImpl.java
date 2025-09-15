@@ -155,7 +155,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
     private final AccountTransfersReadPlatformService accountTransfersReadPlatformService;
     private final AccountAssociationsReadPlatformService accountAssociationsReadPlatformService;
     private final ChargeRepositoryWrapper chargeRepository;
-    private final SavingsAccountChargeRepositoryWrapper savingsAccountChargeRepository;
+    protected final SavingsAccountChargeRepositoryWrapper savingsAccountChargeRepository;
     private final HolidayRepositoryWrapper holidayRepository;
     private final WorkingDaysRepositoryWrapper workingDaysRepository;
     protected final ConfigurationDomainService configurationDomainService;
@@ -1656,7 +1656,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         postJournalEntries(account, existingTransactionIds, existingReversedTransactionIds, false);
     }
 
-    private AppUser getAppUserIfPresent() {
+    protected AppUser getAppUserIfPresent() {
         AppUser user = null;
         if (this.context != null) {
             user = this.context.getAuthenticatedUserIfPresent();
