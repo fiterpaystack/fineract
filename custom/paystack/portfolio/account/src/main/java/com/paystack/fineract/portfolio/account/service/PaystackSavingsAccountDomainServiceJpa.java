@@ -23,6 +23,7 @@ import com.paystack.fineract.client.charge.service.ClientChargeOverrideReadServi
 import com.paystack.fineract.portfolio.account.data.ChargePaymentResult;
 import com.paystack.fineract.portfolio.account.data.SavingsAccountTransactionLimitValidator;
 import com.paystack.fineract.portfolio.savings.domain.PaystackSavingsProductAttributesRepository;
+import com.paystack.fineract.portfolio.discount.service.ProductDiscountService;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.time.LocalDate;
@@ -79,6 +80,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
     private final FeeSplitService feeSplitService;
     private final SavingsAccountTransactionLimitValidator savingsAccountTransactionLimitValidator;
     private final PaystackSavingsProductAttributesRepository savingsProductAttributesRepository;
+    private final ProductDiscountService productDiscountService;
 
     public PaystackSavingsAccountDomainServiceJpa(SavingsAccountRepositoryWrapper savingsAccountRepository,
             SavingsAccountTransactionRepository savingsAccountTransactionRepository,
@@ -90,7 +92,8 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             SavingsAccountTransactionSummaryWrapper savingsAccountTransactionSummaryWrapper,
             SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService,
             ClientChargeOverrideReadService clientChargeOverrideReadService,
-            PaystackSavingsProductAttributesRepository savingsProductAttributesRepository, FeeSplitService feeSplitService) {
+            PaystackSavingsProductAttributesRepository savingsProductAttributesRepository, FeeSplitService feeSplitService,
+            ProductDiscountService productDiscountService) {
         super(savingsAccountRepository, savingsAccountTransactionRepository, applicationCurrencyRepositoryWrapper,
                 journalEntryWritePlatformService, configurationDomainService, context, depositAccountOnHoldTransactionRepository,
                 businessEventNotifierService);
@@ -100,6 +103,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         this.feeSplitService = feeSplitService;
         this.savingsAccountTransactionLimitValidator = savingsAccountTransactionLimitValidator;
         this.savingsProductAttributesRepository = savingsProductAttributesRepository;
+        this.productDiscountService = productDiscountService;
     }
 
     @Transactional
@@ -248,16 +252,36 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
 
         // 2. Apply withdrawal fee (and VAT) AFTER base withdrawal so ID order is: withdrawal -> fee -> vat
         if (applyWithdrawFee) {
+            log.info("💰 WITHDRAWAL FEE: Applying withdrawal fee for account: {}, transaction amount: {}", 
+                account.getId(), transactionDTO.getTransactionAmount());
             payWithdrawalFee(transactionDTO.getTransactionAmount(), transactionDTO.getTransactionDate(), transactionDTO.getPaymentDetail(),
                     backdatedTxnsAllowedTill, refNo, account);
+        } else {
+            log.info("💰 WITHDRAWAL FEE: No withdrawal fee to apply for account: {}", account.getId());
         }
+        
+        // Clean up discount service state after transaction completion
+        try {
+            productDiscountService.clearAppliedDiscounts();
+        } catch (Exception e) {
+            log.warn("Failed to clear discount service state for account {}: {}", account.getId(), e.getMessage());
+        }
+        
         return transaction;
     }
 
     private void payWithdrawalFee(final BigDecimal transactionAmount, final LocalDate transactionDate, final PaymentDetail paymentDetail,
             final boolean backdatedTxnsAllowedTill, final String refNo, final SavingsAccount account) {
+        log.info("💰 WITHDRAWAL FEE PROCESSING: Starting for account: {}, transaction amount: {}", 
+            account.getId(), transactionAmount);
+        
         for (SavingsAccountCharge charge : account.charges()) {
+            log.info("💰 WITHDRAWAL FEE PROCESSING: Checking charge: {} (ID: {}), isWithdrawalFee: {}, isActive: {}", 
+                charge.getCharge().getName(), charge.getCharge().getId(), charge.isWithdrawalFee(), charge.isActive());
+                
             if (!charge.isWithdrawalFee() || !charge.isActive()) {
+                log.info("💰 WITHDRAWAL FEE PROCESSING: Skipping charge {} - not withdrawal fee or not active", 
+                    charge.getCharge().getName());
                 continue;
             }
 
@@ -334,9 +358,18 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             }
 
             if (amountToPay.compareTo(BigDecimal.ZERO) <= 0) {
+                log.info("💰 WITHDRAWAL FEE PROCESSING: No amount to pay for charge: {} (amount: {})", 
+                    charge.getCharge().getName(), amountToPay);
                 continue; // nothing to pay
             }
-            Money moneyToPay = org.apache.fineract.organisation.monetary.domain.Money.of(account.getCurrency(), amountToPay);
+            
+            log.info("💰 WITHDRAWAL FEE PROCESSING: Processing charge: {} with amount: {}", 
+                charge.getCharge().getName(), amountToPay);
+            
+            // Apply discount to the charge amount before processing
+            BigDecimal discountedAmount = applyDiscountToChargeAmount(account, charge, amountToPay);
+            
+            Money moneyToPay = org.apache.fineract.organisation.monetary.domain.Money.of(account.getCurrency(), discountedAmount);
             // Persist fee then VAT explicitly (mirrors deposit path) to guarantee ordering
             payChargeWithVatAndSave(account, charge, moneyToPay, transactionDate, refNo, backdatedTxnsAllowedTill);
         }
@@ -410,6 +443,13 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
                     backdatedTxnsAllowedTill);
         }
 
+        // Clean up discount service state after transaction completion
+        try {
+            productDiscountService.clearAppliedDiscounts();
+        } catch (Exception e) {
+            log.warn("Failed to clear discount service state for account {}: {}", account.getId(), e.getMessage());
+        }
+
         return deposit;
     }
 
@@ -473,7 +513,10 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
                 continue;
             }
 
-            Money moneyToPay = org.apache.fineract.organisation.monetary.domain.Money.of(account.getCurrency(), amountToPay);
+            // Apply discount to the charge amount before processing
+            BigDecimal discountedAmount = applyDiscountToChargeAmount(account, charge, amountToPay);
+
+            Money moneyToPay = org.apache.fineract.organisation.monetary.domain.Money.of(account.getCurrency(), discountedAmount);
             payChargeWithVatAndSave(account, charge, moneyToPay, transactionDate, refNo, backdatedTxnsAllowedTill);
         }
     }
@@ -498,6 +541,42 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         }
 
         this.savingsAccountRepository.saveAndFlush(account);
+    }
+
+    /**
+     * Apply discount rules to a charge amount during calculation
+     */
+    private BigDecimal applyDiscountToChargeAmount(SavingsAccount account, SavingsAccountCharge charge, BigDecimal originalAmount) {
+        log.info("🎯 WITHDRAWAL DISCOUNT: Starting discount application for account: {}, charge: {}, original amount: {}", 
+            account.getId(), charge.getCharge().getId(), originalAmount);
+        
+        try {
+            // Get the product ID from the savings account
+            Long productId = account.productId();
+            
+            log.info("🎯 WITHDRAWAL DISCOUNT: Product ID: {}, Charge ID: {}", productId, charge.getCharge().getId());
+            
+            // Apply discount using the product discount service
+            BigDecimal discountedAmount = productDiscountService.applyDiscount(
+                productId, 
+                originalAmount, 
+                charge.getCharge().getId()
+            );
+            
+            log.info("🎯 WITHDRAWAL DISCOUNT: Applied discount to charge {} for account {}: Original: {}, Discounted: {}", 
+                charge.getCharge().getId(), account.getId(), originalAmount, discountedAmount);
+            
+            return discountedAmount;
+            
+        } catch (Exception e) {
+            log.error("🎯 WITHDRAWAL DISCOUNT: Error applying discount to charge {} for account {}: {} - Stack trace: {}", 
+                charge.getCharge().getId(), account.getId(), e.getMessage(), e.getStackTrace()[0], e);
+            
+            // Return original amount if discount application fails - graceful degradation
+            log.info("🎯 WITHDRAWAL DISCOUNT: Graceful fallback - returning original amount {} for charge {}", 
+                originalAmount, charge.getCharge().getId());
+            return originalAmount;
+        }
     }
 
     private void payEmtLevyOnTransaction(SavingsAccount account, Money amount, LocalDate transactionDate, String refNo,

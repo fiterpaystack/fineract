@@ -3930,4 +3930,44 @@ public class CommandWrapperBuilder {
         this.href = "/savings/transactionlimits/classificationmapping/" + id;
         return this;
     }
+
+    public CommandWrapperBuilder createDiscountRule() {
+        this.actionName = "CREATE";
+        this.entityName = "DISCOUNTRULE";
+        this.entityId = null;
+        this.href = "/v1/discount-rules";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateDiscountRule(final Long ruleId) {
+        this.actionName = "UPDATE";
+        this.entityName = "DISCOUNTRULE";
+        this.entityId = ruleId;
+        this.href = "/v1/discount-rules/" + ruleId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteDiscountRule(final Long ruleId) {
+        this.actionName = "DELETE";
+        this.entityName = "DISCOUNTRULE";
+        this.entityId = ruleId;
+        this.href = "/v1/discount-rules/" + ruleId;
+        return this;
+    }
+
+    public CommandWrapperBuilder assignDiscountRuleToProduct(final Long ruleId) {
+        this.actionName = "CREATE";
+        this.entityName = "DISCOUNTRULE_PRODUCT_ASSIGNMENT";
+        this.entityId = ruleId;
+        this.href = "/v1/discount-rules/products/" + ruleId + "/assign";
+        return this;
+    }
+
+    public CommandWrapperBuilder assignDiscountRuleToCharge(final Long ruleId) {
+        this.actionName = "CREATE";
+        this.entityName = "DISCOUNTRULE_CHARGE_ASSIGNMENT";
+        this.entityId = ruleId;
+        this.href = "/v1/discount-rules/charges/" + ruleId + "/assign";
+        return this;
+    }
 }

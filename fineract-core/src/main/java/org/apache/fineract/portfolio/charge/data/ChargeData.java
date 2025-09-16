@@ -101,6 +101,9 @@ public class ChargeData implements Comparable<ChargeData>, Serializable {
 
     private final Boolean varyAmounts;
     private List<ChargeSlabData> chargeSlabs;
+    
+    // Additional attributes for custom extensions
+    private final Map<String, Object> additionalAttributes;
 
     public static ChargeData withTemplate(final ChargeData charge, final ChargeData template) {
         return charge.toBuilder().currencyOptions(template.getCurrencyOptions())
@@ -120,7 +123,8 @@ public class ChargeData implements Comparable<ChargeData>, Serializable {
                 .shareChargeTimeTypeOptions(template.getShareChargeTimeTypeOptions())
                 .accountMappingForChargeConfig(template.getAccountMappingForChargeConfig())
                 .expenseAccountOptions(template.getExpenseAccountOptions()).assetAccountOptions(template.getAssetAccountOptions())
-                .varyAmounts(charge.getVaryAmounts()).chargeSlabs(charge.getChargeSlabs()).build();
+                .varyAmounts(charge.getVaryAmounts()).chargeSlabs(charge.getChargeSlabs())
+                .additionalAttributes(charge.getAdditionalAttributes()).build();
     }
 
     @Override

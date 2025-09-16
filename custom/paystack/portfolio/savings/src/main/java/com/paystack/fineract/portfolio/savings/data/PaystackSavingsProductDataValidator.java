@@ -131,7 +131,7 @@ public class PaystackSavingsProductDataValidator extends SavingsProductDataValid
                 JsonArray discountRules = paystackFromJsonHelper
                         .extractJsonArrayNamed(PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES, element);
                 base.reset().parameter(PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES).value(discountRules)
-                        .notNull().arrayNotEmpty();
+                        .notNull().jsonArrayNotEmpty();
             }
         }
 
