@@ -145,6 +145,8 @@ public final class SavingsEnumerations {
                         SavingsAccountTransactionType.WITHDRAWAL_FEE.getCode(), "Withdrawal fee");
             case ANNUAL_FEE -> new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.ANNUAL_FEE.getValue().longValue(),
                     SavingsAccountTransactionType.ANNUAL_FEE.getCode(), "Annual fee");
+            case DEPOSIT_FEE -> new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.DEPOSIT_FEE.getValue().longValue(),
+                    SavingsAccountTransactionType.DEPOSIT_FEE.getCode(), "Deposit Fee");
             case APPROVE_TRANSFER ->
                 new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.APPROVE_TRANSFER.getValue().longValue(),
                         SavingsAccountTransactionType.APPROVE_TRANSFER.getCode(), "Transfer approved");

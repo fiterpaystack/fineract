@@ -3176,6 +3176,8 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
             chargeTransaction = SavingsAccountTransaction.withdrawalFee(this, office(), transactionDate, transactionAmount, refNo);
         } else if (savingsAccountCharge.isAnnualFee()) {
             chargeTransaction = SavingsAccountTransaction.annualFee(this, office(), transactionDate, transactionAmount);
+        } else if (savingsAccountCharge.isDepositFee()) {
+            chargeTransaction = SavingsAccountTransaction.depositFee(this, office(), transactionDate, transactionAmount, refNo);
         } else {
             chargeTransaction = SavingsAccountTransaction.charge(this, office(), transactionDate, transactionAmount);
         }
