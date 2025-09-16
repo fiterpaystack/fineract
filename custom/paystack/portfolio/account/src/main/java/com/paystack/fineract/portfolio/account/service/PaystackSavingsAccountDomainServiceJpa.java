@@ -23,6 +23,7 @@ import com.paystack.fineract.client.charge.service.ClientChargeOverrideReadServi
 import com.paystack.fineract.portfolio.account.data.ChargePaymentResult;
 import com.paystack.fineract.portfolio.account.data.SavingsAccountTransactionLimitValidator;
 import com.paystack.fineract.portfolio.savings.domain.PaystackSavingsProductAttributesRepository;
+import io.micrometer.common.util.StringUtils;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.time.LocalDate;
@@ -45,6 +46,7 @@ import org.apache.fineract.organisation.monetary.domain.ApplicationCurrencyRepos
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.portfolio.charge.domain.ChargeCalculationType;
 import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
+import org.apache.fineract.portfolio.note.domain.Note;
 import org.apache.fineract.portfolio.note.domain.NoteRepository;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.savings.SavingsTransactionBooleanValues;
@@ -79,6 +81,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
     private final FeeSplitService feeSplitService;
     private final SavingsAccountTransactionLimitValidator savingsAccountTransactionLimitValidator;
     private final PaystackSavingsProductAttributesRepository savingsProductAttributesRepository;
+    private final NoteRepository noteRepository;
 
     public PaystackSavingsAccountDomainServiceJpa(SavingsAccountRepositoryWrapper savingsAccountRepository,
             SavingsAccountTransactionRepository savingsAccountTransactionRepository,
@@ -100,13 +103,14 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         this.feeSplitService = feeSplitService;
         this.savingsAccountTransactionLimitValidator = savingsAccountTransactionLimitValidator;
         this.savingsProductAttributesRepository = savingsProductAttributesRepository;
+        this.noteRepository = noteRepository;
     }
 
     @Transactional
     @Override
     public SavingsAccountTransaction handleWithdrawal(final SavingsAccount account, final DateTimeFormatter fmt,
             final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail,
-            final SavingsTransactionBooleanValues transactionBooleanValues, final boolean backdatedTxnsAllowedTill) {
+            final SavingsTransactionBooleanValues transactionBooleanValues, final boolean backdatedTxnsAllowedTill, final String noteText) {
         context.authenticatedUser();
         account.validateForAccountBlock();
         account.validateForDebitBlock();
@@ -133,10 +137,10 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
                 paymentDetail, null, accountType);
         UUID refNo = UUID.randomUUID();
         final SavingsAccountTransaction withdrawal = withdraw(transactionDTO, transactionBooleanValues.isApplyWithdrawFee(),
-                backdatedTxnsAllowedTill, relaxingDaysConfigForPivotDate, refNo.toString(), account);
+                backdatedTxnsAllowedTill, relaxingDaysConfigForPivotDate, refNo.toString(), account, noteText);
         // Create EMT levy immediately after base withdrawal so balance validation considers it
         Money baseWithdrawalAmount = Money.of(account.getCurrency(), transactionAmount);
-        payEmtLevyOnTransaction(account, baseWithdrawalAmount, transactionDate, refNo.toString(), backdatedTxnsAllowedTill, true);
+        payEmtLevyOnTransaction(account, baseWithdrawalAmount, transactionDate, refNo.toString(), backdatedTxnsAllowedTill, true, noteText);
         final MathContext mc = MathContext.DECIMAL64;
 
         final LocalDate today = DateUtils.getBusinessLocalDate();
@@ -174,7 +178,8 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
     }
 
     public SavingsAccountTransaction withdraw(final SavingsAccountTransactionDTO transactionDTO, final boolean applyWithdrawFee,
-            final boolean backdatedTxnsAllowedTill, final Long relaxingDaysConfigForPivotDate, String refNo, SavingsAccount account) {
+            final boolean backdatedTxnsAllowedTill, final Long relaxingDaysConfigForPivotDate, String refNo, SavingsAccount account,
+            final String noteText) {
         if (!account.isTransactionsAllowed()) {
 
             final String defaultUserMessage = "Transaction is not allowed. Account is not active.";
@@ -249,13 +254,13 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         // 2. Apply withdrawal fee (and VAT) AFTER base withdrawal so ID order is: withdrawal -> fee -> vat
         if (applyWithdrawFee) {
             payWithdrawalFee(transactionDTO.getTransactionAmount(), transactionDTO.getTransactionDate(), transactionDTO.getPaymentDetail(),
-                    backdatedTxnsAllowedTill, refNo, account);
+                    backdatedTxnsAllowedTill, refNo, account, noteText);
         }
         return transaction;
     }
 
     private void payWithdrawalFee(final BigDecimal transactionAmount, final LocalDate transactionDate, final PaymentDetail paymentDetail,
-            final boolean backdatedTxnsAllowedTill, final String refNo, final SavingsAccount account) {
+            final boolean backdatedTxnsAllowedTill, final String refNo, final SavingsAccount account, final String noteText) {
         for (SavingsAccountCharge charge : account.charges()) {
             if (!charge.isWithdrawalFee() || !charge.isActive()) {
                 continue;
@@ -338,7 +343,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             }
             Money moneyToPay = org.apache.fineract.organisation.monetary.domain.Money.of(account.getCurrency(), amountToPay);
             // Persist fee then VAT explicitly (mirrors deposit path) to guarantee ordering
-            payChargeWithVatAndSave(account, charge, moneyToPay, transactionDate, refNo, backdatedTxnsAllowedTill);
+            payChargeWithVatAndSave(account, charge, moneyToPay, transactionDate, refNo, backdatedTxnsAllowedTill, noteText);
         }
     }
 
@@ -349,11 +354,12 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
     @Override
     public SavingsAccountTransaction handleDeposit(final SavingsAccount account, final DateTimeFormatter fmt,
             final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail,
-            final boolean isAccountTransfer, final boolean isRegularTransaction, final boolean backdatedTxnsAllowedTill) {
+            final boolean isAccountTransfer, final boolean isRegularTransaction, final boolean backdatedTxnsAllowedTill,
+            final String noteText) {
 
         // Call parent's handleDeposit method to process the actual deposit
         SavingsAccountTransaction deposit = super.handleDeposit(account, fmt, transactionDate, transactionAmount, paymentDetail,
-                isAccountTransfer, isRegularTransaction, backdatedTxnsAllowedTill);
+                isAccountTransfer, isRegularTransaction, backdatedTxnsAllowedTill, noteText);
 
         // CHECK the transaction limit and make account BLOCKDEBIT if the limit reached
         savingsAccountTransactionLimitValidator.isDepositTransactionExceedsLimits(account.getClient(), account, transactionDate,
@@ -363,10 +369,11 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         if (transactionAmount.compareTo(BigDecimal.ZERO) > 0) {
             Long depositTransactionId = deposit.getId();
             // First fees (and VAT inside)
-            payDepositFee(transactionAmount, transactionDate, paymentDetail, backdatedTxnsAllowedTill, deposit.getRefNo(), account);
+            payDepositFee(transactionAmount, transactionDate, paymentDetail, backdatedTxnsAllowedTill, deposit.getRefNo(), account,
+                    noteText);
             // Then EMT levy last to satisfy ordering: deposit -> fee -> vat -> emt levy
             payEmtLevyOnTransaction(account, Money.of(account.getCurrency(), transactionAmount), transactionDate, deposit.getRefNo(),
-                    backdatedTxnsAllowedTill, false);
+                    backdatedTxnsAllowedTill, false, noteText);
 
             final MathContext mc = MathContext.DECIMAL64;
             final LocalDate today = DateUtils.getBusinessLocalDate();
@@ -414,7 +421,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
     }
 
     private void payDepositFee(final BigDecimal transactionAmount, final LocalDate transactionDate, final PaymentDetail paymentDetail,
-            final boolean backdatedTxnsAllowedTill, final String refNo, final SavingsAccount account) {
+            final boolean backdatedTxnsAllowedTill, final String refNo, final SavingsAccount account, final String noteText) {
         for (SavingsAccountCharge charge : account.charges()) {
             if (!charge.getCharge().getChargeTimeType().equals(ChargeTimeType.DEPOSIT_FEE.getValue()) || !charge.isActive()) {
                 continue;
@@ -474,22 +481,33 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             }
 
             Money moneyToPay = org.apache.fineract.organisation.monetary.domain.Money.of(account.getCurrency(), amountToPay);
-            payChargeWithVatAndSave(account, charge, moneyToPay, transactionDate, refNo, backdatedTxnsAllowedTill);
+            payChargeWithVatAndSave(account, charge, moneyToPay, transactionDate, refNo, backdatedTxnsAllowedTill, noteText);
         }
     }
 
     private void payChargeWithVatAndSave(SavingsAccount account, SavingsAccountCharge charge, Money amount, LocalDate transactionDate,
-            String refNo, boolean backdatedTxnsAllowedTill) {
+            String refNo, boolean backdatedTxnsAllowedTill, final String noteText) {
         ChargePaymentResult result = savingsAccountChargePaymentWrapperService.payChargeWithVat(account, charge, amount, transactionDate,
                 refNo, backdatedTxnsAllowedTill);
 
         if (result.getFeeTransaction() != null) {
-            saveTransactionToGenerateTransactionId(result.getFeeTransaction());
+            final SavingsAccountTransaction feeTransaction = result.getFeeTransaction();
+            saveTransactionToGenerateTransactionId(feeTransaction);
+            if (StringUtils.isNotBlank(noteText)) {
+                final Note note = Note.savingsTransactionNote(account, feeTransaction, noteText);
+                this.noteRepository.save(note);
+            }
+
         }
         if (result.getVatResult() != null && result.getVatResult().isVatApplied() && result.getVatResult().getVatTransaction() != null) {
             // Attach VAT (updates summary/backdated list or balance) before persisting
             savingsAccountChargePaymentWrapperService.attachVatAfterFeePersist(account, result.getVatResult());
-            saveTransactionToGenerateTransactionId(result.getVatResult().getVatTransaction());
+            final SavingsAccountTransaction vatTransaction = result.getVatResult().getVatTransaction();
+            saveTransactionToGenerateTransactionId(vatTransaction);
+            if (StringUtils.isNotBlank(noteText)) {
+                final Note note = Note.savingsTransactionNote(account, vatTransaction, noteText);
+                this.noteRepository.save(note);
+            }
         }
 
         // Now process fee split with saved transactions
@@ -501,7 +519,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
     }
 
     private void payEmtLevyOnTransaction(SavingsAccount account, Money amount, LocalDate transactionDate, String refNo,
-            boolean backdatedTxnsAllowedTill, boolean isWithdraw) {
+            boolean backdatedTxnsAllowedTill, boolean isWithdraw, final String noteText) {
         if (amount == null || !amount.isGreaterThanZero()) {
             return;
         }
@@ -547,5 +565,9 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             account.addTransaction(levyTxn);
         }
         saveTransactionToGenerateTransactionId(levyTxn);
+        if (StringUtils.isNotBlank(noteText)) {
+            final Note note = Note.savingsTransactionNote(account, levyTxn, noteText);
+            this.noteRepository.save(note);
+        }
     }
 }

@@ -77,7 +77,7 @@ public interface SavingsAccountWritePlatformService {
     void applyChargeDue(Long savingsAccountChargeId, Long accountId);
 
     void processPostActiveActions(SavingsAccount account, DateTimeFormatter fmt, Set<Long> existingTransactionIds,
-            Set<Long> existingReversedTransactionIds);
+            Set<Long> existingReversedTransactionIds, String noteText);
 
     CommandProcessingResult modifyWithHoldTax(Long savingsAccountId, JsonCommand command);
 

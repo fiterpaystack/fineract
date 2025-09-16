@@ -75,7 +75,7 @@ public class CollectionSheetWritePlatformServiceJpaRepositoryImpl implements Col
 
         changes.putAll(updateBulkDisbursals(command));
 
-        changes.putAll(updateBulkMandatorySavingsDuePayments(command, paymentDetail));
+        changes.putAll(updateBulkMandatorySavingsDuePayments(command, paymentDetail, noteText));
 
         this.meetingWritePlatformService.updateCollectionSheetAttendance(command);
 
@@ -106,7 +106,7 @@ public class CollectionSheetWritePlatformServiceJpaRepositoryImpl implements Col
 
         changes.putAll(updateBulkDisbursals(command));
 
-        changes.putAll(updateBulkMandatorySavingsDuePayments(command, paymentDetail));
+        changes.putAll(updateBulkMandatorySavingsDuePayments(command, paymentDetail, noteText));
 
         return new CommandProcessingResultBuilder() //
                 .withCommandId(command.commandId()) //
@@ -131,7 +131,8 @@ public class CollectionSheetWritePlatformServiceJpaRepositoryImpl implements Col
         return changes;
     }
 
-    private Map<String, Object> updateBulkMandatorySavingsDuePayments(final JsonCommand command, final PaymentDetail paymentDetail) {
+    private Map<String, Object> updateBulkMandatorySavingsDuePayments(final JsonCommand command, final PaymentDetail paymentDetail,
+            final String noteText) {
         final Map<String, Object> changes = new HashMap<>();
         final Collection<SavingsAccountTransactionDTO> savingsTransactions = this.accountAssembler
                 .assembleBulkMandatorySavingsAccountTransactionDTOs(command, paymentDetail);
@@ -139,7 +140,7 @@ public class CollectionSheetWritePlatformServiceJpaRepositoryImpl implements Col
         for (SavingsAccountTransactionDTO savingsAccountTransactionDTO : savingsTransactions) {
             try {
                 SavingsAccountTransaction savingsAccountTransaction = this.accountWritePlatformService
-                        .mandatorySavingsAccountDeposit(savingsAccountTransactionDTO);
+                        .mandatorySavingsAccountDeposit(savingsAccountTransactionDTO, noteText);
                 depositTransactionIds.add(savingsAccountTransaction.getId());
             } catch (Exception e) {
                 // TODO: handle exception

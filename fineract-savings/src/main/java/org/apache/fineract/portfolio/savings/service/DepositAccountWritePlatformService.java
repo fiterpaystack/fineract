@@ -86,5 +86,5 @@ public interface DepositAccountWritePlatformService {
 
     void updateMaturityDetails(Long depositAccountId, DepositAccountType depositAccountType);
 
-    SavingsAccountTransaction mandatorySavingsAccountDeposit(SavingsAccountTransactionDTO accountTransactionDTO);
+    SavingsAccountTransaction mandatorySavingsAccountDeposit(SavingsAccountTransactionDTO accountTransactionDTO, String noteText);
 }
