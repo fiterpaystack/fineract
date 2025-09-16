@@ -198,6 +198,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         final AppUser user = this.context.authenticatedUser();
 
         this.savingsAccountTransactionDataValidator.validateActivation(command);
+        final String noteText = command.stringValueOfParameterNamed("note");
 
         final SavingsAccount account = this.savingAccountAssembler.assembleFrom(savingsId, false);
 
@@ -215,7 +216,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         if (!changes.isEmpty()) {
             final Locale locale = command.extractLocale();
             final DateTimeFormatter fmt = DateTimeFormatter.ofPattern(command.dateFormat()).withLocale(locale);
-            processPostActiveActions(account, fmt, existingTransactionIds, existingReversedTransactionIds);
+            processPostActiveActions(account, fmt, existingTransactionIds, existingReversedTransactionIds, noteText);
             this.savingAccountRepositoryWrapper.saveAndFlush(account);
         }
 
@@ -234,7 +235,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
 
     @Override
     public void processPostActiveActions(final SavingsAccount account, final DateTimeFormatter fmt, final Set<Long> existingTransactionIds,
-            final Set<Long> existingReversedTransactionIds) {
+            final Set<Long> existingReversedTransactionIds, final String noteText) {
         getAppUserIfPresent();
 
         final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
@@ -246,7 +247,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         if (amountForDeposit.isGreaterThanZero()) {
             boolean isAccountTransfer = false;
             this.savingsAccountDomainService.handleDeposit(account, fmt, account.getActivationDate(), amountForDeposit.getAmount(), null,
-                    isAccountTransfer, isRegularTransaction, false);
+                    isAccountTransfer, isRegularTransaction, false, noteText);
 
             updateExistingTransactionsDetails(account, existingTransactionIds, existingReversedTransactionIds);
         }
@@ -284,6 +285,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         boolean isGsim = false;
 
         final boolean backdatedTxnsAllowedTill = this.savingAccountAssembler.getPivotConfigStatus();
+        final String noteText = command.stringValueOfParameterNamed("note");
 
         final SavingsAccount account = this.savingAccountAssembler.assembleFrom(savingsId, backdatedTxnsAllowedTill);
 
@@ -306,7 +308,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         boolean isAccountTransfer = false;
         boolean isRegularTransaction = true;
         final SavingsAccountTransaction deposit = this.savingsAccountDomainService.handleDeposit(account, fmt, transactionDate,
-                transactionAmount, paymentDetail, isAccountTransfer, isRegularTransaction, backdatedTxnsAllowedTill);
+                transactionAmount, paymentDetail, isAccountTransfer, isRegularTransaction, backdatedTxnsAllowedTill, noteText);
 
         if (isGsim && (deposit.getId() != null)) {
 
@@ -323,8 +325,6 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
                     gsimRepository.findById(account.getGsim().getId()).orElseThrow().getParentDeposit());
 
         }
-
-        final String noteText = command.stringValueOfParameterNamed("note");
         if (StringUtils.isNotBlank(noteText)) {
             final Note note = Note.savingsTransactionNote(account, deposit, noteText);
             this.noteRepository.save(note);
@@ -355,6 +355,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
 
         final LocalDate transactionDate = command.localDateValueOfParameterNamed("transactionDate");
         final BigDecimal transactionAmount = command.bigDecimalValueOfParameterNamed("transactionAmount");
+        final String noteText = command.stringValueOfParameterNamed("note");
 
         final Locale locale = command.extractLocale();
         final DateTimeFormatter fmt = DateTimeFormatter.ofPattern(command.dateFormat()).withLocale(locale);
@@ -381,7 +382,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         final SavingsTransactionBooleanValues transactionBooleanValues = new SavingsTransactionBooleanValues(isAccountTransfer,
                 isRegularTransaction, isApplyWithdrawFee, isInterestTransfer, isWithdrawBalance);
         final SavingsAccountTransaction withdrawal = this.savingsAccountDomainService.handleWithdrawal(account, fmt, transactionDate,
-                transactionAmount, paymentDetail, transactionBooleanValues, backdatedTxnsAllowedTill);
+                transactionAmount, paymentDetail, transactionBooleanValues, backdatedTxnsAllowedTill, noteText);
 
         if (isGsim && (withdrawal.getId() != null)) {
             GroupSavingsIndividualMonitoring gsim = gsimRepository.findById(account.getGsim().getId()).orElseThrow();
@@ -391,7 +392,6 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
 
         }
 
-        final String noteText = command.stringValueOfParameterNamed("note");
         if (StringUtils.isNotBlank(noteText)) {
             final Note note = Note.savingsTransactionNote(account, withdrawal, noteText);
             this.noteRepository.save(note);
@@ -898,6 +898,8 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         final SavingsAccount account = this.savingAccountAssembler.assembleFrom(savingsId, false);
         this.savingsAccountTransactionDataValidator.validateClosing(command, account);
 
+        final String noteText = command.stringValueOfParameterNamed("note");
+
         final boolean isLinkedWithAnyActiveLoan = this.accountAssociationsReadPlatformService.isLinkedWithAnyActiveAccount(savingsId);
 
         if (isLinkedWithAnyActiveLoan) {
@@ -947,7 +949,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
                     isRegularTransaction, isApplyWithdrawFee, isInterestTransfer, isWithdrawBalance);
 
             this.savingsAccountDomainService.handleWithdrawal(account, fmt, closedDate, transactionAmount, paymentDetail,
-                    transactionBooleanValues, false);
+                    transactionBooleanValues, false, noteText);
 
         }
 
@@ -955,7 +957,6 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         changes.putAll(accountChanges);
         if (!changes.isEmpty()) {
             this.savingAccountRepositoryWrapper.save(account);
-            final String noteText = command.stringValueOfParameterNamed("note");
             if (StringUtils.isNotBlank(noteText)) {
                 final Note note = Note.savingNote(account, noteText);
                 changes.put("note", noteText);
@@ -1524,7 +1525,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
                 .build();
     }
 
-    private SavingsAccountTransaction getLastChargePayment(final List<SavingsAccountTransaction> chargePayments) {
+    protected SavingsAccountTransaction getLastChargePayment(final List<SavingsAccountTransaction> chargePayments) {
         if (!CollectionUtils.isEmpty(chargePayments)) {
             return chargePayments.get(chargePayments.size() - 1);
         }

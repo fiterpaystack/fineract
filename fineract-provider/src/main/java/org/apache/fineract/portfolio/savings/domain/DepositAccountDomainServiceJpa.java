@@ -101,7 +101,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
     @Override
     public SavingsAccountTransaction handleWithdrawal(final SavingsAccount account, final DateTimeFormatter fmt,
             final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail,
-            final boolean applyWithdrawFee, final boolean isRegularTransaction) {
+            final boolean applyWithdrawFee, final boolean isRegularTransaction, final String noteText) {
         boolean isAccountTransfer = false;
         boolean isInterestTransfer = false;
         boolean isWithdrawBalance = false;
@@ -109,25 +109,25 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
         SavingsTransactionBooleanValues transactionBooleanValues = new SavingsTransactionBooleanValues(isAccountTransfer,
                 isRegularTransaction, applyWithdrawFee, isInterestTransfer, isWithdrawBalance);
         return this.savingsAccountDomainService.handleWithdrawal(account, fmt, transactionDate, transactionAmount, paymentDetail,
-                transactionBooleanValues, backdatedTxnsAllowedTill);
+                transactionBooleanValues, backdatedTxnsAllowedTill, noteText);
     }
 
     @Transactional
     @Override
     public SavingsAccountTransaction handleFDDeposit(final FixedDepositAccount account, final DateTimeFormatter fmt,
-            final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail) {
+            final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail, final String noteText) {
         boolean isAccountTransfer = false;
         boolean isRegularTransaction = false;
         final boolean backdatedTxnsAllowedTill = false;
         return this.savingsAccountDomainService.handleDeposit(account, fmt, transactionDate, transactionAmount, paymentDetail,
-                isAccountTransfer, isRegularTransaction, backdatedTxnsAllowedTill);
+                isAccountTransfer, isRegularTransaction, backdatedTxnsAllowedTill, noteText);
     }
 
     @Transactional
     @Override
     public SavingsAccountTransaction handleRDDeposit(final RecurringDepositAccount account, final DateTimeFormatter fmt,
             final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail,
-            final boolean isRegularTransaction) {
+            final boolean isRegularTransaction, final String noteText) {
         final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
                 .isSavingsInterestPostingAtCurrentPeriodEnd();
         final Integer financialYearBeginningMonth = this.configurationDomainService.retrieveFinancialYearBeginningMonth();
@@ -137,7 +137,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
         account.updateDepositAmount(transactionAmount);
         final boolean backdatedTxnsAllowedTill = false;
         final SavingsAccountTransaction deposit = this.savingsAccountDomainService.handleDeposit(account, fmt, transactionDate,
-                transactionAmount, paymentDetail, isAccountTransfer, isRegularTransaction, backdatedTxnsAllowedTill);
+                transactionAmount, paymentDetail, isAccountTransfer, isRegularTransaction, backdatedTxnsAllowedTill, noteText);
         final Set<Long> existingTransactionIds = new HashSet<>();
         final Set<Long> existingReversedTransactionIds = new HashSet<>();
         final boolean isAnyActivationChargesDue = isAnyActivationChargesDue(account);
@@ -160,11 +160,11 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
     @Override
     public SavingsAccountTransaction handleSavingDeposit(final SavingsAccount account, final DateTimeFormatter fmt,
             final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail,
-            final boolean isRegularTransaction) {
+            final boolean isRegularTransaction, final String noteText) {
         boolean isAccountTransfer = false;
         final boolean backdatedTxnsAllowedTill = false;
         final SavingsAccountTransaction deposit = this.savingsAccountDomainService.handleDeposit(account, fmt, transactionDate,
-                transactionAmount, paymentDetail, isAccountTransfer, isRegularTransaction, backdatedTxnsAllowedTill);
+                transactionAmount, paymentDetail, isAccountTransfer, isRegularTransaction, backdatedTxnsAllowedTill, noteText);
         final Set<Long> existingTransactionIds = new HashSet<>();
         final Set<Long> existingReversedTransactionIds = new HashSet<>();
         updateExistingTransactionsDetails(account, existingTransactionIds, existingReversedTransactionIds);
@@ -185,7 +185,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
     @Transactional
     @Override
     public Long handleFDAccountClosure(final FixedDepositAccount account, final PaymentDetail paymentDetail, final AppUser user,
-            final JsonCommand command, final Map<String, Object> changes) {
+            final JsonCommand command, final Map<String, Object> changes, final String noteText) {
         final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
                 .isSavingsInterestPostingAtCurrentPeriodEnd();
         final Integer financialYearBeginningMonth = this.configurationDomainService.retrieveFinancialYearBeginningMonth();
@@ -222,7 +222,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
             this.savingsAccountRepository.save(reinvestedDeposit);
             autoGenerateAccountNumber(reinvestedDeposit);
             final SavingsAccountTransaction withdrawal = this.handleWithdrawal(account, fmt, closedDate, account.getAccountBalance(),
-                    paymentDetail, false, isRegularTransaction);
+                    paymentDetail, false, isRegularTransaction, noteText);
             savingsTransactionId = withdrawal.getId();
         } else if (onClosureType.isTransferToSavings()) {
             final Long toSavingsId = command.longValueOfParameterNamed(toSavingsAccountIdParamName);
@@ -239,7 +239,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
             postJournalEntries(account, existingTransactionIds, existingReversedTransactionIds, isAccountTransfer);
         } else {
             final SavingsAccountTransaction withdrawal = this.handleWithdrawal(account, fmt, closedDate, account.getAccountBalance(),
-                    paymentDetail, false, isRegularTransaction);
+                    paymentDetail, false, isRegularTransaction, noteText);
             savingsTransactionId = withdrawal.getId();
         }
 
@@ -253,7 +253,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
     @Override
     public Long handleFDAccountMaturityClosure(final FixedDepositAccount account, final PaymentDetail paymentDetail, final AppUser user,
             final DateTimeFormatter fmt, final LocalDate closedDate, final Integer onAccountClosureId, final Long toSavingsId,
-            final String transferDescription, Map<String, Object> changes) {
+            final String transferDescription, Map<String, Object> changes, final String noteText) {
 
         final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
                 .isSavingsInterestPostingAtCurrentPeriodEnd();
@@ -288,7 +288,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
             this.savingsAccountRepository.save(reinvestedDeposit);
             autoGenerateAccountNumber(reinvestedDeposit);
             final SavingsAccountTransaction withdrawal = this.handleWithdrawal(account, fmt, closedDate, reInvestAmount, paymentDetail,
-                    false, isRegularTransaction);
+                    false, isRegularTransaction, noteText);
             savingsTransactionId = withdrawal.getId();
 
             if (onClosureType.isReinvestPrincipalAndInterest()) {
@@ -313,7 +313,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
             account.updateOnAccountClosureStatus(onClosureType);
         } else {
             final SavingsAccountTransaction withdrawal = this.handleWithdrawal(account, fmt, closedDate, account.getAccountBalance(),
-                    paymentDetail, false, isRegularTransaction);
+                    paymentDetail, false, isRegularTransaction, noteText);
             savingsTransactionId = withdrawal.getId();
         }
 
@@ -330,7 +330,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
     @Transactional
     @Override
     public Long handleRDAccountClosure(final RecurringDepositAccount account, final PaymentDetail paymentDetail, final AppUser user,
-            final JsonCommand command, final Map<String, Object> changes) {
+            final JsonCommand command, final Map<String, Object> changes, final String noteText) {
 
         final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
                 .isSavingsInterestPostingAtCurrentPeriodEnd();
@@ -377,7 +377,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
             autoGenerateAccountNumber(reinvestedDeposit);
 
             final SavingsAccountTransaction withdrawal = this.handleWithdrawal(account, fmt, closedDate, account.getAccountBalance(),
-                    paymentDetail, false, isRegularTransaction);
+                    paymentDetail, false, isRegularTransaction, noteText);
             savingsTransactionId = withdrawal.getId();
 
         } else if (onClosureType.isTransferToSavings()) {
@@ -394,7 +394,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
             updateAlreadyPostedTransactions(existingTransactionIds, account);
         } else {
             final SavingsAccountTransaction withdrawal = this.handleWithdrawal(account, fmt, closedDate, account.getAccountBalance(),
-                    paymentDetail, false, isRegularTransaction);
+                    paymentDetail, false, isRegularTransaction, noteText);
             savingsTransactionId = withdrawal.getId();
         }
 
@@ -443,7 +443,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
     @Transactional
     @Override
     public Long handleFDAccountPreMatureClosure(final FixedDepositAccount account, final PaymentDetail paymentDetail, final AppUser user,
-            final JsonCommand command, final Map<String, Object> changes) {
+            final JsonCommand command, final Map<String, Object> changes, final String noteText) {
 
         final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
                 .isSavingsInterestPostingAtCurrentPeriodEnd();
@@ -483,7 +483,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
             updateAlreadyPostedTransactions(existingTransactionIds, account);
         } else {
             final SavingsAccountTransaction withdrawal = this.handleWithdrawal(account, fmt, closedDate, account.getAccountBalance(),
-                    paymentDetail, false, isRegularTransaction);
+                    paymentDetail, false, isRegularTransaction, noteText);
             savingsTransactionId = withdrawal.getId();
         }
 
@@ -498,7 +498,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
     @Transactional
     @Override
     public Long handleRDAccountPreMatureClosure(final RecurringDepositAccount account, final PaymentDetail paymentDetail,
-            final AppUser user, final JsonCommand command, final Map<String, Object> changes) {
+            final AppUser user, final JsonCommand command, final Map<String, Object> changes, final String noteText) {
 
         final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
                 .isSavingsInterestPostingAtCurrentPeriodEnd();
@@ -539,7 +539,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
             updateAlreadyPostedTransactions(existingTransactionIds, account);
         } else {
             final SavingsAccountTransaction withdrawal = this.handleWithdrawal(account, fmt, closedDate, account.getAccountBalance(),
-                    paymentDetail, false, isRegularTransaction);
+                    paymentDetail, false, isRegularTransaction, noteText);
             savingsTransactionId = withdrawal.getId();
         }
 

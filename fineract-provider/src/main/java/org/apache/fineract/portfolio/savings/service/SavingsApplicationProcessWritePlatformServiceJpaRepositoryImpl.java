@@ -654,7 +654,7 @@ public class SavingsApplicationProcessWritePlatformServiceJpaRepositoryImpl impl
     }
 
     @Override
-    public CommandProcessingResult createActiveApplication(final SavingsAccountDataDTO savingsAccountDataDTO) {
+    public CommandProcessingResult createActiveApplication(final SavingsAccountDataDTO savingsAccountDataDTO, final String noteText) {
 
         final CommandWrapper commandWrapper = new CommandWrapperBuilder().savingsAccountActivation(null).build();
         boolean rollbackTransaction = this.commandProcessingService.validateRollbackCommand(commandWrapper,
@@ -673,7 +673,7 @@ public class SavingsApplicationProcessWritePlatformServiceJpaRepositoryImpl impl
             this.savingAccountRepository.save(account);
         }
         this.savingsAccountWritePlatformService.processPostActiveActions(account, savingsAccountDataDTO.getFmt(), existingTransactionIds,
-                existingReversedTransactionIds);
+                existingReversedTransactionIds, noteText);
         this.savingAccountRepository.saveAndFlush(account);
 
         generateAccountNumber(account);
