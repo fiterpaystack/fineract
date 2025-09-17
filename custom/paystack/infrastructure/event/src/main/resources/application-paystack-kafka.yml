@@ -1,0 +1,56 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements. See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership. The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+# Paystack Kafka External Event Configuration
+# This file contains configuration properties for Paystack-specific Kafka external event processing
+
+fineract:
+  events:
+    external:
+      producer:
+        kafka:
+          # Async processing configuration
+          async:
+            # Thread pool configuration for async Kafka notification processing
+            core-pool-size: 5                    # Minimum number of threads in the pool
+            max-pool-size: 20                     # Maximum number of threads in the pool
+            queue-capacity: 100                   # Queue capacity for pending tasks
+            keep-alive-seconds: 60               # Time to keep idle threads alive
+            thread-name-prefix: "paystack-kafka-notification-"  # Thread name prefix for identification
+            max-retries: ${FINERACT_EXTERNAL_EVENTS_KAFKA_MAX_RETRIES:3} # Maximum number of retries for failed notifications
+
+          # Enhanced producer configuration for real-time notifications
+          producer:
+            extra-properties:
+              # Reliability settings
+              acks: "all"                         # Wait for all replicas to acknowledge
+              retries: 3                         # Number of retries for failed sends
+              retry.backoff.ms: 100              # Backoff between retries
+              request.timeout.ms: 30000          # Request timeout
+              delivery.timeout.ms: 120000        # Total delivery timeout
+
+              # Performance tuning
+              batch.size: 16384                  # Batch size for better throughput
+              linger.ms: 5                       # Wait up to 5ms to batch messages
+              buffer.memory: 33554432            # 32MB buffer
+
+              # Compression
+              compression.type: "snappy"         # Compression for better network utilization
+
+              # Idempotence and transactions
+              enable.idempotence: true           # Enable idempotence for exactly-once semantics
+              transactional.id: "paystack-kafka-producer"  # Transactional ID for reliability

@@ -16,12 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-description = 'Paystack Fineract Pentaho Report Starter'
+package com.paystack.fineract.infrastructure.event.external.domain;
 
-group = 'com.paystack.fineract.infrastructure.report'
-
-base {
-    archivesName = 'paystack-fineract-report-starter'
+public enum KafkaNotificationStatus {
+    PENDING, // Initial status when notification is created
+    SENT, // Successfully sent to Kafka
+    FAILED // Failed to send to Kafka
 }
-
-apply from: 'dependencies.gradle'

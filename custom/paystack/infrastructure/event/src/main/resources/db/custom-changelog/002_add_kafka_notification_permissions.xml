@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="paystack" id="1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM m_permission WHERE code = 'RETRY_KAFKANOTIFICATION'
+                </sqlCheck>
+            </not>
+        </preConditions>
+
+        <!-- Insert permissions for Kafka notification retry operations -->
+        <insert tableName="m_permission">
+            <column name="grouping" value="kafka_notification"/>
+            <column name="code" value="RETRY_KAFKANOTIFICATION"/>
+            <column name="entity_name" value="KAFKANOTIFICATION"/>
+            <column name="action_name" value="RETRY"/>
+            <column name="can_maker_checker" value="0"/>
+        </insert>
+
+        <insert tableName="m_permission">
+            <column name="grouping" value="kafka_notification"/>
+            <column name="code" value="RETRY_KAFKANOTIFICATION_BY_ACCOUNT"/>
+            <column name="entity_name" value="KAFKANOTIFICATION"/>
+            <column name="action_name" value="RETRY_BY_ACCOUNT"/>
+            <column name="can_maker_checker" value="0"/>
+        </insert>
+
+        <insert tableName="m_permission">
+            <column name="grouping" value="kafka_notification"/>
+            <column name="code" value="RETRY_ALL_KAFKANOTIFICATIONS"/>
+            <column name="entity_name" value="KAFKANOTIFICATION"/>
+            <column name="action_name" value="RETRY_ALL"/>
+            <column name="can_maker_checker" value="0"/>
+        </insert>
+
+        <!-- Grant permissions to Super User role -->
+        <sql>
+            INSERT INTO m_role_permission (role_id, permission_id)
+            SELECT r.id, p.id
+            FROM m_role r, m_permission p
+            WHERE r.name = 'Super user'
+            AND p.code IN ('RETRY_KAFKANOTIFICATION', 'RETRY_KAFKANOTIFICATION_BY_ACCOUNT', 'RETRY_ALL_KAFKANOTIFICATIONS')
+            AND NOT EXISTS (
+                SELECT 1 FROM m_role_permission rp
+                WHERE rp.role_id = r.id AND rp.permission_id = p.id
+            );
+        </sql>
+
+    </changeSet>
+</databaseChangeLog>

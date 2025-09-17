@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="paystack" id="1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="ps_kafka_notification"/>
+            </not>
+        </preConditions>
+        <createTable tableName="ps_kafka_notification">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="event_type" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="account_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_ps_kafka_notification_account" references="m_savings_account(id)"/>
+            </column>
+            <column name="pnd_reason" type="VARCHAR(500)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created_date" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+            <column name="transaction_details" type="VARCHAR(1000)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="status" type="VARCHAR(20)" defaultValue="pending">
+                <constraints nullable="false"/>
+            </column>
+            <column name="no_of_retries" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex indexName="idx_ps_kafka_notification_account_id" tableName="ps_kafka_notification">
+            <column name="account_id"/>
+        </createIndex>
+        <createIndex indexName="idx_ps_kafka_notification_status" tableName="ps_kafka_notification">
+            <column name="status"/>
+        </createIndex>
+        <addForeignKeyConstraint baseColumnNames="account_id"
+                                 baseTableName="ps_kafka_notification"
+                                 constraintName="FK_ps_kafka_notification_account_id"
+                                 onDelete="CASCADE"
+                                 onUpdate="CASCADE"
+                                 referencedColumnNames="id"
+                                 referencedTableName="m_savings_account"
+                                 validate="true"/>
+    </changeSet>
+
+    <changeSet author="paystack" id="2">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="ps_kafka_notification"/>
+            <not>
+                <columnExists tableName="ps_kafka_notification" columnName="error_message"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="ps_kafka_notification">
+            <column name="error_message" type="VARCHAR(1000)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>
