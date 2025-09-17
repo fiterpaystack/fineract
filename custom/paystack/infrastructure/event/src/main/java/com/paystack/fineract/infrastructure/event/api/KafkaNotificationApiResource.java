@@ -22,7 +22,6 @@ import com.paystack.fineract.commands.service.PaystackCommandWrapperBuilder;
 import com.paystack.fineract.infrastructure.event.external.domain.KafkaNotificationDTO;
 import com.paystack.fineract.infrastructure.event.external.domain.KafkaNotificationStatus;
 import com.paystack.fineract.infrastructure.event.external.service.KafkaNotificationReadPlatformService;
-import com.paystack.fineract.infrastructure.event.external.service.command.KafkaNotificationCommandHandler;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -74,7 +73,6 @@ public class KafkaNotificationApiResource {
     private final ToApiJsonSerializer<KafkaNotificationDTO> toApiJsonSerializer;
     private final ApiRequestParameterHelper apiRequestParameterHelper;
     private final KafkaNotificationReadPlatformService kafkaNotificationReadPlatformService;
-    private final KafkaNotificationCommandHandler kafkaNotificationCommandHandler;
     private final PortfolioCommandSourceWritePlatformService commandsSourceWritePlatformService;
 
     /**

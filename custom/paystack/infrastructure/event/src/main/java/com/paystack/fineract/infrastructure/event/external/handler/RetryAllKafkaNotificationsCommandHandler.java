@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.paystack.fineract.infrastructure.event.external.service.command;
+package com.paystack.fineract.infrastructure.event.external.handler;
 
+import com.paystack.fineract.infrastructure.event.external.service.KafkaNotificationWritePlatformService;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.commands.annotation.CommandType;
 import org.apache.fineract.commands.handler.NewCommandSourceHandler;
@@ -33,10 +34,10 @@ import org.springframework.stereotype.Service;
 @CommandType(entity = "KAFKANOTIFICATION", action = "RETRY_ALL")
 public class RetryAllKafkaNotificationsCommandHandler implements NewCommandSourceHandler {
 
-    private final KafkaNotificationCommandHandler kafkaNotificationCommandHandler;
+    private final KafkaNotificationWritePlatformService writePlatformService;
 
     @Override
     public CommandProcessingResult processCommand(JsonCommand command) {
-        return kafkaNotificationCommandHandler.retryAllFailedNotifications(command);
+        return writePlatformService.retryAllFailedNotifications(command);
     }
 }
