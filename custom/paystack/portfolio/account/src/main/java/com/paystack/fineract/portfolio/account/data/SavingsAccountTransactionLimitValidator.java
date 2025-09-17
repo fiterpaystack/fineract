@@ -57,10 +57,10 @@ public class SavingsAccountTransactionLimitValidator {
     final SavingsAccountRepository savingsAccountRepository;
     final NoteRepository noteRepository;
 
-    @Autowired
+    @Autowired(required = false)
     private KafkaNotificationRepository kafkaNotificationRepository;
 
-    @Autowired
+    @Autowired(required = false)
     private KafkaNotificationService kafkaNotificationService;
 
     public void isDepositTransactionExceedsLimits(SavingsAccountTransaction deposit) {
@@ -73,9 +73,9 @@ public class SavingsAccountTransactionLimitValidator {
             if (mappingOptional.isPresent()) {
                 SavingsClientClassificationLimitMapping mapping = mappingOptional.get();
                 Long transactionLimitId = mapping.getSavingsAccountGlobalTransactionLimitSetting().getId();
-                SavingsAccountGlobalTransactionLimitSetting globalLimit = null;
                 if (transactionLimitId != null) {
-                    globalLimit = savingsAccountGlobalTransactionLimitSettingRepository.findById(transactionLimitId)
+                    SavingsAccountGlobalTransactionLimitSetting globalLimit = savingsAccountGlobalTransactionLimitSettingRepository
+                            .findById(transactionLimitId)
                             .orElseThrow(() -> new SavingsAccountTransactionLimitSettingNotFoundException(transactionLimitId));
 
                     Money maxSingleDepositAmountLimitMoney = Money.of(savingsAccount.getCurrency(),

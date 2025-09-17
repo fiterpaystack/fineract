@@ -66,7 +66,9 @@ class KafkaNotificationServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new KafkaNotificationService(kafkaNotificationRepository, paystackExternalEventProducer, objectMapper);
+        Integer maxRetries = 3;
+        service = new KafkaNotificationService(kafkaNotificationRepository, paystackExternalEventProducer, objectMapper,
+                kafkaNotificationExecutor, maxRetries);
 
         // Set the executor using reflection for testing
         ReflectionTestUtils.setField(service, "kafkaNotificationExecutor", kafkaNotificationExecutor);

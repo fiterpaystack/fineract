@@ -32,7 +32,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.domain.FineractContext;
 import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
 import org.apache.fineract.infrastructure.event.external.exception.AcknowledgementTimeoutException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -50,14 +49,10 @@ public class KafkaNotificationService {
     private final KafkaNotificationRepository kafkaNotificationRepository;
     private final PaystackExternalEventProducer paystackExternalEventProducer;
     private final ObjectMapper objectMapper;
-
-    @Autowired
     @Qualifier("kafkaNotificationExecutor")
-    private Executor kafkaNotificationExecutor;
-
-    @Autowired
+    private final Executor kafkaNotificationExecutor;
     @Qualifier("kafkaNotificationMaxRetries")
-    private Integer maxRetries;
+    private final Integer maxRetries;
 
     /**
      * Sends a Kafka notification asynchronously with retry logic and proper error handling.

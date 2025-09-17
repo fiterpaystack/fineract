@@ -21,6 +21,7 @@ package com.paystack.fineract.infrastructure.event.external.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paystack.fineract.infrastructure.event.external.domain.KafkaNotification;
+import com.paystack.fineract.infrastructure.event.external.domain.KafkaNotificationDTO;
 import com.paystack.fineract.infrastructure.event.external.domain.KafkaNotificationRepository;
 import com.paystack.fineract.infrastructure.event.external.domain.KafkaNotificationStatus;
 import com.paystack.fineract.infrastructure.event.external.exception.KafkaNotificationInvalidStatusException;
@@ -181,8 +182,7 @@ public class KafkaNotificationWritePlatformServiceImpl implements KafkaNotificat
      */
     private void sendNotificationToKafka(KafkaNotification notification) throws JsonProcessingException {
         // Convert to DTO and serialize
-        com.paystack.fineract.infrastructure.event.external.domain.KafkaNotificationDTO notificationDTO = new com.paystack.fineract.infrastructure.event.external.domain.KafkaNotificationDTO(
-                notification);
+        KafkaNotificationDTO notificationDTO = new KafkaNotificationDTO(notification);
 
         String jsonMessage = objectMapper.writeValueAsString(notificationDTO);
 
