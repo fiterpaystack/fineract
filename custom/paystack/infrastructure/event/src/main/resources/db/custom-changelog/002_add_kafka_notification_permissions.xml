@@ -43,7 +43,7 @@
 
         <insert tableName="m_permission">
             <column name="grouping" value="kafka_notification"/>
-            <column name="code" value="RETRY_KAFKANOTIFICATION_BY_ACCOUNT"/>
+            <column name="code" value="RETRY_BY_ACCOUNT_KAFKANOTIFICATION"/>
             <column name="entity_name" value="KAFKANOTIFICATION"/>
             <column name="action_name" value="RETRY_BY_ACCOUNT"/>
             <column name="can_maker_checker" value="0"/>
