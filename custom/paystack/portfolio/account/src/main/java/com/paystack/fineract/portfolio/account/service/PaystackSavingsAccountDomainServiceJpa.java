@@ -560,7 +560,8 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             BigDecimal discountedAmount = productDiscountService.applyDiscount(
                 productId, 
                 originalAmount, 
-                charge.getCharge().getId()
+                charge.getCharge().getId(),
+                account.getId() // Pass the account ID for balance-based calculations
             );
             
             log.info("🎯 WITHDRAWAL DISCOUNT: Applied discount to charge {} for account {}: Original: {}, Discounted: {}", 

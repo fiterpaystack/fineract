@@ -353,8 +353,8 @@ public class DiscountRuleService {
                     return calculator.calculateDiscount(originalAmount, context);
                 }
             } catch (Exception e) {
-                log.warn("Failed to use calculator for rule {}: {}, falling back to legacy calculation", 
-                    rule.getName(), e.getMessage());
+                log.warn("Failed to use calculator for rule {}: {} - Exception: {} - Stack trace:", 
+                    rule.getName(), e.getMessage(), e.getClass().getSimpleName(), e);
             }
         }
         

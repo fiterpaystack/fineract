@@ -203,13 +203,19 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
     
     /**
      * Handle discount rules during product creation/update
-     * Simplified approach - directly assign existing discount rules to product
+     * Fixed approach - remove existing assignments first, then assign new ones
      */
     private boolean handleDiscountRules(JsonCommand command, Long productId, boolean isNew) {
         try {
             // Check if discount rules are provided
             if (command.parameterExists("discountRules")) {
                 JsonArray discountRulesArray = command.arrayOfParameterNamed("discountRules");
+                
+                // Always remove all existing assignments first (for updates)
+                if (!isNew) {
+                    discountRuleService.removeAllDiscountRulesFromProduct(productId);
+                }
+                
                 if (discountRulesArray != null && discountRulesArray.size() > 0) {
                     // Extract discount rule IDs and assign them to the product
                     List<Long> discountRuleIds = new ArrayList<>();
@@ -225,11 +231,9 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
                         discountRuleService.assignDiscountRulesToProduct(productId, discountRuleIds);
                         return true;
                     }
-                } else {
-                    // If discountRules is provided but empty, remove all assignments
-                    discountRuleService.removeAllDiscountRulesFromProduct(productId);
-                    return true;
                 }
+                // If discountRules is provided but empty, we already removed all assignments above
+                return true;
             }
         } catch (Exception e) {
             // Log error but don't fail the product operation
