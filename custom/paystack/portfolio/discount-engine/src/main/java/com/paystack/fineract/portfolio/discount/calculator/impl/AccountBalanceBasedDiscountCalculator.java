@@ -12,10 +12,12 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Account Balance Based Discount Calculator
@@ -69,16 +71,16 @@ public class AccountBalanceBasedDiscountCalculator implements DiscountRuleCalcul
     
     @Override
     public BigDecimal calculateDiscount(BigDecimal originalAmount, DiscountContext context) {
-        log.info("BALANCE CALCULATOR: Starting calculation for account {}, amount: {}, minBalance: {}, discount: {}%", 
+        log.debug("Starting calculation for account {}, amount: {}, minBalance: {}, discount: {}%", 
             context != null ? context.getAccountId() : "null", originalAmount, minimumAverageBalance, discountPercentage);
             
         if (originalAmount == null || originalAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            log.info("BALANCE CALCULATOR: Original amount is null or zero, no discount applied");
+            log.debug("Original amount is null or zero, no discount applied");
             return BigDecimal.ZERO;
         }
         
         if (context == null || context.getAccountId() == null) {
-            log.info("BALANCE CALCULATOR: No valid context or account ID, no discount applied");
+            log.debug("No valid context or account ID, no discount applied");
             return BigDecimal.ZERO;
         }
         
@@ -86,7 +88,7 @@ public class AccountBalanceBasedDiscountCalculator implements DiscountRuleCalcul
             // Calculate average daily balance for current month
             BigDecimal avgBalance = calculateAverageDailyBalance(context.getAccountId());
             
-            log.info("BALANCE CALCULATOR: Account {} average daily balance: {}, minimum required: {}", 
+            log.debug("Account {} average daily balance: {}, minimum required: {}", 
                 context.getAccountId(), avgBalance, minimumAverageBalance);
             
             // Check if balance meets threshold
@@ -105,12 +107,12 @@ public class AccountBalanceBasedDiscountCalculator implements DiscountRuleCalcul
                     discount = originalAmount;
                 }
                 
-                log.info("BALANCE CALCULATOR: Applied balance-based discount: {}% of {} = {} for account {}", 
+                log.debug("Applied balance-based discount: {}% of {} = {} for account {}", 
                     discountPercentage, originalAmount, discount, context.getAccountId());
                 
                 return discount;
             } else {
-                log.info("BALANCE CALCULATOR: Account {} balance {} below threshold {}, no discount applied", 
+                log.debug("Account {} balance {} below threshold {}, no discount applied", 
                     context.getAccountId(), avgBalance, minimumAverageBalance);
                 return BigDecimal.ZERO;
             }
@@ -153,7 +155,7 @@ public class AccountBalanceBasedDiscountCalculator implements DiscountRuleCalcul
             this.maxDiscountAmount = new BigDecimal(parameters.get("maxDiscountAmount").toString());
         }
         
-        log.info("BALANCE CALCULATOR: Configured balance-based calculator: minBalance={}, discount={}%, maxDiscount={}",
+        log.debug("Configured balance-based calculator: minBalance={}, discount={}%, maxDiscount={}",
                  minimumAverageBalance, discountPercentage, maxDiscountAmount);
     }
     
@@ -166,7 +168,7 @@ public class AccountBalanceBasedDiscountCalculator implements DiscountRuleCalcul
         LocalDate monthStart = LocalDate.now().withDayOfMonth(1);
         LocalDate monthEnd = LocalDate.now().withDayOfMonth(LocalDate.now().lengthOfMonth());
         
-        log.info("BALANCE CALCULATOR: Calculating average daily balance for account {} from {} to {}", 
+        log.debug("Calculating average daily balance for account {} from {} to {}", 
             accountId, monthStart, monthEnd);
         
         // Get transactions for the current month (including some from previous month for balance continuity)
@@ -175,22 +177,43 @@ public class AccountBalanceBasedDiscountCalculator implements DiscountRuleCalcul
             .findTransactionsForPeriod(accountId, extendedStart, monthEnd);
         
         if (transactions.isEmpty()) {
-            log.info("BALANCE CALCULATOR: No transactions found for account {} in period {} to {}", 
+            log.debug("No transactions found for account {} in period {} to {}", 
                 accountId, extendedStart, monthEnd);
             return BigDecimal.ZERO;
         }
         
-        log.info("BALANCE CALCULATOR: Found {} transactions for account {} in period {} to {}", 
+        log.debug("Found {} transactions for account {} in period {} to {}", 
             transactions.size(), accountId, extendedStart, monthEnd);
         
         // Log all transactions found
         for (SavingsAccountTransaction txn : transactions) {
-            log.info("BALANCE CALCULATOR: Transaction {} - Date: {}, Amount: {}, Running Balance: {}, Reversed: {}", 
+            log.debug("Transaction {} - Date: {}, Amount: {}, Running Balance: {}, Reversed: {}", 
                 txn.getId(), txn.getDateOf(), txn.getAmount(), txn.getRunningBalance(), txn.isReversed());
         }
         
-        // Sort transactions by date to ensure proper chronological order
-        transactions.sort((t1, t2) -> t1.getDateOf().compareTo(t2.getDateOf()));
+        // Sort transactions by date, created date, and ID to ensure proper chronological order
+        // This handles multiple transactions on the same day correctly
+        // Note: Database query now includes ORDER BY, but we keep this for safety
+        transactions.sort((t1, t2) -> {
+            int result = t1.getDateOf().compareTo(t2.getDateOf());
+            if (result != 0) return result;
+            
+            // Compare created dates using Optional handling
+            Optional<OffsetDateTime> createdDate1 = t1.getCreatedDate();
+            Optional<OffsetDateTime> createdDate2 = t2.getCreatedDate();
+            
+            if (createdDate1.isPresent() && createdDate2.isPresent()) {
+                result = createdDate1.get().compareTo(createdDate2.get());
+                if (result != 0) return result;
+            } else if (createdDate1.isPresent()) {
+                return -1; // t1 has created date, t2 doesn't
+            } else if (createdDate2.isPresent()) {
+                return 1;  // t2 has created date, t1 doesn't
+            }
+            // Both are empty, continue to ID comparison
+            
+            return t1.getId().compareTo(t2.getId());
+        });
         
         // Calculate daily balances for each day of the month
         BigDecimal totalBalanceDays = BigDecimal.ZERO;
@@ -199,14 +222,14 @@ public class AccountBalanceBasedDiscountCalculator implements DiscountRuleCalcul
         // Get starting balance (from day before month start or first transaction)
         BigDecimal currentBalance = getStartingBalance(accountId, monthStart, transactions);
         
-        log.info("BALANCE CALCULATOR: Starting balance for account {} on {}: {}", 
+        log.debug("Starting balance for account {} on {}: {}", 
             accountId, monthStart, currentBalance);
         
         // Process each day of the month
         LocalDate currentDate = monthStart;
         int transactionIndex = 0;
         
-        log.info("BALANCE CALCULATOR: Starting daily balance calculation for account {} from {} to {}", 
+        log.debug("Starting daily balance calculation for account {} from {} to {}", 
             accountId, monthStart, monthEnd);
         
         while (!currentDate.isAfter(monthEnd)) {
@@ -221,16 +244,16 @@ public class AccountBalanceBasedDiscountCalculator implements DiscountRuleCalcul
                 }
                 
                 if (transaction.getDateOf().equals(currentDate)) {
-                    log.info("BALANCE CALCULATOR: Processing transaction {} on {} - Amount: {}, Running Balance: {}, Reversed: {}", 
+                    log.debug("Processing transaction {} on {} - Amount: {}, Running Balance: {}, Reversed: {}", 
                         transaction.getId(), currentDate, transaction.getAmount(), 
                         transaction.getRunningBalance(), transaction.isReversed());
                     
                     if (!transaction.isReversed() && transaction.getRunningBalance() != null) {
                         currentBalance = transaction.getRunningBalance();
-                        log.info("BALANCE CALCULATOR: Updated balance for account {} on {}: {} → {} (from transaction {})", 
+                        log.debug("Updated balance for account {} on {}: {} → {} (from transaction {})", 
                             accountId, currentDate, balanceAtStartOfDay, currentBalance, transaction.getId());
                     } else {
-                        log.info("BALANCE CALCULATOR: Skipping transaction {} - Reversed: {}, Running Balance: {}", 
+                        log.debug("Skipping transaction {} - Reversed: {}, Running Balance: {}", 
                             transaction.getId(), transaction.isReversed(), transaction.getRunningBalance());
                     }
                 }
@@ -242,26 +265,21 @@ public class AccountBalanceBasedDiscountCalculator implements DiscountRuleCalcul
             totalBalanceDays = totalBalanceDays.add(currentBalance);
             totalDays++;
             
-            log.info("BALANCE CALCULATOR: Day {} ({}) - Balance: {}, Running Total: {}, Days Counted: {}", 
+            log.debug("Day {} ({}) - Balance: {}, Running Total: {}, Days Counted: {}", 
                 currentDate, currentDate.getDayOfWeek(), currentBalance, totalBalanceDays, totalDays);
             
             currentDate = currentDate.plusDays(1);
         }
         
         if (totalDays == 0) {
-            log.info("BALANCE CALCULATOR: No days processed for account {}", accountId);
+            log.debug("No days processed for account {}", accountId);
             return BigDecimal.ZERO;
         }
         
         BigDecimal averageBalance = totalBalanceDays.divide(BigDecimal.valueOf(totalDays), 2, RoundingMode.HALF_UP);
         
-        log.info("BALANCE CALCULATOR: ===== FINAL CALCULATION SUMMARY =====");
-        log.info("BALANCE CALCULATOR: Account ID: {}", accountId);
-        log.info("BALANCE CALCULATOR: Period: {} to {}", monthStart, monthEnd);
-        log.info("BALANCE CALCULATOR: Total Days Processed: {}", totalDays);
-        log.info("BALANCE CALCULATOR: Total Balance Days: {}", totalBalanceDays);
-        log.info("BALANCE CALCULATOR: Average Daily Balance: {}", averageBalance);
-        log.info("BALANCE CALCULATOR: ======================================");
+        log.debug("Final calculation summary - Account ID: {}, Period: {} to {}, Total Days: {}, Total Balance Days: {}, Average Daily Balance: {}", 
+            accountId, monthStart, monthEnd, totalDays, totalBalanceDays, averageBalance);
         
         return averageBalance;
     }
@@ -270,14 +288,14 @@ public class AccountBalanceBasedDiscountCalculator implements DiscountRuleCalcul
      * Get the starting balance for the month
      */
     private BigDecimal getStartingBalance(Long accountId, LocalDate monthStart, List<SavingsAccountTransaction> transactions) {
-        log.info("BALANCE CALCULATOR: Looking for starting balance for account {} before {}", 
+        log.debug("Looking for starting balance for account {} before {}", 
             accountId, monthStart);
         
         // Look for the last transaction before the month start
         SavingsAccountTransaction lastTransaction = null;
         
         for (SavingsAccountTransaction transaction : transactions) {
-            log.info("BALANCE CALCULATOR: Checking transaction {} - Date: {}, Before Month Start: {}, Reversed: {}, Running Balance: {}", 
+            log.debug("Checking transaction {} - Date: {}, Before Month Start: {}, Reversed: {}, Running Balance: {}", 
                 transaction.getId(), transaction.getDateOf(), 
                 transaction.getDateOf().isBefore(monthStart), 
                 transaction.isReversed(), 
@@ -287,19 +305,19 @@ public class AccountBalanceBasedDiscountCalculator implements DiscountRuleCalcul
                 !transaction.isReversed() && 
                 transaction.getRunningBalance() != null) {
                 lastTransaction = transaction;
-                log.info("BALANCE CALCULATOR: Found candidate starting balance transaction {} on {}: {}", 
+                log.debug("Found candidate starting balance transaction {} on {}: {}", 
                     transaction.getId(), transaction.getDateOf(), transaction.getRunningBalance());
             }
         }
         
         if (lastTransaction != null) {
-            log.info("BALANCE CALCULATOR: Using balance from transaction {} on {}: {}", 
+            log.debug("Using balance from transaction {} on {}: {}", 
                 lastTransaction.getId(), lastTransaction.getDateOf(), lastTransaction.getRunningBalance());
             return lastTransaction.getRunningBalance();
         }
         
         // If no previous transaction, start with zero
-        log.info("BALANCE CALCULATOR: No previous transaction found before {}, starting with zero balance", monthStart);
+        log.debug("No previous transaction found before {}, starting with zero balance", monthStart);
         return BigDecimal.ZERO;
     }
 }
