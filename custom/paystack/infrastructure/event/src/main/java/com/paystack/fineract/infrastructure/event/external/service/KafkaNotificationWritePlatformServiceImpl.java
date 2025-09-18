@@ -196,6 +196,8 @@ public class KafkaNotificationWritePlatformServiceImpl implements KafkaNotificat
             // Update status to SENT
             notification.setStatus(KafkaNotificationStatus.SENT);
             kafkaNotificationRepository.save(notification);
+        } else {
+            log.warn("Kafka notification producer not available. Notification was not sent.");
         }
     }
 }
