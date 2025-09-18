@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package com.paystack.fineract.portfolio.starter;
+description = 'Paystack Fineract Portfolio - Tax'
 
-import org.springframework.boot.autoconfigure.domain.EntityScan;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.ComponentScans;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+group = 'com.paystack.fineract.portfolio'
 
-@ComponentScans({ @ComponentScan("com.paystack.fineract.portfolio") })
-@EnableJpaRepositories(basePackages = { "com.paystack.fineract.portfolio", "org.apache.fineract.portfolio.tax.domain" })
-@EntityScan(basePackages = { "com.paystack.fineract.portfolio", "org.apache.fineract" })
-public class PaystackPortfolioAutoConfiguration {}
+base {
+    archivesName = 'paystack-fineract-portfolio-tax'
+}
+
+apply from: 'dependencies.gradle'
+
+

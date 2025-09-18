@@ -38,7 +38,7 @@ public interface SavingsApplicationProcessWritePlatformService {
 
     CommandProcessingResult applicantWithdrawsFromApplication(Long savingsId, JsonCommand command);
 
-    CommandProcessingResult createActiveApplication(SavingsAccountDataDTO savingsAccountDataDTO);
+    CommandProcessingResult createActiveApplication(SavingsAccountDataDTO savingsAccountDataDTO, String noteText);
 
     CommandProcessingResult submitGSIMApplication(JsonCommand command);
 

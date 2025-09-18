@@ -192,6 +192,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
 
             final Boolean isAddressEnabled = configurationDomainService.isAddressEnabled();
 
+            final String noteText = command.stringValueOfParameterNamed("note");
             final Long officeId = command.longValueOfParameterNamed(ClientApiConstants.officeIdParamName);
 
             final Office clientOffice = this.officeRepositoryWrapper.findOneWithNotFoundDetection(officeId);
@@ -306,7 +307,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
 
             final Locale locale = command.extractLocale();
             final DateTimeFormatter fmt = DateTimeFormatter.ofPattern(command.dateFormat()).withLocale(locale);
-            CommandProcessingResult result = openSavingsAccount(newClient, fmt);
+            CommandProcessingResult result = openSavingsAccount(newClient, fmt, noteText);
             if (result.getSavingsId() != null) {
                 this.clientRepository.saveAndFlush(newClient);
             }
@@ -714,12 +715,13 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             final Locale locale = command.extractLocale();
             final DateTimeFormatter fmt = DateTimeFormatter.ofPattern(command.dateFormat()).withLocale(locale);
             final LocalDate activationDate = command.localDateValueOfParameterNamed("activationDate");
+            final String noteText = command.stringValueOfParameterNamed("note");
 
             runEntityDatatableCheck(clientId, client.getLegalForm());
 
             final AppUser currentUser = this.context.authenticatedUser();
             client.activate(currentUser, fmt, activationDate);
-            CommandProcessingResult result = openSavingsAccount(client, fmt);
+            CommandProcessingResult result = openSavingsAccount(client, fmt, noteText);
             clientRepository.saveAndFlush(client);
             businessEventNotifierService.notifyPostBusinessEvent(new ClientActivateBusinessEvent(client));
             return new CommandProcessingResultBuilder() //
@@ -737,12 +739,13 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
         }
     }
 
-    private CommandProcessingResult openSavingsAccount(final Client client, final DateTimeFormatter fmt) {
+    private CommandProcessingResult openSavingsAccount(final Client client, final DateTimeFormatter fmt, final String noteText) {
         CommandProcessingResult commandProcessingResult = CommandProcessingResult.empty();
         if (client.isActive() && client.savingsProductId() != null) {
             SavingsAccountDataDTO savingsAccountDataDTO = new SavingsAccountDataDTO(client, null, client.savingsProductId(),
                     client.getActivationDate(), client.activatedBy(), fmt);
-            commandProcessingResult = this.savingsApplicationProcessWritePlatformService.createActiveApplication(savingsAccountDataDTO);
+            commandProcessingResult = this.savingsApplicationProcessWritePlatformService.createActiveApplication(savingsAccountDataDTO,
+                    noteText);
             if (commandProcessingResult.getSavingsId() != null) {
                 this.savingsRepositoryWrapper.findOneWithNotFoundDetection(commandProcessingResult.getSavingsId());
                 client.updateSavingsAccount(commandProcessingResult.getSavingsId());

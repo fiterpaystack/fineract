@@ -17,14 +17,18 @@
  * under the License.
  */
 
-package com.paystack.fineract.portfolio.starter;
-
-import org.springframework.boot.autoconfigure.domain.EntityScan;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.ComponentScans;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-
-@ComponentScans({ @ComponentScan("com.paystack.fineract.portfolio") })
-@EnableJpaRepositories(basePackages = { "com.paystack.fineract.portfolio", "org.apache.fineract.portfolio.tax.domain" })
-@EntityScan(basePackages = { "com.paystack.fineract.portfolio", "org.apache.fineract" })
-public class PaystackPortfolioAutoConfiguration {}
+dependencies {
+    implementation(project(':fineract-provider'))
+    implementation(project(':fineract-tax'))
+    implementation 'com.google.code.gson:gson'
+    implementation 'org.apache.commons:commons-lang3'
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa") {
+        exclude group: 'org.hibernate'
+    }
+    implementation('org.eclipse.persistence:org.eclipse.persistence.jpa') {
+        exclude group: 'org.hibernate'
+    }
+    implementation 'jakarta.ws.rs:jakarta.ws.rs-api'
+    implementation 'io.swagger.core.v3:swagger-annotations-jakarta'
+    implementation 'org.springframework.security:spring-security-core'
+}
