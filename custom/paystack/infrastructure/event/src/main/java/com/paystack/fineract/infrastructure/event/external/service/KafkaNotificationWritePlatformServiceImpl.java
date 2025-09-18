@@ -33,6 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,8 +48,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class KafkaNotificationWritePlatformServiceImpl implements KafkaNotificationWritePlatformService {
 
     private final KafkaNotificationRepository kafkaNotificationRepository;
-    private final PaystackExternalEventProducer paystackExternalEventProducer;
     private final ObjectMapper objectMapper;
+    @Autowired(required = false)
+    private PaystackExternalEventProducer paystackExternalEventProducer;
 
     @Override
     public CommandProcessingResult retryFailedNotification(Long notificationId, JsonCommand command) {
@@ -181,16 +183,19 @@ public class KafkaNotificationWritePlatformServiceImpl implements KafkaNotificat
      * Send notification to Kafka.
      */
     private void sendNotificationToKafka(KafkaNotification notification) throws JsonProcessingException {
-        // Convert to DTO and serialize
-        KafkaNotificationDTO notificationDTO = new KafkaNotificationDTO(notification);
+        // Check if producer is available
+        if (paystackExternalEventProducer != null) {
+            // Convert to DTO and serialize
+            KafkaNotificationDTO notificationDTO = new KafkaNotificationDTO(notification);
 
-        String jsonMessage = objectMapper.writeValueAsString(notificationDTO);
+            String jsonMessage = objectMapper.writeValueAsString(notificationDTO);
 
-        // Send to Kafka
-        paystackExternalEventProducer.sendEvents(jsonMessage);
+            // Send to Kafka
+            paystackExternalEventProducer.sendEvents(jsonMessage);
 
-        // Update status to SENT
-        notification.setStatus(KafkaNotificationStatus.SENT);
-        kafkaNotificationRepository.save(notification);
+            // Update status to SENT
+            notification.setStatus(KafkaNotificationStatus.SENT);
+            kafkaNotificationRepository.save(notification);
+        }
     }
 }
