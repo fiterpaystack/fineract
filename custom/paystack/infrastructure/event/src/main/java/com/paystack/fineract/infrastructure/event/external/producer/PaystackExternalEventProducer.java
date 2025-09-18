@@ -16,12 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-description = 'Paystack Fineract Pentaho Report Starter'
+package com.paystack.fineract.infrastructure.event.external.producer;
 
-group = 'com.paystack.fineract.infrastructure.report'
+import org.apache.fineract.infrastructure.event.external.exception.AcknowledgementTimeoutException;
 
-base {
-    archivesName = 'paystack-fineract-report-starter'
+public interface PaystackExternalEventProducer {
+
+    /**
+     * Sends the created ExternalEvents
+     *
+     * @param messageJson
+     *            is the JSON representation of the event to be sent
+     * @throws AcknowledgementTimeoutException
+     */
+    void sendEvents(String messageJson) throws AcknowledgementTimeoutException;
 }
-
-apply from: 'dependencies.gradle'

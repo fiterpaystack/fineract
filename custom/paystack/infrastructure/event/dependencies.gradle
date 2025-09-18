@@ -1,0 +1,37 @@
+dependencies {
+    implementation(project(':fineract-provider'))
+    implementation(project(':fineract-core'))
+    implementation(project(':fineract-savings'))
+    implementation(project(':custom:paystack:core:commands'))
+    implementation(
+            'org.springframework.boot:spring-boot-starter-web',
+            'org.springframework.boot:spring-boot-starter-data-jpa',
+            'org.springframework.boot:spring-boot-starter-security',
+            'org.springframework.boot:spring-boot-autoconfigure',
+            'org.springframework.integration:spring-integration-kafka',
+            'org.springframework.kafka:spring-kafka',
+            'com.fasterxml.jackson.core:jackson-databind',
+            'com.fasterxml.jackson.core:jackson-core',
+            'com.fasterxml.jackson.core:jackson-annotations',
+            'org.xerial.snappy:snappy-java:1.1.8.4',
+            'jakarta.ws.rs:jakarta.ws.rs-api',
+            'io.swagger.core.v3:swagger-annotations-jakarta'
+            )
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor 'org.springframework.boot:spring-boot-autoconfigure-processor'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.mockito:mockito-core'
+    testImplementation 'org.mockito:mockito-junit-jupiter'
+    testImplementation(project(':fineract-provider'))
+    testImplementation(project(':fineract-core'))
+    testImplementation(project(':fineract-savings'))
+
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.mapstruct:mapstruct-processor'
+    testAnnotationProcessor 'org.springframework.boot:spring-boot-autoconfigure-processor'
+    testAnnotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+}

@@ -63,8 +63,6 @@ import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransactionRep
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransactionSummaryWrapper;
 import org.apache.fineract.portfolio.savings.domain.SavingsEvent;
 import org.apache.fineract.portfolio.savings.exception.DepositAccountTransactionNotAllowedException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -72,8 +70,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Primary
 public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomainServiceJpa {
-
-    private static final Logger log = LoggerFactory.getLogger(PaystackSavingsAccountDomainServiceJpa.class);
 
     private final SavingsAccountTransactionSummaryWrapper savingsAccountTransactionSummaryWrapper;
     private final SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService;
@@ -362,8 +358,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
                 isAccountTransfer, isRegularTransaction, backdatedTxnsAllowedTill, noteText);
 
         // CHECK the transaction limit and make account BLOCKDEBIT if the limit reached
-        savingsAccountTransactionLimitValidator.isDepositTransactionExceedsLimits(account.getClient(), account, transactionDate,
-                transactionAmount);
+        savingsAccountTransactionLimitValidator.isDepositTransactionExceedsLimits(deposit);
 
         // Apply deposit fees and VAT after the deposit is processed
         if (transactionAmount.compareTo(BigDecimal.ZERO) > 0) {
