@@ -1,18 +1,18 @@
 package com.paystack.fineract.portfolio.discount.domain;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.apache.fineract.infrastructure.core.domain.AbstractAuditableWithUTCDateTimeCustom;
 
-import jakarta.persistence.*;
-import java.math.BigDecimal;
-import java.time.OffsetDateTime;
-
 /**
- * Discount Application Entity
- * Records each application of a discount rule
+ * Discount Application Entity Records each application of a discount rule
  */
 @Entity
 @Table(name = "m_discount_application")
@@ -52,8 +52,8 @@ public class DiscountApplication extends AbstractAuditableWithUTCDateTimeCustom<
     /**
      * Create new discount application
      */
-    public static DiscountApplication createNew(Long discountRuleId, String entityType, Long entityId, 
-                                               Long chargeId, BigDecimal originalAmount, BigDecimal discountAmount) {
+    public static DiscountApplication createNew(Long discountRuleId, String entityType, Long entityId, Long chargeId,
+            BigDecimal originalAmount, BigDecimal discountAmount) {
         DiscountApplication application = new DiscountApplication();
         application.setDiscountRuleId(discountRuleId);
         application.setEntityType(entityType);

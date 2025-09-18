@@ -1,5 +1,8 @@
 package com.paystack.fineract.portfolio.charge.serialization;
 
+import com.google.gson.JsonElement;
+import com.google.gson.reflect.TypeToken;
+import jakarta.annotation.PostConstruct;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -22,9 +25,6 @@ import org.apache.fineract.portfolio.charge.serialization.ChargeDefinitionComman
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
-import com.google.gson.JsonElement;
-import com.google.gson.reflect.TypeToken;
-import jakarta.annotation.PostConstruct;
 
 /**
  * Extended charge definition command deserializer for Paystack custom module. Reuses all core functionality including
@@ -46,15 +46,12 @@ public class PaystackChargeDefinitionCommandFromApiJsonDeserializer extends Char
     @PostConstruct
     public void init() {
         // Create extended set of supported parameters including discount rules and chart slabs
-        supportedParameters = new HashSet<>(Arrays.asList(
-            NAME, AMOUNT, LOCALE, CURRENCY_CODE, CURRENCY_OPTIONS, CHARGE_APPLIES_TO, 
-            CHARGE_TIME_TYPE, CHARGE_CALCULATION_TYPE, CHARGE_CALCULATION_TYPE_OPTIONS, PENALTY,
-            ACTIVE, CHARGE_PAYMENT_MODE, FEE_ON_MONTH_DAY, FEE_INTERVAL, MONTH_DAY_FORMAT, 
-            MIN_CAP, MAX_CAP, FEE_FREQUENCY, ENABLE_FREE_WITHDRAWAL_CHARGE, FREE_WITHDRAWAL_FREQUENCY,
-            RESTART_COUNT_FREQUENCY, COUNT_FREQUENCY_TYPE, PAYMENT_TYPE_ID, ENABLE_PAYMENT_TYPE,
-            ENABLE_FEE_SPLIT, ChargesApiConstants.glAccountIdParamName, ChargesApiConstants.taxGroupIdParamName, 
-            CHART, ENABLE_SLABS, "chartSlabs", "stakeholderSplits", "discountRules"
-        ));
+        supportedParameters = new HashSet<>(Arrays.asList(NAME, AMOUNT, LOCALE, CURRENCY_CODE, CURRENCY_OPTIONS, CHARGE_APPLIES_TO,
+                CHARGE_TIME_TYPE, CHARGE_CALCULATION_TYPE, CHARGE_CALCULATION_TYPE_OPTIONS, PENALTY, ACTIVE, CHARGE_PAYMENT_MODE,
+                FEE_ON_MONTH_DAY, FEE_INTERVAL, MONTH_DAY_FORMAT, MIN_CAP, MAX_CAP, FEE_FREQUENCY, ENABLE_FREE_WITHDRAWAL_CHARGE,
+                FREE_WITHDRAWAL_FREQUENCY, RESTART_COUNT_FREQUENCY, COUNT_FREQUENCY_TYPE, PAYMENT_TYPE_ID, ENABLE_PAYMENT_TYPE,
+                ENABLE_FEE_SPLIT, ChargesApiConstants.glAccountIdParamName, ChargesApiConstants.taxGroupIdParamName, CHART, ENABLE_SLABS,
+                "chartSlabs", "stakeholderSplits", "discountRules"));
     }
 
     @Override
@@ -63,8 +60,7 @@ public class PaystackChargeDefinitionCommandFromApiJsonDeserializer extends Char
             throw new InvalidJsonException();
         }
 
-        final Type typeOfMap = new TypeToken<Map<String, Object>>() {
-        }.getType();
+        final Type typeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
         // Use custom supportedParameters instead of core SUPPORTED_PARAMETERS
         this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, json, supportedParameters);
 
@@ -138,8 +134,7 @@ public class PaystackChargeDefinitionCommandFromApiJsonDeserializer extends Char
             throw new InvalidJsonException();
         }
 
-        final Type typeOfMap = new TypeToken<Map<String, Object>>() {
-        }.getType();
+        final Type typeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
         // Use custom supportedParameters instead of core SUPPORTED_PARAMETERS
         this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, json, supportedParameters);
 

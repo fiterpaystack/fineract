@@ -26,7 +26,6 @@ import com.paystack.fineract.portfolio.account.data.ChargePaymentResult;
 import com.paystack.fineract.portfolio.account.data.VatApplicationResult;
 import com.paystack.fineract.portfolio.account.domain.PaystackSavingsAccount;
 import com.paystack.fineract.portfolio.account.domain.PaystackSavingsAccountRepository;
-import com.paystack.fineract.portfolio.discount.service.ProductDiscountService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -66,24 +65,16 @@ public class SavingsAccountChargePaymentWrapperService {
     public ChargePaymentResult payChargeWithVat(SavingsAccount account, SavingsAccountCharge charge, Money amount,
             LocalDate transactionDate, String refNo, boolean isBackdatedTransaction) {
 
-        log.info("💰 CHARGE PAYMENT: Starting charge payment for account: {}, charge: {}, amount: {}", 
-            account.getId(), charge.getCharge().getId(), amount.getAmount());
-
         // Use the pre-calculated amount (discount already applied in domain service)
         Money discountedAmount = amount;
 
         // Create fee transaction with discounted amount (added to account)
-        SavingsAccountTransaction feeTransaction = account.payCharge(charge, discountedAmount, transactionDate, isBackdatedTransaction, refNo);
-
-        log.info("💰 CHARGE PAYMENT: Created fee transaction: {} with amount: {}", 
-            feeTransaction.getId(), discountedAmount.getAmount());
+        SavingsAccountTransaction feeTransaction = account.payCharge(charge, discountedAmount, transactionDate, isBackdatedTransaction,
+                refNo);
 
         // Compute VAT on the discounted amount but DO NOT attach yet
-        VatApplicationResult vatResult = vatService.processVatForFeeTransaction(discountedAmount.getAmount(), transactionDate, charge, account,
-                isBackdatedTransaction);
-
-        log.info("💰 CHARGE PAYMENT: Charge payment completed for account: {}, charge: {}", 
-            account.getId(), charge.getCharge().getId());
+        VatApplicationResult vatResult = vatService.processVatForFeeTransaction(discountedAmount.getAmount(), transactionDate, charge,
+                account, isBackdatedTransaction);
 
         return new ChargePaymentResult(feeTransaction, vatResult); // caller will attach VAT after persisting fee
     }

@@ -1,6 +1,5 @@
 package com.paystack.fineract.portfolio.savings.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.paystack.fineract.portfolio.discount.service.DiscountRuleService;
@@ -37,7 +36,7 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
     private final SavingsProductRepository savingsProductRepository;
     private final FinancialActivityAccountRepositoryWrapper financialActivityAccountRepositoryWrapper;
     private final PaystackSavingsProductAttributesRepository paystackSavingsProductAttributesRepository;
-    
+
     @Autowired
     private DiscountRuleService discountRuleService;
 
@@ -85,7 +84,7 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
             // Handle discount rules during product update
             discountUpdated = handleDiscountRules(command, productId, false);
         }
-        
+
         // Build result with changes
         if (emtUpdated || discountUpdated) {
             CommandProcessingResultBuilder builder = new CommandProcessingResultBuilder().withEntityId(productId);
@@ -107,11 +106,11 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
             if (command.parameterExists("overrideGlobalEmtLevySetting")) {
                 changes.put("overrideGlobalEmtLevySetting", command.booleanObjectValueOfParameterNamed("overrideGlobalEmtLevySetting"));
             }
-            
+
             // Discount changes
             if (command.parameterExists(PaystackSavingsProductAdditionalAttributes.ENABLE_DISCOUNT_ENGINE)) {
-                changes.put(PaystackSavingsProductAdditionalAttributes.ENABLE_DISCOUNT_ENGINE, 
-                    command.booleanObjectValueOfParameterNamed(PaystackSavingsProductAdditionalAttributes.ENABLE_DISCOUNT_ENGINE));
+                changes.put(PaystackSavingsProductAdditionalAttributes.ENABLE_DISCOUNT_ENGINE,
+                        command.booleanObjectValueOfParameterNamed(PaystackSavingsProductAdditionalAttributes.ENABLE_DISCOUNT_ENGINE));
             }
             if (command.parameterExists(PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES)) {
                 // Discount rules are already handled above, just mark as updated
@@ -200,10 +199,10 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
     public boolean isAccountingEnabled(SavingsProduct product) {
         return product.getAccountingType() != null && !AccountingRuleType.NONE.getValue().equals(product.getAccountingType());
     }
-    
+
     /**
-     * Handle discount rules during product creation/update
-     * Simplified approach - directly assign existing discount rules to product
+     * Handle discount rules during product creation/update Simplified approach - directly assign existing discount
+     * rules to product
      */
     private boolean handleDiscountRules(JsonCommand command, Long productId, boolean isNew) {
         try {
@@ -219,7 +218,7 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
                             discountRuleIds.add(ruleObject.get("id").getAsLong());
                         }
                     }
-                    
+
                     if (!discountRuleIds.isEmpty()) {
                         // Assign discount rules to product using the discount rule service
                         discountRuleService.assignDiscountRulesToProduct(productId, discountRuleIds);
@@ -233,7 +232,7 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
             }
         } catch (Exception e) {
             // Log error but don't fail the product operation
-            System.err.println("Error handling discount rules for product " + productId + ": " + e.getMessage());
+            // Note: Using System.err for critical errors that shouldn't fail the operation
         }
         return false;
     }

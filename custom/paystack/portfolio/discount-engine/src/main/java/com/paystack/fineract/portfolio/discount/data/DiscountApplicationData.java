@@ -1,11 +1,10 @@
 package com.paystack.fineract.portfolio.discount.data;
 
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.math.BigDecimal;
-import java.time.OffsetDateTime;
 
 /**
  * Discount Application Data Transfer Object
@@ -14,7 +13,7 @@ import java.time.OffsetDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class DiscountApplicationData {
-    
+
     private Long id;
     private Long discountRuleId;
     private String entityType;
@@ -29,7 +28,7 @@ public class DiscountApplicationData {
     private OffsetDateTime lastModifiedDate;
     private Long createdBy;
     private Long lastModifiedBy;
-    
+
     // Additional fields for display
     private String ruleName;
     private String entityName;

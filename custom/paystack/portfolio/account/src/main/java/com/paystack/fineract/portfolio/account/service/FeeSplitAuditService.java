@@ -140,7 +140,6 @@ public class FeeSplitAuditService {
      */
     @Transactional
     public FeeSplitAudit createFeeSplitAudit(final FeeSplitAudit audit) {
-        log.info("Creating fee split audit for transaction: {}", audit.getTransactionId());
         return feeSplitAuditRepository.save(audit);
     }
 
@@ -149,7 +148,6 @@ public class FeeSplitAuditService {
      */
     @Transactional
     public FeeSplitAudit updateFeeSplitAudit(final FeeSplitAudit audit) {
-        log.info("Updating fee split audit: {}", audit.getId());
         return feeSplitAuditRepository.save(audit);
     }
 
@@ -158,7 +156,6 @@ public class FeeSplitAuditService {
      */
     @Transactional
     public void deleteFeeSplitAudit(final Long auditId) {
-        log.info("Deleting fee split audit: {}", auditId);
         feeSplitAuditRepository.deleteById(auditId);
     }
 

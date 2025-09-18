@@ -25,7 +25,7 @@ import org.springframework.stereotype.Service;
 public class PaystackSavingsProductReadPlatformServiceImpl extends SavingsProductReadPlatformServiceImpl {
 
     private final PaystackSavingsProductMapper paystackSavingsProductMapper = new PaystackSavingsProductMapper();
-    
+
     @Autowired
     private DiscountRuleService discountRuleService;
 
@@ -63,7 +63,7 @@ public class PaystackSavingsProductReadPlatformServiceImpl extends SavingsProduc
             // First map using parent mapper
             SavingsProductData base = savingsProductRowMapper.mapRow(rs, rowNum);
             HashMap<String, Object> additionalAttriubtes = new HashMap<>();
-            
+
             // EMT attributes
             additionalAttriubtes.put(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_AMOUNT, rs.getBigDecimal("emtLevyAmount"));
             additionalAttriubtes.put(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE_FOR_WITHDRAW,
@@ -73,15 +73,13 @@ public class PaystackSavingsProductReadPlatformServiceImpl extends SavingsProduc
             additionalAttriubtes.put(PaystackSavingsProductAdditionalAttributes.EMT_OVERRIDE_GLOBAL_LEVY,
                     rs.getBoolean("emtOverrideGlobalLevy"));
             additionalAttriubtes.put(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_THRESHOLD, rs.getBigDecimal("emtLevyThreshold"));
-            
+
             // Discount attributes - retrieve assigned discount rules for this product
             try {
                 Long productId = base.getId();
-                List<com.paystack.fineract.portfolio.discount.domain.DiscountRule> assignedRules = 
-                    discountRuleService.getAssignedDiscountRules("SAVINGS_PRODUCT", productId);
-                List<DiscountRuleData> assignedRulesData = assignedRules.stream()
-                    .map(discountRuleService::mapToData)
-                    .toList();
+                List<com.paystack.fineract.portfolio.discount.domain.DiscountRule> assignedRules = discountRuleService
+                        .getAssignedDiscountRules("SAVINGS_PRODUCT", productId);
+                List<DiscountRuleData> assignedRulesData = assignedRules.stream().map(discountRuleService::mapToData).toList();
                 additionalAttriubtes.put(PaystackSavingsProductAdditionalAttributes.ENABLE_DISCOUNT_ENGINE, !assignedRulesData.isEmpty());
                 additionalAttriubtes.put(PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES, assignedRulesData);
             } catch (Exception e) {

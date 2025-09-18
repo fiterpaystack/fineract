@@ -2,6 +2,17 @@ package com.paystack.fineract.portfolio.discount.domain;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -10,15 +21,8 @@ import org.apache.fineract.infrastructure.core.domain.AbstractAuditableWithUTCDa
 import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.savings.domain.SavingsProduct;
 
-import jakarta.persistence.*;
-import java.math.BigDecimal;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-
 /**
- * Discount Rule Entity
- * Represents discount rules that can be applied to charges and products
+ * Discount Rule Entity Represents discount rules that can be applied to charges and products
  */
 @Entity
 @Table(name = "m_discount_rule")
@@ -48,22 +52,17 @@ public class DiscountRule extends AbstractAuditableWithUTCDateTimeCustom<Long> {
 
     // Direct many-to-many relationships following core Fineract patterns
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "m_discount_rule_charge", 
-               joinColumns = @JoinColumn(name = "discount_rule_id"), 
-               inverseJoinColumns = @JoinColumn(name = "charge_id"))
+    @JoinTable(name = "m_discount_rule_charge", joinColumns = @JoinColumn(name = "discount_rule_id"), inverseJoinColumns = @JoinColumn(name = "charge_id"))
     private Set<Charge> charges = new HashSet<>();
 
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "m_discount_rule_product", 
-               joinColumns = @JoinColumn(name = "discount_rule_id"), 
-               inverseJoinColumns = @JoinColumn(name = "product_id"))
+    @JoinTable(name = "m_discount_rule_product", joinColumns = @JoinColumn(name = "discount_rule_id"), inverseJoinColumns = @JoinColumn(name = "product_id"))
     private Set<SavingsProduct> products = new HashSet<>();
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * Check if rule is valid for given date
-     * Since date validation fields were removed, this always returns true
+     * Check if rule is valid for given date Since date validation fields were removed, this always returns true
      */
     public boolean isValidForDate(java.time.LocalDate date) {
         // Date validation removed - rules are always valid for any date
@@ -119,8 +118,8 @@ public class DiscountRule extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     }
 
     /**
-     * Calculate discount using the new calculator system
-     * Falls back to legacy calculation if calculator is not available
+     * Calculate discount using the new calculator system Falls back to legacy calculation if calculator is not
+     * available
      */
     public BigDecimal calculateDiscountWithContext(BigDecimal originalAmount, DiscountContext context) {
         // Try new calculator system first
@@ -132,7 +131,7 @@ public class DiscountRule extends AbstractAuditableWithUTCDateTimeCustom<Long> {
                 return BigDecimal.ZERO;
             }
         }
-        
+
         // No legacy calculation available
         return BigDecimal.ZERO;
     }
@@ -154,7 +153,7 @@ public class DiscountRule extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         if (ruleParametersJson == null || ruleParametersJson.trim().isEmpty()) {
             return Map.of();
         }
-        
+
         try {
             @SuppressWarnings("unchecked")
             Map<String, Object> parameters = objectMapper.readValue(ruleParametersJson, Map.class);
@@ -172,7 +171,7 @@ public class DiscountRule extends AbstractAuditableWithUTCDateTimeCustom<Long> {
             this.ruleParametersJson = null;
             return;
         }
-        
+
         try {
             this.ruleParametersJson = objectMapper.writeValueAsString(parameters);
         } catch (JsonProcessingException e) {

@@ -1,5 +1,10 @@
 package com.paystack.fineract.portfolio.charge.api;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
@@ -8,15 +13,9 @@ import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriInfo;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.commands.domain.CommandWrapper;
@@ -32,8 +31,8 @@ import org.apache.fineract.portfolio.charge.service.ChargeReadPlatformService;
 import org.springframework.stereotype.Component;
 
 /**
- * Custom Paystack Charges API Resource that preserves discountRules field during create/update operations.
- * This extends the core Fineract charge functionality with custom discount rule support.
+ * Custom Paystack Charges API Resource that preserves discountRules field during create/update operations. This extends
+ * the core Fineract charge functionality with custom discount rule support.
  */
 @Path("/v1/paystack/charges")
 @Component
@@ -95,14 +94,11 @@ public class PaystackChargesApiResource {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "OK", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = CommandProcessingResult.class))) })
     public CommandProcessingResult createCharge(@Parameter(hidden = true) final String apiRequestBodyAsJson) {
-        log.info("Creating charge with payload: {}", apiRequestBodyAsJson);
-        
-        final CommandWrapper commandRequest = new CommandWrapperBuilder().createCharge()
-                .withJson(apiRequestBodyAsJson).build();
-        
+
+        final CommandWrapper commandRequest = new CommandWrapperBuilder().createCharge().withJson(apiRequestBodyAsJson).build();
+
         CommandProcessingResult result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
-        log.info("Charge created successfully with ID: {}", result.getResourceId());
-        
+
         return result;
     }
 
@@ -115,14 +111,11 @@ public class PaystackChargesApiResource {
             @ApiResponse(responseCode = "200", description = "OK", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = CommandProcessingResult.class))) })
     public CommandProcessingResult updateCharge(@PathParam("chargeId") @Parameter(description = "chargeId") final Long chargeId,
             @Parameter(hidden = true) final String apiRequestBodyAsJson) {
-        log.info("Updating charge {} with payload: {}", chargeId, apiRequestBodyAsJson);
-        
-        final CommandWrapper commandRequest = new CommandWrapperBuilder().updateCharge(chargeId)
-                .withJson(apiRequestBodyAsJson).build();
-        
+
+        final CommandWrapper commandRequest = new CommandWrapperBuilder().updateCharge(chargeId).withJson(apiRequestBodyAsJson).build();
+
         CommandProcessingResult result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
-        log.info("Charge {} updated successfully", chargeId);
-        
+
         return result;
     }
 

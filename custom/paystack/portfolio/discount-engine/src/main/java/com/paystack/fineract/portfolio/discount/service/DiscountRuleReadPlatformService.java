@@ -2,48 +2,42 @@ package com.paystack.fineract.portfolio.discount.service;
 
 import com.paystack.fineract.portfolio.discount.data.DiscountRuleData;
 import com.paystack.fineract.portfolio.discount.domain.DiscountRule;
-import com.paystack.fineract.portfolio.discount.domain.DiscountType;
 import com.paystack.fineract.portfolio.discount.repository.DiscountRuleRepository;
+import java.util.List;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
 /**
- * Discount Rule Read Platform Service
- * Handles read operations for discount rules
+ * Discount Rule Read Platform Service Handles read operations for discount rules
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class DiscountRuleReadPlatformService {
-    
+
     private final DiscountRuleRepository ruleRepository;
-    
+
     /**
      * Retrieve all discount rules
      */
     @Transactional(readOnly = true)
     public List<DiscountRuleData> retrieveAllDiscountRules() {
         List<DiscountRule> rules = ruleRepository.findAll();
-        return rules.stream()
-                .map(this::mapToData)
-                .collect(Collectors.toList());
+        return rules.stream().map(this::mapToData).collect(Collectors.toList());
     }
-    
+
     /**
      * Retrieve discount rule by ID
      */
     @Transactional(readOnly = true)
     public DiscountRuleData retrieveDiscountRule(Long ruleId) {
-        DiscountRule rule = ruleRepository.findById(ruleId)
-                .orElseThrow(() -> new RuntimeException("Discount rule not found: " + ruleId));
+        DiscountRule rule = ruleRepository.findById(ruleId).orElseThrow(() -> new RuntimeException("Discount rule not found: " + ruleId));
         return mapToData(rule);
     }
-    
+
     /**
      * Retrieve discount rules by entity
      */
@@ -53,7 +47,7 @@ public class DiscountRuleReadPlatformService {
         // Keeping for backward compatibility but delegating to assignment service
         return List.of();
     }
-    
+
     /**
      * Map domain entity to data transfer object
      */

@@ -1,12 +1,14 @@
 package com.paystack.fineract.portfolio.charge.service;
 
+import com.paystack.fineract.portfolio.charge.data.PaystackChargeData;
+import com.paystack.fineract.portfolio.discount.service.DiscountRuleService;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.MonthDay;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 import org.apache.fineract.accounting.common.AccountingDropdownReadPlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainServiceJpa;
 import org.apache.fineract.infrastructure.core.data.EnumOptionData;
@@ -30,8 +32,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
-import com.paystack.fineract.portfolio.charge.data.PaystackChargeData;
-import com.paystack.fineract.portfolio.discount.service.DiscountRuleService;
 
 /**
  * Extended charge read platform service for Paystack custom module. Overrides specific methods to handle fee split
@@ -85,7 +85,7 @@ public class PaystackChargeReadPlatformServiceImpl extends ChargeReadPlatformSer
             if (chargeData.getChargeAppliesTo().getId() == 2) { // 2 = Savings
                 additionalAttributes = getAdditionalAttributes(chargeId);
             }
-            
+
             // Convert to PaystackChargeData and return as ChargeData for backward compatibility
             PaystackChargeData paystackChargeData = PaystackChargeData.fromChargeData(chargeData, additionalAttributes);
             return paystackChargeData.toChargeData();
@@ -99,33 +99,31 @@ public class PaystackChargeReadPlatformServiceImpl extends ChargeReadPlatformSer
      */
     private Map<String, Object> getAdditionalAttributes(Long chargeId) {
         Map<String, Object> attributes = new HashMap<>();
-        
+
         try {
             // Get assigned discount rules for this charge
-            List<com.paystack.fineract.portfolio.discount.domain.DiscountRule> rules = 
-                discountRuleService.getAssignedDiscountRules("CHARGE", chargeId);
-            
+            List<com.paystack.fineract.portfolio.discount.domain.DiscountRule> rules = discountRuleService
+                    .getAssignedDiscountRules("CHARGE", chargeId);
+
             if (!rules.isEmpty()) {
-                List<Map<String, Object>> discountRules = rules.stream()
-                    .map(rule -> {
-                        Map<String, Object> ruleMap = new HashMap<>();
-                        ruleMap.put("id", rule.getId());
-                        ruleMap.put("name", rule.getName());
-                        ruleMap.put("ruleType", rule.getRuleType());
-                        ruleMap.put("ruleParametersJson", rule.getRuleParametersJson());
-                        ruleMap.put("active", rule.isActive());
-                        ruleMap.put("rulePriority", rule.getRulePriority());
-                        return ruleMap;
-                    })
-                    .collect(java.util.stream.Collectors.toList());
-                
+                List<Map<String, Object>> discountRules = rules.stream().map(rule -> {
+                    Map<String, Object> ruleMap = new HashMap<>();
+                    ruleMap.put("id", rule.getId());
+                    ruleMap.put("name", rule.getName());
+                    ruleMap.put("ruleType", rule.getRuleType());
+                    ruleMap.put("ruleParametersJson", rule.getRuleParametersJson());
+                    ruleMap.put("active", rule.isActive());
+                    ruleMap.put("rulePriority", rule.getRulePriority());
+                    return ruleMap;
+                }).collect(java.util.stream.Collectors.toList());
+
                 attributes.put("discountRules", discountRules);
             }
         } catch (Exception e) {
             // Log error but don't fail the charge retrieval
-            System.err.println("Error retrieving discount rules for charge " + chargeId + ": " + e.getMessage());
+            // Note: Using System.err for critical errors that shouldn't fail the operation
         }
-        
+
         return attributes;
     }
 

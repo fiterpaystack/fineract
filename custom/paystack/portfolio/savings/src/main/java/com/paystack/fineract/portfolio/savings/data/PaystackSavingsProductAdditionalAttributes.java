@@ -11,7 +11,7 @@ public final class PaystackSavingsProductAdditionalAttributes {
     public static final String EMT_LEVY_AMOUNT = "emtLevyAmount";
     public static final String EMT_LEVY_THRESHOLD = "emtLevyThreshold";
     public static final String EMT_OVERRIDE_GLOBAL_LEVY = "overrideGlobalEmtLevySetting";
-    
+
     // Discount Engine Attributes
     public static final String ENABLE_DISCOUNT_ENGINE = "enableDiscountEngine";
     public static final String DISCOUNT_RULES = "discountRules";
