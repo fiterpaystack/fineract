@@ -38,22 +38,22 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @ConditionalOnProperty(value = "fineract.events.external.producer.kafka.enabled", havingValue = "true")
 public class PaystackKafkaAsyncConfiguration {
 
-    @Value("${fineract.events.external.producer.kafka.async.core-pool-size:5}")
+    @Value("${paystack.events.external.producer.kafka.async.core-pool-size:5}")
     private int corePoolSize;
 
-    @Value("${fineract.events.external.producer.kafka.async.max-pool-size:20}")
+    @Value("${paystack.events.external.producer.kafka.async.max-pool-size:20}")
     private int maxPoolSize;
 
-    @Value("${fineract.events.external.producer.kafka.async.queue-capacity:100}")
+    @Value("${paystack.events.external.producer.kafka.async.queue-capacity:100}")
     private int queueCapacity;
 
-    @Value("${fineract.events.external.producer.kafka.async.keep-alive-seconds:60}")
+    @Value("${paystack.events.external.producer.kafka.async.keep-alive-seconds:60}")
     private int keepAliveSeconds;
 
-    @Value("${fineract.events.external.producer.kafka.async.thread-name-prefix:paystack-kafka-notification-}")
+    @Value("${paystack.events.external.producer.kafka.async.thread-name-prefix:paystack-kafka-notification-}")
     private String threadNamePrefix;
 
-    @Value("${fineract.events.external.producer.kafka.async.max-retries:3}")
+    @Value("${paystack.events.external.producer.kafka.async.max-retries:3}")
     private int maxRetries;
 
     /**
