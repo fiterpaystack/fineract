@@ -41,6 +41,7 @@ public class KafkaNotificationDTO {
     private String clientName;
     private String accountProductName;
     private String accountNumber;
+    private String status;
 
     /**
      * Constructor for creating a new KafkaNotificationDTO from a KafkaNotification entity. This constructor is used for
@@ -58,7 +59,8 @@ public class KafkaNotificationDTO {
 
     /**
      * Constructor for creating a new KafkaNotificationDTO from a KafkaNotification entity with additional fields. This
-     * constructor is used by the ReadPlatformService to populate clientName, accountProductName, and accountNumber.
+     * constructor is used by the ReadPlatformService to populate clientName, accountProductName, status, and
+     * accountNumber.
      */
     public KafkaNotificationDTO(KafkaNotification notification, boolean populateAdditionalFields) {
         this.id = notification.getId();
@@ -68,6 +70,7 @@ public class KafkaNotificationDTO {
         this.pndReason = notification.getPndReason();
         this.timestamp = notification.getCreatedDate();
         this.transactionDetails = notification.getTransactionDetails();
+        this.status = notification.getStatus().name();
 
         if (populateAdditionalFields) {
             // Populate client name (display name)
