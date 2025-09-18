@@ -41,11 +41,11 @@ public class CommandWrapperBuilder {
     private Long clientId;
     private Long loanId;
     private Long savingsId;
-    private String actionName;
-    private String entityName;
-    private Long entityId;
+    protected String actionName;
+    protected String entityName;
+    protected Long entityId;
     private Long subentityId;
-    private String href;
+    protected String href;
     private String json = "{}";
     private String transactionId;
     private Long productId;

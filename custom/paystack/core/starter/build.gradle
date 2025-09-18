@@ -16,12 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-description = 'Paystack Fineract Pentaho Report Starter'
+description = 'Paystack Fineract Commands Starter'
 
-group = 'com.paystack.fineract.infrastructure.report'
+group = 'com.paystack.fineract.core.commands'
 
 base {
-    archivesName = 'paystack-fineract-report-starter'
+    archivesName = 'paystack-fineract-commands-starter'
 }
 
-apply from: 'dependencies.gradle'

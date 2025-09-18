@@ -29,6 +29,7 @@ dependencies {
     implementation(project(':custom:paystack:portfolio:savings'))
     implementation(project(':custom:paystack:portfolio:discount-engine'))
     implementation(project(':custom:paystack:tier:service'))
+    implementation(project(':custom:paystack:infrastructure:event'))
     implementation("org.springframework.boot:spring-boot-starter-data-jpa") {
         exclude group: 'org.hibernate'
     }
@@ -40,4 +41,6 @@ dependencies {
     implementation 'com.google.code.gson:gson'
     implementation 'jakarta.ws.rs:jakarta.ws.rs-api'
     implementation 'io.swagger.core.v3:swagger-annotations-jakarta'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.core:jackson-core'
 }
