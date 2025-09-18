@@ -20,7 +20,6 @@ package com.paystack.fineract.infrastructure.config;
 
 import java.util.Set;
 import org.apache.fineract.infrastructure.core.config.jpa.EntityManagerFactoryCustomizer;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
@@ -29,7 +28,6 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
  */
 @Configuration
 @EnableJpaRepositories(basePackages = "com.paystack.fineract.infrastructure.event.external.domain")
-@ConditionalOnProperty(value = "fineract.events.external.producer.kafka.enabled", havingValue = "true")
 public class PaystackExternalEventJpaConfiguration implements EntityManagerFactoryCustomizer {
 
     @Override
