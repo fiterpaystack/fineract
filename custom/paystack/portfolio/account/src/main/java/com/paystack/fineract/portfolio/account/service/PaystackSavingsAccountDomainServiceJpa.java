@@ -67,10 +67,14 @@ import org.apache.fineract.portfolio.savings.exception.DepositAccountTransaction
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 @Primary
 public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomainServiceJpa {
+
+    private static final Logger log = LoggerFactory.getLogger(PaystackSavingsAccountDomainServiceJpa.class);
 
     private final SavingsAccountTransactionSummaryWrapper savingsAccountTransactionSummaryWrapper;
     private final SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService;

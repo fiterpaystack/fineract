@@ -26,7 +26,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.commands.domain.CommandWrapper;
-import org.apache.fineract.commands.service.CommandWrapperBuilder;
+import com.paystack.fineract.commands.service.PaystackCommandWrapperBuilder;
 import org.apache.fineract.commands.service.PortfolioCommandSourceWritePlatformService;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.serialization.DefaultToApiJsonSerializer;
@@ -77,7 +77,7 @@ public class DiscountRuleApiResource {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class))) })
     public CommandProcessingResult createDiscountRule(@Parameter(hidden = true) DiscountRuleData ruleData) {
-        final CommandWrapper commandRequest = new CommandWrapperBuilder().createDiscountRule()
+        final CommandWrapper commandRequest = new PaystackCommandWrapperBuilder().createDiscountRule()
                 .withJson(toApiJsonSerializer.serialize(ruleData)).build();
         return commandsSourceWritePlatformService.logCommandSource(commandRequest);
     }
@@ -92,7 +92,7 @@ public class DiscountRuleApiResource {
             @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class))) })
     public CommandProcessingResult updateDiscountRule(@PathParam("ruleId") @Parameter(description = "ruleId") final Long ruleId,
             @Parameter(hidden = true) DiscountRuleData ruleData) {
-        final CommandWrapper commandRequest = new CommandWrapperBuilder().updateDiscountRule(ruleId)
+        final CommandWrapper commandRequest = new PaystackCommandWrapperBuilder().updateDiscountRule(ruleId)
                 .withJson(toApiJsonSerializer.serialize(ruleData)).build();
         return commandsSourceWritePlatformService.logCommandSource(commandRequest);
     }
@@ -105,7 +105,7 @@ public class DiscountRuleApiResource {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class))) })
     public CommandProcessingResult deleteDiscountRule(@PathParam("ruleId") @Parameter(description = "ruleId") final Long ruleId) {
-        final CommandWrapper commandRequest = new CommandWrapperBuilder().deleteDiscountRule(ruleId).build();
+        final CommandWrapper commandRequest = new PaystackCommandWrapperBuilder().deleteDiscountRule(ruleId).build();
         return commandsSourceWritePlatformService.logCommandSource(commandRequest);
     }
 
