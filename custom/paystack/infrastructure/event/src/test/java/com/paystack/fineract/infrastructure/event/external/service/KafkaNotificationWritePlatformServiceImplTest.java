@@ -31,6 +31,7 @@ import com.paystack.fineract.infrastructure.event.external.domain.KafkaNotificat
 import com.paystack.fineract.infrastructure.event.external.exception.KafkaNotificationInvalidStatusException;
 import com.paystack.fineract.infrastructure.event.external.exception.KafkaNotificationNotFoundException;
 import com.paystack.fineract.infrastructure.event.external.producer.PaystackExternalEventProducer;
+import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collections;
@@ -72,9 +73,14 @@ class KafkaNotificationWritePlatformServiceImplTest {
     private JsonCommand jsonCommand;
 
     @BeforeEach
-    void setUp() throws JsonProcessingException {
+    void setUp() throws NoSuchFieldException, IllegalAccessException {
         // Create mock savings account
         savingsAccount = mock(SavingsAccount.class);
+
+        // Inject optional producer into service
+        Field field = KafkaNotificationWritePlatformServiceImpl.class.getDeclaredField("paystackExternalEventProducer");
+        field.setAccessible(true);
+        field.set(service, paystackExternalEventProducer);
 
         // Create test notifications
         failedNotification = new KafkaNotification("DEPOSIT", savingsAccount, "Test reason", "Test details");
