@@ -187,28 +187,25 @@ public class AccountBalanceBasedDiscountCalculator implements DiscountRuleCalcul
         // Get starting balance (from day before month start or first transaction)
         BigDecimal currentBalance = getStartingBalance(accountId, monthStart, transactions);
 
+        // Preprocess: Map each date to the last (chronologically latest) transaction for that date
+        Map<LocalDate, SavingsAccountTransaction> lastTransactionPerDay = new HashMap<>();
+        for (SavingsAccountTransaction transaction : transactions) {
+            if (!transaction.isReversed() && transaction.getRunningBalance() != null) {
+                LocalDate date = transaction.getDateOf();
+                SavingsAccountTransaction existing = lastTransactionPerDay.get(date);
+                if (existing == null || transaction.getCreatedDate().isAfter(existing.getCreatedDate())) {
+                    lastTransactionPerDay.put(date, transaction);
+                }
+            }
+        }
+
         // Process each day of the month
         LocalDate currentDate = monthStart;
-        int transactionIndex = 0;
-
         while (!currentDate.isAfter(monthEnd)) {
-            BigDecimal balanceAtStartOfDay = currentBalance;
-
-            // Update balance if there are transactions on this date
-            while (transactionIndex < transactions.size()) {
-                SavingsAccountTransaction transaction = transactions.get(transactionIndex);
-
-                if (transaction.getDateOf().isAfter(currentDate)) {
-                    break; // No more transactions for this date
-                }
-
-                if (transaction.getDateOf().equals(currentDate)) {
-                    if (!transaction.isReversed() && transaction.getRunningBalance() != null) {
-                        currentBalance = transaction.getRunningBalance();
-                    }
-                }
-
-                transactionIndex++;
+            // Update balance if there is a transaction on this date
+            SavingsAccountTransaction lastTx = lastTransactionPerDay.get(currentDate);
+            if (lastTx != null) {
+                currentBalance = lastTx.getRunningBalance();
             }
 
             // Add this day's balance to the total
