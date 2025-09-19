@@ -50,6 +50,16 @@ public class ProductDiscountService {
      */
     @Transactional(readOnly = true)
     public BigDecimal applyDiscount(Long productId, BigDecimal originalAmount, Long chargeId) {
+        return applyDiscount(productId, originalAmount, chargeId, null);
+    }
+
+    /**
+     * Apply discount for a specific product and charge with account context Implements charge-first priority: check
+     * charge rules first, fall back to product rules Uses the new calculator system when available FIXED: Added proper
+     * ThreadLocal cleanup to prevent memory leaks
+     */
+    @Transactional(readOnly = true)
+    public BigDecimal applyDiscount(Long productId, BigDecimal originalAmount, Long chargeId, Long accountId) {
         String discountKey = productId + ":" + chargeId + ":" + originalAmount;
 
         try {
@@ -62,8 +72,7 @@ public class ProductDiscountService {
             appliedDiscounts.get().add(discountKey);
 
             // Create discount context for the new calculator system
-            DiscountContext context = createDiscountContext(productId, chargeId, originalAmount);
-
+            DiscountContext context = createDiscountContext(productId, chargeId, originalAmount, accountId);
             // 1. Check for charge-level rules first
             List<com.paystack.fineract.portfolio.discount.domain.DiscountRule> chargeRules = discountRuleService
                     .getAssignedDiscountRules("CHARGE", chargeId);
@@ -93,12 +102,13 @@ public class ProductDiscountService {
     /**
      * Create discount context for calculator system
      */
-    private DiscountContext createDiscountContext(Long productId, Long chargeId, BigDecimal originalAmount) {
+    private DiscountContext createDiscountContext(Long productId, Long chargeId, BigDecimal originalAmount, Long accountId) {
         DiscountContext context = new DiscountContext();
         context.setProductId(productId);
         context.setChargeId(chargeId);
         context.setTransactionAmount(originalAmount);
         context.setTransactionDate(java.time.LocalDate.now());
+        context.setAccountId(accountId); // Set the account ID for balance-based calculations
         // Add more context fields as needed
         return context;
     }

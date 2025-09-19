@@ -326,7 +326,7 @@ public class DiscountRuleService {
                     return calculator.calculateDiscount(originalAmount, context);
                 }
             } catch (Exception e) {
-                log.warn("Failed to use calculator for rule {}: {}, returning zero discount", rule.getName(), e.getMessage());
+                log.warn("Failed to use calculator for rule {}: {}", rule.getName(), e.getMessage());
             }
         }
 

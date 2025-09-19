@@ -46,11 +46,12 @@ public class DiscountRuleCalculatorFactory {
         }
 
         try {
-            // Create new instance using reflection
-            DiscountRuleCalculator instance = template.getClass().getDeclaredConstructor().newInstance();
+            // Get bean from Spring context instead of using reflection
+            DiscountRuleCalculator instance = applicationContext.getBean(template.getClass());
             instance.configure(parameters);
             return instance;
         } catch (Exception e) {
+            log.error("Failed to create calculator instance for rule type: {}", ruleType, e);
             throw new RuntimeException("Failed to create calculator instance for rule type: " + ruleType, e);
         }
     }
