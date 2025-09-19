@@ -154,8 +154,7 @@ public class ProductDiscountService {
                     return calculator.calculateDiscount(originalAmount, context);
                 }
             } catch (Exception e) {
-                log.warn("🎯 DISCOUNT ENGINE: Failed to use calculator for rule {}: {} - Exception: {} - Stack trace:", rule.getName(),
-                        e.getMessage(), e.getClass().getSimpleName(), e);
+                log.warn("DISCOUNT ENGINE: Failed to use calculator for rule {}: {}", rule.getName(), e.getMessage());
             }
         }
 

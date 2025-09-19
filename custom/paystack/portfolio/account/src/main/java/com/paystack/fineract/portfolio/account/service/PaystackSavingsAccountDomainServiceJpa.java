@@ -558,8 +558,6 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
                     account.getId() // Pass the account ID for balance-based calculations
             );
 
-            log.info("🎯 WITHDRAWAL DISCOUNT: Applied discount to charge {} for account {}: Original: {}, Discounted: {}",
-                    charge.getCharge().getId(), account.getId(), originalAmount, discountedAmount);
             return discountedAmount;
 
         } catch (Exception e) {

@@ -51,8 +51,7 @@ public class DiscountRuleCalculatorFactory {
             instance.configure(parameters);
             return instance;
         } catch (Exception e) {
-            log.error("Failed to create calculator instance for rule type: {} - Exception: {} - Stack trace:", ruleType,
-                    e.getClass().getSimpleName(), e);
+            log.error("Failed to create calculator instance for rule type: {}", ruleType, e);
             throw new RuntimeException("Failed to create calculator instance for rule type: " + ruleType, e);
         }
     }
