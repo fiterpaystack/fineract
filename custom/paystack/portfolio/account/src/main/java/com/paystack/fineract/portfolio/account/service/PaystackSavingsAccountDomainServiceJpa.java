@@ -554,15 +554,12 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             Long productId = account.productId();
 
             // Apply discount using the product discount service
-            BigDecimal discountedAmount = productDiscountService.applyDiscount(
-                productId, 
-                originalAmount, 
-                charge.getCharge().getId(),
-                account.getId() // Pass the account ID for balance-based calculations
+            BigDecimal discountedAmount = productDiscountService.applyDiscount(productId, originalAmount, charge.getCharge().getId(),
+                    account.getId() // Pass the account ID for balance-based calculations
             );
-            
-            log.info("🎯 WITHDRAWAL DISCOUNT: Applied discount to charge {} for account {}: Original: {}, Discounted: {}", 
-                charge.getCharge().getId(), account.getId(), originalAmount, discountedAmount);
+
+            log.info("🎯 WITHDRAWAL DISCOUNT: Applied discount to charge {} for account {}: Original: {}, Discounted: {}",
+                    charge.getCharge().getId(), account.getId(), originalAmount, discountedAmount);
             return discountedAmount;
 
         } catch (Exception e) {

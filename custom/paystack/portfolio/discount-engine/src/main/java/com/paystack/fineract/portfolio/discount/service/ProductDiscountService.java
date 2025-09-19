@@ -52,12 +52,11 @@ public class ProductDiscountService {
     public BigDecimal applyDiscount(Long productId, BigDecimal originalAmount, Long chargeId) {
         return applyDiscount(productId, originalAmount, chargeId, null);
     }
-    
+
     /**
-     * Apply discount for a specific product and charge with account context
-     * Implements charge-first priority: check charge rules first, fall back to product rules
-     * Uses the new calculator system when available
-     * FIXED: Added proper ThreadLocal cleanup to prevent memory leaks
+     * Apply discount for a specific product and charge with account context Implements charge-first priority: check
+     * charge rules first, fall back to product rules Uses the new calculator system when available FIXED: Added proper
+     * ThreadLocal cleanup to prevent memory leaks
      */
     @Transactional(readOnly = true)
     public BigDecimal applyDiscount(Long productId, BigDecimal originalAmount, Long chargeId, Long accountId) {
@@ -155,8 +154,8 @@ public class ProductDiscountService {
                     return calculator.calculateDiscount(originalAmount, context);
                 }
             } catch (Exception e) {
-                log.warn("🎯 DISCOUNT ENGINE: Failed to use calculator for rule {}: {} - Exception: {} - Stack trace:", 
-                    rule.getName(), e.getMessage(), e.getClass().getSimpleName(), e);
+                log.warn("🎯 DISCOUNT ENGINE: Failed to use calculator for rule {}: {} - Exception: {} - Stack trace:", rule.getName(),
+                        e.getMessage(), e.getClass().getSimpleName(), e);
             }
         }
 

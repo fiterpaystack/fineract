@@ -325,8 +325,9 @@ public class DiscountRuleService {
                 if (calculator.isApplicable(context) && calculator.isValid(context)) {
                     return calculator.calculateDiscount(originalAmount, context);
                 }
-                log.warn("Failed to use calculator for rule {}: {} - Exception: {} - Stack trace:", 
-                    rule.getName(), e.getMessage(), e.getClass().getSimpleName(), e);
+            } catch (Exception e) {
+                log.warn("Failed to use calculator for rule {}: {} - Exception: {} - Stack trace:", rule.getName(), e.getMessage(),
+                        e.getClass().getSimpleName(), e);
             }
         }
 
