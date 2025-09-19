@@ -413,6 +413,7 @@ public class InteropServiceImpl implements InteropService {
     @Transactional
     public InteropTransferResponseData commitTransfer(@NotNull JsonCommand command) {
         InteropTransferRequestData request = dataValidator.validateAndParseTransferRequest(command);
+        final String noteText = command.stringValueOfParameterNamed("note");
         boolean isDebit = request.getTransactionRole().getTransactionType().isDebit();
         SavingsAccount savingsAccount = validateAndGetSavingAccount(request);
         String transferCode = request.getTransferCode();
@@ -456,11 +457,11 @@ public class InteropServiceImpl implements InteropService {
             SavingsTransactionBooleanValues transactionValues = new SavingsTransactionBooleanValues(false, true, true, false, false);
             transaction = savingsAccountService.handleWithdrawal(savingsAccount, fmt, transactionDate, request.getAmount().getAmount(),
                     instance(findPaymentType(), savingsAccount.getExternalId().getValue(), null, getRoutingCode(), transferCode, null),
-                    transactionValues, backdatedTxnsAllowedTill);
+                    transactionValues, backdatedTxnsAllowedTill, noteText);
         } else {
             transaction = savingsAccountService.handleDeposit(savingsAccount, fmt, transactionDate, request.getAmount().getAmount(),
                     instance(findPaymentType(), savingsAccount.getExternalId().getValue(), null, getRoutingCode(), transferCode, null),
-                    false, true, backdatedTxnsAllowedTill);
+                    false, true, backdatedTxnsAllowedTill, noteText);
         }
 
         String note = request.getNote();

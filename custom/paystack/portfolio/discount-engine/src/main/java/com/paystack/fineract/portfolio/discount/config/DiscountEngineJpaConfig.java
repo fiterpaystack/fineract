@@ -9,17 +9,12 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
  * JPA Configuration for Discount Engine Module
  */
 @Configuration
-@EnableJpaRepositories(basePackages = { 
-    "com.paystack.fineract.portfolio.discount.domain",
-    "com.paystack.fineract.portfolio.discount.repository"
-})
+@EnableJpaRepositories(basePackages = { "com.paystack.fineract.portfolio.discount.domain",
+        "com.paystack.fineract.portfolio.discount.repository" })
 public class DiscountEngineJpaConfig implements EntityManagerFactoryCustomizer {
 
     @Override
     public Set<String> additionalPackagesToScan() {
-        return Set.of(
-            "com.paystack.fineract.portfolio.discount.domain",
-            "com.paystack.fineract.portfolio.discount.repository"
-        );
+        return Set.of("com.paystack.fineract.portfolio.discount.domain", "com.paystack.fineract.portfolio.discount.repository");
     }
 }

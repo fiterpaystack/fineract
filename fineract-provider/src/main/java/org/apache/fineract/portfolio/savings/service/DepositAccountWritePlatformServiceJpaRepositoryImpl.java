@@ -154,6 +154,7 @@ public class DepositAccountWritePlatformServiceJpaRepositoryImpl implements Depo
                 DepositAccountType.FIXED_DEPOSIT);
         checkClientOrGroupActive(account);
 
+        final String noteText = command.stringValueOfParameterNamed("note");
         final Set<Long> existingTransactionIds = new HashSet<>();
         final Set<Long> existingReversedTransactionIds = new HashSet<>();
         updateExistingTransactionsDetails(account, existingTransactionIds, existingReversedTransactionIds);
@@ -171,7 +172,7 @@ public class DepositAccountWritePlatformServiceJpaRepositoryImpl implements Depo
                 if (portfolioAccountData == null) {
                     final PaymentDetail paymentDetail = null;
                     this.depositAccountDomainService.handleFDDeposit(account, fmt, account.getActivationDate(),
-                            amountForDeposit.getAmount(), paymentDetail);
+                            amountForDeposit.getAmount(), paymentDetail, noteText);
                 } else {
                     final SavingsAccount fromSavingsAccount = null;
                     boolean isRegularTransaction = false;
@@ -256,6 +257,7 @@ public class DepositAccountWritePlatformServiceJpaRepositoryImpl implements Depo
         final Integer financialYearBeginningMonth = this.configurationDomainService.retrieveFinancialYearBeginningMonth();
         final boolean postReversals = false;
         this.depositAccountTransactionDataValidator.validateActivation(command);
+        final String noteText = command.stringValueOfParameterNamed("note");
 
         final RecurringDepositAccount account = (RecurringDepositAccount) this.depositAccountAssembler.assembleFrom(savingsId,
                 DepositAccountType.RECURRING_DEPOSIT);
@@ -276,7 +278,7 @@ public class DepositAccountWritePlatformServiceJpaRepositoryImpl implements Depo
                         .retriveSavingsLinkedAssociation(savingsId);
                 if (portfolioAccountData == null) {
                     this.depositAccountDomainService.handleRDDeposit(account, fmt, account.getActivationDate(),
-                            amountForDeposit.getAmount(), null, isRegularTransaction);
+                            amountForDeposit.getAmount(), null, isRegularTransaction, noteText);
                 } else {
                     final boolean isExceptionForBalanceCheck = false;
                     final SavingsAccount fromSavingsAccount = null;
@@ -360,11 +362,12 @@ public class DepositAccountWritePlatformServiceJpaRepositoryImpl implements Depo
 
         final LocalDate transactionDate = command.localDateValueOfParameterNamed("transactionDate");
         final BigDecimal transactionAmount = command.bigDecimalValueOfParameterNamed("transactionAmount");
+        final String noteText = command.stringValueOfParameterNamed("note");
 
         final Map<String, Object> changes = new LinkedHashMap<>();
         final PaymentDetail paymentDetail = this.paymentDetailWritePlatformService.createAndPersistPaymentDetail(command, changes);
         final SavingsAccountTransaction deposit = this.depositAccountDomainService.handleFDDeposit(account, fmt, transactionDate,
-                transactionAmount, paymentDetail);
+                transactionAmount, paymentDetail, noteText);
 
         return new CommandProcessingResultBuilder().withEntityId(deposit.getId()).withOfficeId(account.officeId())
                 .withClientId(account.clientId()).withGroupId(account.groupId()).withSavingsId(savingsId).with(changes).build();
@@ -417,11 +420,12 @@ public class DepositAccountWritePlatformServiceJpaRepositoryImpl implements Depo
 
         final LocalDate transactionDate = command.localDateValueOfParameterNamed("transactionDate");
         final BigDecimal transactionAmount = command.bigDecimalValueOfParameterNamed("transactionAmount");
+        final String noteText = command.stringValueOfParameterNamed("note");
 
         final Map<String, Object> changes = new LinkedHashMap<>();
         final PaymentDetail paymentDetail = this.paymentDetailWritePlatformService.createAndPersistPaymentDetail(command, changes);
         final SavingsAccountTransaction deposit = this.depositAccountDomainService.handleRDDeposit(account, fmt, transactionDate,
-                transactionAmount, paymentDetail, isRegularTransaction);
+                transactionAmount, paymentDetail, isRegularTransaction, noteText);
 
         return new CommandProcessingResultBuilder() //
                 .withEntityId(deposit.getId()) //
@@ -449,6 +453,7 @@ public class DepositAccountWritePlatformServiceJpaRepositoryImpl implements Depo
 
         final LocalDate transactionDate = command.localDateValueOfParameterNamed("transactionDate");
         final BigDecimal transactionAmount = command.bigDecimalValueOfParameterNamed("transactionAmount");
+        final String noteText = command.stringValueOfParameterNamed("note");
 
         final Locale locale = command.extractLocale();
         final DateTimeFormatter fmt = DateTimeFormatter.ofPattern(command.dateFormat()).withLocale(locale);
@@ -461,7 +466,7 @@ public class DepositAccountWritePlatformServiceJpaRepositoryImpl implements Depo
         checkClientOrGroupActive(account);
 
         final SavingsAccountTransaction withdrawal = this.depositAccountDomainService.handleWithdrawal(account, fmt, transactionDate,
-                transactionAmount, paymentDetail, true, isRegularTransaction);
+                transactionAmount, paymentDetail, true, isRegularTransaction, noteText);
 
         return new CommandProcessingResultBuilder() //
                 .withEntityId(withdrawal.getId()) //
@@ -772,10 +777,8 @@ public class DepositAccountWritePlatformServiceJpaRepositoryImpl implements Depo
         final FixedDepositAccount account = (FixedDepositAccount) this.depositAccountAssembler.assembleFrom(savingsId,
                 DepositAccountType.FIXED_DEPOSIT);
         checkClientOrGroupActive(account);
-
-        this.depositAccountDomainService.handleFDAccountClosure(account, paymentDetail, user, command, changes);
-
         final String noteText = command.stringValueOfParameterNamed("note");
+        this.depositAccountDomainService.handleFDAccountClosure(account, paymentDetail, user, command, changes, noteText);
         if (StringUtils.isNotBlank(noteText)) {
             final Note note = Note.savingNote(account, noteText);
             changes.put("note", noteText);
@@ -806,9 +809,8 @@ public class DepositAccountWritePlatformServiceJpaRepositoryImpl implements Depo
                 DepositAccountType.RECURRING_DEPOSIT);
         checkClientOrGroupActive(account);
 
-        this.depositAccountDomainService.handleRDAccountClosure(account, paymentDetail, user, command, changes);
-
         final String noteText = command.stringValueOfParameterNamed("note");
+        this.depositAccountDomainService.handleRDAccountClosure(account, paymentDetail, user, command, changes, noteText);
         if (StringUtils.isNotBlank(noteText)) {
             final Note note = Note.savingNote(account, noteText);
             changes.put("note", noteText);
@@ -839,9 +841,8 @@ public class DepositAccountWritePlatformServiceJpaRepositoryImpl implements Depo
                 DepositAccountType.FIXED_DEPOSIT);
         checkClientOrGroupActive(account);
 
-        this.depositAccountDomainService.handleFDAccountPreMatureClosure(account, paymentDetail, user, command, changes);
-
         final String noteText = command.stringValueOfParameterNamed("note");
+        this.depositAccountDomainService.handleFDAccountPreMatureClosure(account, paymentDetail, user, command, changes, noteText);
         if (StringUtils.isNotBlank(noteText)) {
             final Note note = Note.savingNote(account, noteText);
             changes.put("note", noteText);
@@ -881,9 +882,8 @@ public class DepositAccountWritePlatformServiceJpaRepositoryImpl implements Depo
             }
         }
 
-        this.depositAccountDomainService.handleRDAccountPreMatureClosure(account, paymentDetail, user, command, changes);
-
         final String noteText = command.stringValueOfParameterNamed("note");
+        this.depositAccountDomainService.handleRDAccountPreMatureClosure(account, paymentDetail, user, command, changes, noteText);
         if (StringUtils.isNotBlank(noteText)) {
             final Note note = Note.savingNote(account, noteText);
             changes.put("note", noteText);
@@ -1337,8 +1337,9 @@ public class DepositAccountWritePlatformServiceJpaRepositoryImpl implements Depo
                 Map<String, Object> changes = new HashMap<>();
                 final AppUser user = context.authenticatedUser();
                 Long toSavingsId = fdAccount.getTransferToSavingsAccountId();
+                String noteText = "Maturity instructions applied on FD Account No: " + fdAccount.getAccountNumber();
                 this.depositAccountDomainService.handleFDAccountMaturityClosure(fdAccount, null, user, fmt, fdAccount.maturityDate(),
-                        fdAccount.getOnAccountClosureId(), toSavingsId, "Apply maturity instructions", changes);
+                        fdAccount.getOnAccountClosureId(), toSavingsId, "Apply maturity instructions", changes, noteText);
 
                 if (changes.get("reinvestedDepositId") != null) {
                     Long reinvestedDepositId = (Long) changes.get("reinvestedDepositId");
@@ -1350,8 +1351,9 @@ public class DepositAccountWritePlatformServiceJpaRepositoryImpl implements Depo
                         payActivationCharge(reinvestAccount);
                         amountForDeposit = amountForDeposit.plus(activationChargeAmount);
                     }
+                    noteText = "Reinvested FD Account from account No: " + fdAccount.getAccountNumber();
                     this.depositAccountDomainService.handleFDDeposit(reinvestAccount, fmt, fdAccount.maturityDate(),
-                            amountForDeposit.getAmount(), null);
+                            amountForDeposit.getAmount(), null, noteText);
                 }
             }
         } else if (depositAccountType.isRecurringDeposit()) {
@@ -1379,7 +1381,8 @@ public class DepositAccountWritePlatformServiceJpaRepositoryImpl implements Depo
 
     @Transactional
     @Override
-    public SavingsAccountTransaction mandatorySavingsAccountDeposit(final SavingsAccountTransactionDTO accountTransactionDTO) {
+    public SavingsAccountTransaction mandatorySavingsAccountDeposit(final SavingsAccountTransactionDTO accountTransactionDTO,
+            final String noteText) {
         boolean isRegularTransaction = false;
         final PaymentDetail paymentDetail = accountTransactionDTO.getPaymentDetail();
         if (paymentDetail != null && paymentDetail.getId() == null) {
@@ -1390,7 +1393,7 @@ public class DepositAccountWritePlatformServiceJpaRepositoryImpl implements Depo
                     .assembleFrom(accountTransactionDTO.getSavingsAccountId(), DepositAccountType.RECURRING_DEPOSIT);
             return this.depositAccountDomainService.handleRDDeposit(account, accountTransactionDTO.getFormatter(),
                     accountTransactionDTO.getTransactionDate(), accountTransactionDTO.getTransactionAmount(), paymentDetail,
-                    isRegularTransaction);
+                    isRegularTransaction, noteText);
         }
         SavingsAccount account = null;
         if (accountTransactionDTO.getAccountType().equals(DepositAccountType.SAVINGS_DEPOSIT.getValue())) {
@@ -1402,7 +1405,7 @@ public class DepositAccountWritePlatformServiceJpaRepositoryImpl implements Depo
         }
         return this.depositAccountDomainService.handleSavingDeposit(account, accountTransactionDTO.getFormatter(),
                 accountTransactionDTO.getTransactionDate(), accountTransactionDTO.getTransactionAmount(), paymentDetail,
-                isRegularTransaction);
+                isRegularTransaction, noteText);
 
     }
 }

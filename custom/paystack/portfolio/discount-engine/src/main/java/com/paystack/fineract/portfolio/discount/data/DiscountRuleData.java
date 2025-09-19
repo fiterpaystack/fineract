@@ -1,11 +1,10 @@
 package com.paystack.fineract.portfolio.discount.data;
 
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.math.BigDecimal;
-import java.time.OffsetDateTime;
 
 /**
  * Discount Rule Data Transfer Object
@@ -14,7 +13,7 @@ import java.time.OffsetDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class DiscountRuleData {
-    
+
     private Long id;
     private String name;
     private String description;
@@ -26,7 +25,7 @@ public class DiscountRuleData {
     private OffsetDateTime lastModifiedOnUtc;
     private Long createdBy;
     private Long lastModifiedBy;
-    
+
     // Additional fields for display
     private Long applicationCount;
     private BigDecimal totalDiscountAmount;

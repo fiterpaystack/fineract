@@ -19,22 +19,29 @@
 
 package com.paystack.fineract.portfolio.account.service;
 
+import static org.apache.fineract.portfolio.savings.SavingsApiConstants.SAVINGS_ACCOUNT_CHARGE_RESOURCE_NAME;
+
 import com.paystack.fineract.client.charge.service.ClientChargeOverrideReadService;
 import com.paystack.fineract.portfolio.account.data.ChargePaymentResult;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
+import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
+import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
+import org.apache.fineract.infrastructure.core.exception.AbstractPlatformDomainRuleException;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
 import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
+import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.exception.PlatformServiceUnavailableException;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.dataqueries.service.EntityDatatableChecksWritePlatformService;
@@ -75,6 +82,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -300,5 +308,78 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
     private void throwValidationForActiveStatus(final String actionName) {
         final String errorMessage = "validation.msg.savingsaccount.transaction." + actionName + ".account.is.not.active";
         throw new GeneralPlatformDomainRuleException(errorMessage, "Transaction " + actionName + " is not allowed. Account is not active.");
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = { PlatformApiDataValidationException.class,
+            AbstractPlatformDomainRuleException.class, GeneralPlatformDomainRuleException.class })
+    @Override
+    public CommandProcessingResult applyAnnualFee(final Long savingsAccountChargeId, final Long accountId) {
+        super.getAppUserIfPresent();
+
+        final SavingsAccountCharge savingsAccountCharge = this.savingsAccountChargeRepository
+                .findOneWithNotFoundDetection(savingsAccountChargeId, accountId);
+
+        final LocalDate currentDate = DateUtils.getBusinessLocalDate();
+        final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd MM yyyy").withZone(DateUtils.getDateTimeZoneOfTenant());
+
+        while (DateUtils.isEqual(savingsAccountCharge.getDueDate(), currentDate)
+                || DateUtils.isBefore(savingsAccountCharge.getDueDate(), currentDate)) {
+            this.payCharge(savingsAccountCharge, savingsAccountCharge.getDueDate(), savingsAccountCharge.amount(), fmt, false);
+        }
+        return new CommandProcessingResultBuilder() //
+                .withEntityId(savingsAccountCharge.getId()) //
+                .withOfficeId(savingsAccountCharge.savingsAccount().officeId()) //
+                .withClientId(savingsAccountCharge.savingsAccount().clientId()) //
+                .withGroupId(savingsAccountCharge.savingsAccount().groupId()) //
+                .withSavingsId(savingsAccountCharge.savingsAccount().getId()) //
+                .build();
+    }
+
+    @Override
+    public CommandProcessingResult inactivateCharge(final Long savingsAccountId, final Long savingsAccountChargeId) {
+        this.context.authenticatedUser();
+        final SavingsAccountCharge savingsAccountCharge = this.savingsAccountChargeRepository
+                .findOneWithNotFoundDetection(savingsAccountChargeId, savingsAccountId);
+        final SavingsAccount account = savingsAccountCharge.savingsAccount();
+        this.savingAccountAssembler.assignSavingAccountHelpers(account);
+        final LocalDate inactivationOnDate = DateUtils.getBusinessLocalDate();
+        final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+        final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors)
+                .resource(SAVINGS_ACCOUNT_CHARGE_RESOURCE_NAME);
+        if (!savingsAccountCharge.isRecurringFee()) {
+            account.inactivateCharge(savingsAccountCharge, inactivationOnDate);
+        } else {
+            final LocalDate nextDueDate = savingsAccountCharge.getNextDueDateFrom(inactivationOnDate);
+            if (savingsAccountCharge.isChargeIsDue(nextDueDate)) {
+                baseDataValidator.reset().failWithCodeNoParameterAddedToErrorCode("inactivation.of.charge.not.allowed.when.charge.is.due");
+                if (!dataValidationErrors.isEmpty()) {
+                    throw new PlatformApiDataValidationException(dataValidationErrors);
+                }
+            } else if (savingsAccountCharge.isChargeIsOverPaid(nextDueDate)) {
+                final List<SavingsAccountTransaction> chargePayments = new ArrayList<>();
+                SavingsAccountCharge updatedCharge = savingsAccountCharge;
+                do {
+                    chargePayments.clear();
+                    for (SavingsAccountTransaction transaction : account.getTransactions()) {
+                        if (transaction.isPayCharge() && transaction.isNotReversed()
+                                && transaction.isPaymentForCurrentCharge(savingsAccountCharge)) {
+                            chargePayments.add(transaction);
+                        }
+                    }
+                    // Reverse the excess payments of charge transactions
+                    SavingsAccountTransaction lastChargePayment = getLastChargePayment(chargePayments);
+                    this.undoTransaction(savingsAccountCharge.savingsAccount().getId(), lastChargePayment.getId(), false);
+                    updatedCharge = account.getUpdatedChargeDetails(savingsAccountCharge);
+                } while (updatedCharge.isChargeIsOverPaid(nextDueDate));
+            }
+            account.inactivateCharge(savingsAccountCharge, inactivationOnDate);
+        }
+        return new CommandProcessingResultBuilder() //
+                .withEntityId(savingsAccountCharge.getId()) //
+                .withOfficeId(savingsAccountCharge.savingsAccount().officeId()) //
+                .withClientId(savingsAccountCharge.savingsAccount().clientId()) //
+                .withGroupId(savingsAccountCharge.savingsAccount().groupId()) //
+                .withSavingsId(savingsAccountCharge.savingsAccount().getId()) //
+                .build();
     }
 }

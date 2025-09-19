@@ -1,43 +1,41 @@
 package com.paystack.fineract.portfolio.discount.factory;
 
 import com.paystack.fineract.portfolio.discount.calculator.DiscountRuleCalculator;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationContext;
-import org.springframework.stereotype.Component;
-
 import jakarta.annotation.PostConstruct;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationContext;
+import org.springframework.stereotype.Component;
 
 /**
- * Factory for creating discount rule calculators
- * Follows the same pattern as CommandHandlerProvider and other factories in Fineract
+ * Factory for creating discount rule calculators Follows the same pattern as CommandHandlerProvider and other factories
+ * in Fineract
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class DiscountRuleCalculatorFactory {
-    
+
     private final ApplicationContext applicationContext;
     private final Map<String, DiscountRuleCalculator> calculators = new HashMap<>();
-    
+
     @PostConstruct
     public void initializeCalculators() {
-        
+
         // Get all DiscountRuleCalculator implementations from Spring context
-        Map<String, DiscountRuleCalculator> calculatorBeans = 
-            applicationContext.getBeansOfType(DiscountRuleCalculator.class);
-        
+        Map<String, DiscountRuleCalculator> calculatorBeans = applicationContext.getBeansOfType(DiscountRuleCalculator.class);
+
         for (DiscountRuleCalculator calculator : calculatorBeans.values()) {
             String ruleType = calculator.getRuleType();
             calculators.put(ruleType, calculator);
         }
-        
+
     }
-    
+
     /**
      * Create a new calculator instance for the given rule type
      */
@@ -46,7 +44,7 @@ public class DiscountRuleCalculatorFactory {
         if (template == null) {
             throw new IllegalArgumentException("Unknown rule type: " + ruleType);
         }
-        
+
         try {
             // Get bean from Spring context instead of using reflection
             DiscountRuleCalculator instance = applicationContext.getBean(template.getClass());
@@ -58,21 +56,21 @@ public class DiscountRuleCalculatorFactory {
             throw new RuntimeException("Failed to create calculator instance for rule type: " + ruleType, e);
         }
     }
-    
+
     /**
      * Get all available rule types
      */
     public List<String> getAvailableRuleTypes() {
         return calculators.keySet().stream().sorted().collect(Collectors.toList());
     }
-    
+
     /**
      * Get calculator template for a rule type (for metadata purposes)
      */
     public DiscountRuleCalculator getCalculatorTemplate(String ruleType) {
         return calculators.get(ruleType);
     }
-    
+
     /**
      * Check if a rule type is available
      */

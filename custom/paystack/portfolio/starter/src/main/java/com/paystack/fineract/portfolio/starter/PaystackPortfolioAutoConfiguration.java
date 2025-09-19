@@ -19,8 +19,12 @@
 
 package com.paystack.fineract.portfolio.starter;
 
+import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.ComponentScans;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @ComponentScans({ @ComponentScan("com.paystack.fineract.portfolio") })
+@EnableJpaRepositories(basePackages = { "com.paystack.fineract.portfolio", "org.apache.fineract.portfolio.tax.domain" })
+@EntityScan(basePackages = { "com.paystack.fineract.portfolio", "org.apache.fineract" })
 public class PaystackPortfolioAutoConfiguration {}

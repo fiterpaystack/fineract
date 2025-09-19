@@ -738,6 +738,10 @@ public class SavingsAccountCharge extends AbstractAuditableWithUTCDateTimeCustom
         return ChargeTimeType.fromInt(this.chargeTime).isWeeklyFee();
     }
 
+    public boolean isDepositFee() {
+        return ChargeTimeType.fromInt(this.chargeTime).isDepositFee();
+    }
+
     public boolean hasCurrencyCodeOf(final String matchingCurrencyCode) {
         if (this.currencyCode() == null || matchingCurrencyCode == null) {
             return false;

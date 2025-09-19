@@ -41,11 +41,11 @@ public class CommandWrapperBuilder {
     private Long clientId;
     private Long loanId;
     private Long savingsId;
-    private String actionName;
-    private String entityName;
-    private Long entityId;
+    protected String actionName;
+    protected String entityName;
+    protected Long entityId;
     private Long subentityId;
-    private String href;
+    protected String href;
     private String json = "{}";
     private String transactionId;
     private Long productId;
@@ -3931,43 +3931,4 @@ public class CommandWrapperBuilder {
         return this;
     }
 
-    public CommandWrapperBuilder createDiscountRule() {
-        this.actionName = "CREATE";
-        this.entityName = "DISCOUNTRULE";
-        this.entityId = null;
-        this.href = "/v1/discount-rules";
-        return this;
-    }
-
-    public CommandWrapperBuilder updateDiscountRule(final Long ruleId) {
-        this.actionName = "UPDATE";
-        this.entityName = "DISCOUNTRULE";
-        this.entityId = ruleId;
-        this.href = "/v1/discount-rules/" + ruleId;
-        return this;
-    }
-
-    public CommandWrapperBuilder deleteDiscountRule(final Long ruleId) {
-        this.actionName = "DELETE";
-        this.entityName = "DISCOUNTRULE";
-        this.entityId = ruleId;
-        this.href = "/v1/discount-rules/" + ruleId;
-        return this;
-    }
-
-    public CommandWrapperBuilder assignDiscountRuleToProduct(final Long ruleId) {
-        this.actionName = "CREATE";
-        this.entityName = "DISCOUNTRULE_PRODUCT_ASSIGNMENT";
-        this.entityId = ruleId;
-        this.href = "/v1/discount-rules/products/" + ruleId + "/assign";
-        return this;
-    }
-
-    public CommandWrapperBuilder assignDiscountRuleToCharge(final Long ruleId) {
-        this.actionName = "CREATE";
-        this.entityName = "DISCOUNTRULE_CHARGE_ASSIGNMENT";
-        this.entityId = ruleId;
-        this.href = "/v1/discount-rules/charges/" + ruleId + "/assign";
-        return this;
-    }
 }

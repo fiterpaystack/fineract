@@ -1,23 +1,21 @@
 package com.paystack.fineract.portfolio.discount.domain;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-
 /**
- * Discount Context
- * Contains all information needed for discount evaluation
+ * Discount Context Contains all information needed for discount evaluation
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class DiscountContext {
-    
+
     private String entityType;
     private Long entityId;
     private Long chargeId;

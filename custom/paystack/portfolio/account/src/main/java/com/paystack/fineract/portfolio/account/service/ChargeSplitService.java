@@ -88,9 +88,6 @@ public class ChargeSplitService {
 
             // Save split
             ChargeSplit savedSplit = splitRepository.save(split);
-
-            log.info("Created charge stakeholder split: {} for charge: {} and fund: {}", savedSplit.getId(), chargeId, fundId);
-
             return new CommandProcessingResultBuilder().withEntityId(savedSplit.getId()).build();
 
         } catch (Exception e) {
@@ -136,9 +133,6 @@ public class ChargeSplitService {
 
             // Save updated split
             saveSplit(split);
-
-            log.info("Updated charge stakeholder split: {}", splitId);
-
             return new CommandProcessingResultBuilder().withEntityId(splitId).with(changes).build();
 
         } catch (Exception e) {
@@ -155,13 +149,8 @@ public class ChargeSplitService {
                     "error.msg.split.not.found", "Split with id " + splitId + " not found",
                     List.of(parameterError("error.msg.split.not.found", "Split with id " + splitId + " not found", "splitId", splitId))));
 
-            Long chargeId = split.getCharge().getId();
-
             // Delete split
             splitRepository.delete(split);
-
-            log.info("Deleted charge stakeholder split: {} for charge: {}", splitId, chargeId);
-
             return new CommandProcessingResultBuilder().withEntityId(splitId).build();
 
         } catch (Exception e) {

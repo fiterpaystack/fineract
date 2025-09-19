@@ -101,7 +101,7 @@ public class ChargeData implements Comparable<ChargeData>, Serializable {
 
     private final Boolean varyAmounts;
     private List<ChargeSlabData> chargeSlabs;
-    
+
     // Additional attributes for custom extensions
     private final Map<String, Object> additionalAttributes;
 

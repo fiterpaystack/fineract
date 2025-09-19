@@ -1,7 +1,7 @@
 package com.paystack.fineract.portfolio.savings.data;
 
-import com.google.gson.JsonElement;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import jakarta.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -130,8 +130,8 @@ public class PaystackSavingsProductDataValidator extends SavingsProductDataValid
             if (paystackFromJsonHelper.parameterExists(PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES, element)) {
                 JsonArray discountRules = paystackFromJsonHelper
                         .extractJsonArrayNamed(PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES, element);
-                base.reset().parameter(PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES).value(discountRules)
-                        .notNull().jsonArrayNotEmpty();
+                base.reset().parameter(PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES).value(discountRules).notNull()
+                        .jsonArrayNotEmpty();
             }
         }
 

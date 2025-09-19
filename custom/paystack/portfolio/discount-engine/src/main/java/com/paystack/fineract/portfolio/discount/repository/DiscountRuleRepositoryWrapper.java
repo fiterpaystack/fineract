@@ -2,17 +2,16 @@ package com.paystack.fineract.portfolio.discount.repository;
 
 import com.paystack.fineract.portfolio.discount.domain.DiscountRule;
 import com.paystack.fineract.portfolio.discount.exception.DiscountRuleNotFoundException;
+import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
-
 /**
- * Repository wrapper for DiscountRule following core Fineract patterns.
- * Provides validation and error handling capabilities.
+ * Repository wrapper for DiscountRule following core Fineract patterns. Provides validation and error handling
+ * capabilities.
  */
 @Service
 @RequiredArgsConstructor
@@ -25,8 +24,7 @@ public class DiscountRuleRepositoryWrapper {
      * Find discount rule by ID with not found detection
      */
     public DiscountRule findOneWithNotFoundDetection(final Long id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new DiscountRuleNotFoundException(id));
+        return repository.findById(id).orElseThrow(() -> new DiscountRuleNotFoundException(id));
     }
 
     /**

@@ -217,7 +217,7 @@
         <!-- Add permissions for discount rules management -->
         <sql>
             INSERT INTO m_permission (grouping, code, entity_name, action_name, can_maker_checker)
-            VALUES 
+            VALUES
             ('portfolio', 'READ_DISCOUNTRULE', 'DISCOUNTRULE', 'READ', false),
             ('portfolio', 'CREATE_DISCOUNTRULE', 'DISCOUNTRULE', 'CREATE', true),
             ('portfolio', 'UPDATE_DISCOUNTRULE', 'DISCOUNTRULE', 'UPDATE', true),
