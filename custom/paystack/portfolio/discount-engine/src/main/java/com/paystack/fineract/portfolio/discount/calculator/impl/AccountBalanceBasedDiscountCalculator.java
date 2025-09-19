@@ -3,6 +3,7 @@ package com.paystack.fineract.portfolio.discount.calculator.impl;
 import com.paystack.fineract.portfolio.discount.annotation.DiscountRuleType;
 import com.paystack.fineract.portfolio.discount.calculator.DiscountRuleCalculator;
 import com.paystack.fineract.portfolio.discount.domain.DiscountContext;
+import com.paystack.fineract.portfolio.discount.repository.PaystackSavingsAccountTransactionRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -15,7 +16,6 @@ import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
-import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransactionRepository;
 import org.springframework.stereotype.Service;
 
 /**
@@ -28,7 +28,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class AccountBalanceBasedDiscountCalculator implements DiscountRuleCalculator {
 
-    private final SavingsAccountTransactionRepository transactionRepository;
+    private final PaystackSavingsAccountTransactionRepository transactionRepository;
 
     private BigDecimal minimumAverageBalance;
     private BigDecimal discountPercentage;
@@ -187,25 +187,28 @@ public class AccountBalanceBasedDiscountCalculator implements DiscountRuleCalcul
         // Get starting balance (from day before month start or first transaction)
         BigDecimal currentBalance = getStartingBalance(accountId, monthStart, transactions);
 
-        // Preprocess: Map each date to the last (chronologically latest) transaction for that date
-        Map<LocalDate, SavingsAccountTransaction> lastTransactionPerDay = new HashMap<>();
-        for (SavingsAccountTransaction transaction : transactions) {
-            if (!transaction.isReversed() && transaction.getRunningBalance() != null) {
-                LocalDate date = transaction.getDateOf();
-                SavingsAccountTransaction existing = lastTransactionPerDay.get(date);
-                if (existing == null || transaction.getCreatedDate().isAfter(existing.getCreatedDate())) {
-                    lastTransactionPerDay.put(date, transaction);
-                }
-            }
-        }
-
         // Process each day of the month
         LocalDate currentDate = monthStart;
+        int transactionIndex = 0;
+
         while (!currentDate.isAfter(monthEnd)) {
-            // Update balance if there is a transaction on this date
-            SavingsAccountTransaction lastTx = lastTransactionPerDay.get(currentDate);
-            if (lastTx != null) {
-                currentBalance = lastTx.getRunningBalance();
+            BigDecimal balanceAtStartOfDay = currentBalance;
+
+            // Update balance if there are transactions on this date
+            while (transactionIndex < transactions.size()) {
+                SavingsAccountTransaction transaction = transactions.get(transactionIndex);
+
+                if (transaction.getDateOf().isAfter(currentDate)) {
+                    break; // No more transactions for this date
+                }
+
+                if (transaction.getDateOf().equals(currentDate)) {
+                    if (!transaction.isReversed() && transaction.getRunningBalance() != null) {
+                        currentBalance = transaction.getRunningBalance();
+                    }
+                }
+
+                transactionIndex++;
             }
 
             // Add this day's balance to the total

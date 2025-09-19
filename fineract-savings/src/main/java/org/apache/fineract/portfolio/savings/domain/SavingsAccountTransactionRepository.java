@@ -53,8 +53,4 @@ public interface SavingsAccountTransactionRepository
     @Query("select sat from SavingsAccountTransaction sat where sat.savingsAccount.id = :savingsId and sat.dateOf <= :transactionDate and sat.reversed=false")
     List<SavingsAccountTransaction> findBySavingsAccountIdAndLessThanDateOfAndReversedIsFalse(@Param("savingsId") Long savingsId,
             @Param("transactionDate") LocalDate transactionDate, Pageable pageable);
-
-    @Query("SELECT t FROM SavingsAccountTransaction t WHERE t.savingsAccount.id = :accountId AND t.dateOf BETWEEN :startDate AND :endDate AND t.reversed = false ORDER BY t.dateOf, t.createdDate, t.id")
-    List<SavingsAccountTransaction> findTransactionsForPeriod(@Param("accountId") Long accountId, @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate);
 }

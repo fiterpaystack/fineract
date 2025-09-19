@@ -3,6 +3,7 @@ package com.paystack.fineract.portfolio.discount.calculator.impl;
 import com.paystack.fineract.portfolio.discount.annotation.DiscountRuleType;
 import com.paystack.fineract.portfolio.discount.calculator.DiscountRuleCalculator;
 import com.paystack.fineract.portfolio.discount.domain.DiscountContext;
+import com.paystack.fineract.portfolio.discount.repository.PaystackSavingsAccountTransactionRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -13,7 +14,6 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
-import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransactionRepository;
 import org.springframework.stereotype.Service;
 
 /**
@@ -25,7 +25,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class SavingsAccountTransactionFlowDiscountCalculator implements DiscountRuleCalculator {
 
-    private final SavingsAccountTransactionRepository transactionRepository;
+    private final PaystackSavingsAccountTransactionRepository transactionRepository;
 
     private BigDecimal thresholdAmount;
     private String directionType; // INFLOW, OUTFLOW, COMBINED
