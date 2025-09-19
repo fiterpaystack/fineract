@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.accounting.common.AccountingConstants.FinancialActivity;
 import org.apache.fineract.accounting.common.AccountingRuleType;
 import org.apache.fineract.accounting.financialactivityaccount.domain.FinancialActivityAccountRepositoryWrapper;
@@ -31,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Primary
+@Slf4j
 public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends SavingsProductWritePlatformServiceJpaRepositoryImpl {
 
     private final SavingsProductRepository savingsProductRepository;
@@ -232,7 +234,7 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
             }
         } catch (Exception e) {
             // Log error but don't fail the product operation
-            // Note: Using System.err for critical errors that shouldn't fail the operation
+            log.error("Failed to handle discount rules for product {}", productId, e);
         }
         return false;
     }

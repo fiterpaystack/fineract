@@ -9,6 +9,7 @@ import java.time.MonthDay;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.accounting.common.AccountingDropdownReadPlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainServiceJpa;
 import org.apache.fineract.infrastructure.core.data.EnumOptionData;
@@ -39,6 +40,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 @Order(2)
+@Slf4j
 public class PaystackChargeReadPlatformServiceImpl extends ChargeReadPlatformServiceImpl implements ChargeReadPlatformService {
 
     private final JdbcTemplate jdbcTemplate;
@@ -121,7 +123,7 @@ public class PaystackChargeReadPlatformServiceImpl extends ChargeReadPlatformSer
             }
         } catch (Exception e) {
             // Log error but don't fail the charge retrieval
-            // Note: Using System.err for critical errors that shouldn't fail the operation
+            log.error("Failed to retrieve discount rules for charge {}", chargeId, e);
         }
 
         return attributes;

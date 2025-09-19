@@ -1,5 +1,6 @@
 package com.paystack.fineract.portfolio.discount.api;
 
+import com.paystack.fineract.commands.service.PaystackCommandWrapperBuilder;
 import com.paystack.fineract.portfolio.discount.data.DiscountRuleData;
 import com.paystack.fineract.portfolio.discount.data.DiscountRuleTypeInfo;
 import com.paystack.fineract.portfolio.discount.service.DiscountRuleReadPlatformService;
@@ -26,7 +27,6 @@ import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.commands.domain.CommandWrapper;
-import com.paystack.fineract.commands.service.PaystackCommandWrapperBuilder;
 import org.apache.fineract.commands.service.PortfolioCommandSourceWritePlatformService;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.serialization.DefaultToApiJsonSerializer;

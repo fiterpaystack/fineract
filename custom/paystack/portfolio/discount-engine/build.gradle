@@ -5,6 +5,7 @@ dependencies {
     implementation project(':fineract-charge')
     implementation project(':fineract-accounting')
     implementation project(':fineract-tax')
+    implementation project(':custom:paystack:core:commands')
     
     // Spring Boot dependencies
     implementation("org.springframework.boot:spring-boot-starter:${springBootVersion}")

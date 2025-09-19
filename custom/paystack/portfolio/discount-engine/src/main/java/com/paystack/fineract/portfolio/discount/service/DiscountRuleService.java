@@ -326,12 +326,12 @@ public class DiscountRuleService {
                     return calculator.calculateDiscount(originalAmount, context);
                 }
             } catch (Exception e) {
-                log.warn("Failed to use calculator for rule {}: {}, falling back to legacy calculation", rule.getName(), e.getMessage());
+                log.warn("Failed to use calculator for rule {}: {}, returning zero discount", rule.getName(), e.getMessage());
             }
         }
 
-        // Fall back to legacy calculation
-        return BigDecimal.ZERO; // No legacy calculation available
+        // No calculator available or calculator failed - return zero discount
+        return BigDecimal.ZERO;
     }
 
     /**
