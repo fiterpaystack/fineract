@@ -1,11 +1,17 @@
 package com.paystack.fineract.portfolio.savings.service;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.paystack.fineract.portfolio.discount.service.DiscountRuleService;
 import com.paystack.fineract.portfolio.savings.data.PaystackSavingsProductAdditionalAttributes;
 import com.paystack.fineract.portfolio.savings.domain.PaystackSavingsProductAttributes;
 import com.paystack.fineract.portfolio.savings.domain.PaystackSavingsProductAttributesRepository;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.accounting.common.AccountingConstants.FinancialActivity;
 import org.apache.fineract.accounting.common.AccountingRuleType;
 import org.apache.fineract.accounting.financialactivityaccount.domain.FinancialActivityAccountRepositoryWrapper;
@@ -19,17 +25,22 @@ import org.apache.fineract.portfolio.savings.domain.SavingsProduct;
 import org.apache.fineract.portfolio.savings.domain.SavingsProductAssembler;
 import org.apache.fineract.portfolio.savings.domain.SavingsProductRepository;
 import org.apache.fineract.portfolio.savings.service.SavingsProductWritePlatformServiceJpaRepositoryImpl;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Primary
+@Slf4j
 public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends SavingsProductWritePlatformServiceJpaRepositoryImpl {
 
     private final SavingsProductRepository savingsProductRepository;
     private final FinancialActivityAccountRepositoryWrapper financialActivityAccountRepositoryWrapper;
     private final PaystackSavingsProductAttributesRepository paystackSavingsProductAttributesRepository;
+
+    @Autowired
+    private DiscountRuleService discountRuleService;
 
     public PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl(PlatformSecurityContext context,
             SavingsProductRepository savingProductRepository, SavingsProductDataValidator fromApiJsonDataValidator,
@@ -55,6 +66,8 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
             if (product != null) {
                 ensureEmtFinancialActivityConfigured(product, command);
                 applyEmtLevyIfPresent(command, product, true);
+                // Handle discount rules during product creation
+                handleDiscountRules(command, productId, true);
             }
         }
         return result;
@@ -66,17 +79,23 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
         CommandProcessingResult baseResult = super.update(productId, command);
         SavingsProduct product = savingsProductRepository.findById(productId).orElse(null);
         boolean emtUpdated = false;
+        boolean discountUpdated = false;
         if (product != null) {
             ensureEmtFinancialActivityConfigured(product, command);
             emtUpdated = applyEmtLevyIfPresent(command, product, false);
+            // Handle discount rules during product update
+            discountUpdated = handleDiscountRules(command, productId, false);
         }
-        if (emtUpdated) {
+
+        // Build result with changes
+        if (emtUpdated || discountUpdated) {
             CommandProcessingResultBuilder builder = new CommandProcessingResultBuilder().withEntityId(productId);
             if (baseResult.getChanges() != null) {
                 builder.with(baseResult.getChanges());
             }
             Map<String, Object> changes = baseResult.getChanges() != null ? baseResult.getChanges() : new HashMap<>();
 
+            // EMT changes
             if (command.parameterExists("isEmtLevyApplicable")) {
                 changes.put("isEmtLevyApplicable", command.booleanObjectValueOfParameterNamed("isEmtLevyApplicable"));
             }
@@ -86,12 +105,21 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
             if (command.parameterExists("emtLevyThreshold")) {
                 changes.put("emtLevyThreshold", command.bigDecimalValueOfParameterNamed("emtLevyThreshold"));
             }
-
             if (command.parameterExists("overrideGlobalEmtLevySetting")) {
                 changes.put("overrideGlobalEmtLevySetting", command.booleanObjectValueOfParameterNamed("overrideGlobalEmtLevySetting"));
             }
-            builder.with(changes);
 
+            // Discount changes
+            if (command.parameterExists(PaystackSavingsProductAdditionalAttributes.ENABLE_DISCOUNT_ENGINE)) {
+                changes.put(PaystackSavingsProductAdditionalAttributes.ENABLE_DISCOUNT_ENGINE,
+                        command.booleanObjectValueOfParameterNamed(PaystackSavingsProductAdditionalAttributes.ENABLE_DISCOUNT_ENGINE));
+            }
+            if (command.parameterExists(PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES)) {
+                // Discount rules are already handled above, just mark as updated
+                changes.put(PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES, "updated");
+            }
+
+            builder.with(changes);
             return builder.build();
         }
         return baseResult;
@@ -172,5 +200,42 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
 
     public boolean isAccountingEnabled(SavingsProduct product) {
         return product.getAccountingType() != null && !AccountingRuleType.NONE.getValue().equals(product.getAccountingType());
+    }
+
+    /**
+     * Handle discount rules during product creation/update Simplified approach - directly assign existing discount
+     * rules to product
+     */
+    private boolean handleDiscountRules(JsonCommand command, Long productId, boolean isNew) {
+        try {
+            // Check if discount rules are provided
+            if (command.parameterExists("discountRules")) {
+                JsonArray discountRulesArray = command.arrayOfParameterNamed("discountRules");
+                if (discountRulesArray != null && discountRulesArray.size() > 0) {
+                    // Extract discount rule IDs and assign them to the product
+                    List<Long> discountRuleIds = new ArrayList<>();
+                    for (int i = 0; i < discountRulesArray.size(); i++) {
+                        JsonObject ruleObject = discountRulesArray.get(i).getAsJsonObject();
+                        if (ruleObject.has("id")) {
+                            discountRuleIds.add(ruleObject.get("id").getAsLong());
+                        }
+                    }
+
+                    if (!discountRuleIds.isEmpty()) {
+                        // Assign discount rules to product using the discount rule service
+                        discountRuleService.assignDiscountRulesToProduct(productId, discountRuleIds);
+                        return true;
+                    }
+                } else {
+                    // If discountRules is provided but empty, remove all assignments
+                    discountRuleService.removeAllDiscountRulesFromProduct(productId);
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            // Log error but don't fail the product operation
+            log.error("Failed to handle discount rules for product {}", productId, e);
+        }
+        return false;
     }
 }

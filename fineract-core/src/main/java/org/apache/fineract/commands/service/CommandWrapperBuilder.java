@@ -3930,4 +3930,5 @@ public class CommandWrapperBuilder {
         this.href = "/savings/transactionlimits/classificationmapping/" + id;
         return this;
     }
+
 }

@@ -22,6 +22,7 @@ package com.paystack.fineract.portfolio.account.service;
 import com.paystack.fineract.client.charge.service.ClientChargeOverrideReadService;
 import com.paystack.fineract.portfolio.account.data.ChargePaymentResult;
 import com.paystack.fineract.portfolio.account.data.SavingsAccountTransactionLimitValidator;
+import com.paystack.fineract.portfolio.discount.service.ProductDiscountService;
 import com.paystack.fineract.portfolio.savings.domain.PaystackSavingsProductAttributesRepository;
 import io.micrometer.common.util.StringUtils;
 import java.math.BigDecimal;
@@ -63,6 +64,8 @@ import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransactionRep
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransactionSummaryWrapper;
 import org.apache.fineract.portfolio.savings.domain.SavingsEvent;
 import org.apache.fineract.portfolio.savings.exception.DepositAccountTransactionNotAllowedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -71,12 +74,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Primary
 public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomainServiceJpa {
 
+    private static final Logger log = LoggerFactory.getLogger(PaystackSavingsAccountDomainServiceJpa.class);
+
     private final SavingsAccountTransactionSummaryWrapper savingsAccountTransactionSummaryWrapper;
     private final SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService;
     private final ClientChargeOverrideReadService clientChargeOverrideReadService;
     private final FeeSplitService feeSplitService;
     private final SavingsAccountTransactionLimitValidator savingsAccountTransactionLimitValidator;
     private final PaystackSavingsProductAttributesRepository savingsProductAttributesRepository;
+    private final ProductDiscountService productDiscountService;
     private final NoteRepository noteRepository;
 
     public PaystackSavingsAccountDomainServiceJpa(SavingsAccountRepositoryWrapper savingsAccountRepository,
@@ -89,7 +95,8 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             SavingsAccountTransactionSummaryWrapper savingsAccountTransactionSummaryWrapper,
             SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService,
             ClientChargeOverrideReadService clientChargeOverrideReadService,
-            PaystackSavingsProductAttributesRepository savingsProductAttributesRepository, FeeSplitService feeSplitService) {
+            PaystackSavingsProductAttributesRepository savingsProductAttributesRepository, FeeSplitService feeSplitService,
+            ProductDiscountService productDiscountService) {
         super(savingsAccountRepository, savingsAccountTransactionRepository, applicationCurrencyRepositoryWrapper,
                 journalEntryWritePlatformService, configurationDomainService, context, depositAccountOnHoldTransactionRepository,
                 businessEventNotifierService);
@@ -99,6 +106,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         this.feeSplitService = feeSplitService;
         this.savingsAccountTransactionLimitValidator = savingsAccountTransactionLimitValidator;
         this.savingsProductAttributesRepository = savingsProductAttributesRepository;
+        this.productDiscountService = productDiscountService;
         this.noteRepository = noteRepository;
     }
 
@@ -252,12 +260,21 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             payWithdrawalFee(transactionDTO.getTransactionAmount(), transactionDTO.getTransactionDate(), transactionDTO.getPaymentDetail(),
                     backdatedTxnsAllowedTill, refNo, account, noteText);
         }
+
+        // Clean up discount service state after transaction completion
+        try {
+            productDiscountService.clearAppliedDiscounts();
+        } catch (Exception e) {
+            log.warn("Failed to clear discount service state for account {}: {}", account.getId(), e.getMessage());
+        }
+
         return transaction;
     }
 
     private void payWithdrawalFee(final BigDecimal transactionAmount, final LocalDate transactionDate, final PaymentDetail paymentDetail,
             final boolean backdatedTxnsAllowedTill, final String refNo, final SavingsAccount account, final String noteText) {
         for (SavingsAccountCharge charge : account.charges()) {
+
             if (!charge.isWithdrawalFee() || !charge.isActive()) {
                 continue;
             }
@@ -337,7 +354,11 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             if (amountToPay.compareTo(BigDecimal.ZERO) <= 0) {
                 continue; // nothing to pay
             }
-            Money moneyToPay = org.apache.fineract.organisation.monetary.domain.Money.of(account.getCurrency(), amountToPay);
+
+            // Apply discount to the charge amount before processing
+            BigDecimal discountedAmount = applyDiscountToChargeAmount(account, charge, amountToPay);
+
+            Money moneyToPay = org.apache.fineract.organisation.monetary.domain.Money.of(account.getCurrency(), discountedAmount);
             // Persist fee then VAT explicitly (mirrors deposit path) to guarantee ordering
             payChargeWithVatAndSave(account, charge, moneyToPay, transactionDate, refNo, backdatedTxnsAllowedTill, noteText);
         }
@@ -412,6 +433,13 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
                     backdatedTxnsAllowedTill);
         }
 
+        // Clean up discount service state after transaction completion
+        try {
+            productDiscountService.clearAppliedDiscounts();
+        } catch (Exception e) {
+            log.warn("Failed to clear discount service state for account {}: {}", account.getId(), e.getMessage());
+        }
+
         return deposit;
     }
 
@@ -475,7 +503,10 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
                 continue;
             }
 
-            Money moneyToPay = org.apache.fineract.organisation.monetary.domain.Money.of(account.getCurrency(), amountToPay);
+            // Apply discount to the charge amount before processing
+            BigDecimal discountedAmount = applyDiscountToChargeAmount(account, charge, amountToPay);
+
+            Money moneyToPay = org.apache.fineract.organisation.monetary.domain.Money.of(account.getCurrency(), discountedAmount);
             payChargeWithVatAndSave(account, charge, moneyToPay, transactionDate, refNo, backdatedTxnsAllowedTill, noteText);
         }
     }
@@ -511,6 +542,29 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         }
 
         this.savingsAccountRepository.saveAndFlush(account);
+    }
+
+    /**
+     * Apply discount rules to a charge amount during calculation
+     */
+    private BigDecimal applyDiscountToChargeAmount(SavingsAccount account, SavingsAccountCharge charge, BigDecimal originalAmount) {
+
+        try {
+            // Get the product ID from the savings account
+            Long productId = account.productId();
+
+            // Apply discount using the product discount service
+            BigDecimal discountedAmount = productDiscountService.applyDiscount(productId, originalAmount, charge.getCharge().getId());
+
+            return discountedAmount;
+
+        } catch (Exception e) {
+            log.error("WITHDRAWAL DISCOUNT: Error applying discount to charge {} for account {} - Stack trace: {}",
+                    charge.getCharge().getId(), account.getId(), e.getStackTrace()[0], e);
+
+            // Return original amount if discount application fails - graceful degradation
+            return originalAmount;
+        }
     }
 
     private void payEmtLevyOnTransaction(SavingsAccount account, Money amount, LocalDate transactionDate, String refNo,

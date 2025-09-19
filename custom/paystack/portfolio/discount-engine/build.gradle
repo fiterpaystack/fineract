@@ -1,0 +1,39 @@
+dependencies {
+    implementation project(':fineract-core')
+    implementation project(':fineract-provider')
+    implementation project(':fineract-savings')
+    implementation project(':fineract-charge')
+    implementation project(':fineract-accounting')
+    implementation project(':fineract-tax')
+    implementation project(':custom:paystack:core:commands')
+    
+    // Spring Boot dependencies
+    implementation("org.springframework.boot:spring-boot-starter:${springBootVersion}")
+    compileOnly("org.springframework.boot:spring-boot-autoconfigure:${springBootVersion}")
+    
+    // Spring Data JPA
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa:${springBootVersion}") {
+        exclude group: 'org.hibernate'
+    }
+    
+    // EclipseLink JPA
+    implementation("org.eclipse.persistence:org.eclipse.persistence.jpa:${eclipseLinkVersion}")
+    
+    // Jackson for JSON processing
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    
+    // JAX-RS dependencies
+    implementation 'jakarta.ws.rs:jakarta.ws.rs-api'
+    implementation 'io.swagger.core.v3:swagger-annotations-jakarta'
+    
+    // Lombok
+    compileOnly "org.projectlombok:lombok:${lombokVersion}"
+    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+    
+    // Test dependencies
+    testImplementation(platform('org.junit:junit-bom:5.9.2'))
+    testImplementation('org.junit.jupiter:junit-jupiter')
+    testImplementation('org.mockito:mockito-junit-jupiter:5.3.1')
+    testImplementation('org.mockito:mockito-core:5.3.1')
+    testRuntimeOnly('org.junit.jupiter:junit-jupiter-engine')
+}

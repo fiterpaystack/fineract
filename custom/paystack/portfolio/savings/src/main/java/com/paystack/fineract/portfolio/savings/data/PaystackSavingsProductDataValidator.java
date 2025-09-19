@@ -1,5 +1,6 @@
 package com.paystack.fineract.portfolio.savings.data;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import jakarta.annotation.PostConstruct;
 import java.math.BigDecimal;
@@ -34,19 +35,24 @@ public class PaystackSavingsProductDataValidator extends SavingsProductDataValid
                 PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE_FOR_DEPOSIT,
                 PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE_FOR_WITHDRAW,
                 PaystackSavingsProductAdditionalAttributes.EMT_LEVY_AMOUNT, PaystackSavingsProductAdditionalAttributes.EMT_LEVY_THRESHOLD,
-                PaystackSavingsProductAdditionalAttributes.EMT_OVERRIDE_GLOBAL_LEVY));
+                PaystackSavingsProductAdditionalAttributes.EMT_OVERRIDE_GLOBAL_LEVY,
+                // Discount Engine Parameters
+                PaystackSavingsProductAdditionalAttributes.ENABLE_DISCOUNT_ENGINE,
+                PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES));
     }
 
     @Override
     public void validateForCreate(String json) {
         super.validateForCreate(json);
         validateEmtLevyParams(json);
+        validateDiscountParams(json);
     }
 
     @Override
     public void validateForUpdate(String json, SavingsProduct product) {
         super.validateForUpdate(json, product);
         validateEmtLevyParams(json);
+        validateDiscountParams(json);
     }
 
     private void validateEmtLevyParams(String json) {
@@ -98,6 +104,35 @@ public class PaystackSavingsProductDataValidator extends SavingsProductDataValid
         // If any applicability flag is true, levy amount must be supplied (and non-negative validated earlier)
         if (Boolean.TRUE.equals(overrideGlobal)) {
             base.reset().parameter(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_AMOUNT).value(levyAmount).notNull();
+        }
+
+        if (!dataValidationErrors.isEmpty()) {
+            throw new PlatformApiDataValidationException(dataValidationErrors);
+        }
+    }
+
+    private void validateDiscountParams(String json) {
+        final JsonElement element = this.paystackFromJsonHelper.parse(json);
+        final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+        final DataValidatorBuilder base = new DataValidatorBuilder(dataValidationErrors).resource("savingsproduct.discount");
+
+        // Validate enableDiscountEngine parameter
+        Boolean enableDiscountEngine = null;
+        if (paystackFromJsonHelper.parameterExists(PaystackSavingsProductAdditionalAttributes.ENABLE_DISCOUNT_ENGINE, element)) {
+            enableDiscountEngine = paystackFromJsonHelper
+                    .extractBooleanNamed(PaystackSavingsProductAdditionalAttributes.ENABLE_DISCOUNT_ENGINE, element);
+            base.reset().parameter(PaystackSavingsProductAdditionalAttributes.ENABLE_DISCOUNT_ENGINE).value(enableDiscountEngine)
+                    .ignoreIfNull().validateForBooleanValue();
+        }
+
+        // Validate discountRules parameter (if discount engine is enabled)
+        if (Boolean.TRUE.equals(enableDiscountEngine)) {
+            if (paystackFromJsonHelper.parameterExists(PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES, element)) {
+                JsonArray discountRules = paystackFromJsonHelper
+                        .extractJsonArrayNamed(PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES, element);
+                base.reset().parameter(PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES).value(discountRules).notNull()
+                        .jsonArrayNotEmpty();
+            }
         }
 
         if (!dataValidationErrors.isEmpty()) {

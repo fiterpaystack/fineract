@@ -6,11 +6,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @Configuration
-@EnableJpaRepositories(basePackages = { "com.paystack.fineract.portfolio.savings.domain" })
+@EnableJpaRepositories(basePackages = { "com.paystack.fineract.portfolio.savings.domain",
+        "com.paystack.fineract.portfolio.savings.repository" })
 public class PaystackSavingsJpaConfig implements EntityManagerFactoryCustomizer {
 
     @Override
     public Set<String> additionalPackagesToScan() {
-        return Set.of("com.paystack.fineract.portfolio.savings.domain");
+        return Set.of("com.paystack.fineract.portfolio.savings.domain", "com.paystack.fineract.portfolio.savings.repository");
     }
 }

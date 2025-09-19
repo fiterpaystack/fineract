@@ -19,4 +19,5 @@
 
 dependencies {
     implementation(project(':fineract-savings'))
+    implementation(project(':custom:paystack:portfolio:discount-engine'))
 }

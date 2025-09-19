@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="paystack-discount-0001-create-discount-engine" author="paystack">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <not>
+                    <tableExists tableName="m_discount_rule"/>
+                </not>
+                <not>
+                    <tableExists tableName="m_discount_application"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Create consolidated discount engine tables and permissions</comment>
+
+        <!-- Discount Rule table (final simplified structure) -->
+        <createTable tableName="m_discount_rule">
+            <column name="id" type="bigint(20)" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="name" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="varchar(500)"/>
+            <column name="rule_type" type="varchar(50)"/>
+            <column name="rule_parameters" type="text"/>
+            <column name="is_active" type="boolean" defaultValueBoolean="true"/>
+            <column name="priority" type="int" defaultValueNumeric="0"/>
+            <column name="created_by" type="bigint(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on_utc" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="bigint(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Discount Application table (audit/history) -->
+        <createTable tableName="m_discount_application">
+            <column name="id" type="bigint(20)" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="discount_rule_id" type="bigint(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="entity_type" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="entity_id" type="bigint(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="charge_id" type="bigint(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="original_amount" type="decimal(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="discount_amount" type="decimal(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="final_amount" type="decimal(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="application_date" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+            <column name="transaction_id" type="bigint(20)"/>
+            <column name="created_by" type="bigint(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on_utc" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="bigint(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Assignment tables (simplified many-to-many relationships) -->
+        <createTable tableName="m_discount_rule_charge">
+            <column name="discount_rule_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="charge_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createTable tableName="m_discount_rule_product">
+            <column name="discount_rule_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="product_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Indexes for performance -->
+        <createIndex tableName="m_discount_rule" indexName="idx_discount_rule_active">
+            <column name="is_active"/>
+        </createIndex>
+
+        <createIndex tableName="m_discount_rule" indexName="idx_discount_rule_type">
+            <column name="rule_type"/>
+        </createIndex>
+
+        <createIndex tableName="m_discount_rule" indexName="idx_discount_rule_priority">
+            <column name="priority"/>
+        </createIndex>
+
+        <createIndex tableName="m_discount_application" indexName="idx_discount_application_rule_id">
+            <column name="discount_rule_id"/>
+        </createIndex>
+
+        <createIndex tableName="m_discount_application" indexName="idx_discount_application_entity">
+            <column name="entity_type"/>
+            <column name="entity_id"/>
+        </createIndex>
+
+        <createIndex tableName="m_discount_application" indexName="idx_discount_application_charge_id">
+            <column name="charge_id"/>
+        </createIndex>
+
+        <createIndex tableName="m_discount_application" indexName="idx_discount_application_date">
+            <column name="application_date"/>
+        </createIndex>
+
+        <!-- Assignment table indexes -->
+        <createIndex tableName="m_discount_rule_charge" indexName="idx_drc_discount_rule_id">
+            <column name="discount_rule_id"/>
+        </createIndex>
+
+        <createIndex tableName="m_discount_rule_charge" indexName="idx_drc_charge_id">
+            <column name="charge_id"/>
+        </createIndex>
+
+        <createIndex tableName="m_discount_rule_product" indexName="idx_drp_discount_rule_id">
+            <column name="discount_rule_id"/>
+        </createIndex>
+
+        <createIndex tableName="m_discount_rule_product" indexName="idx_drp_product_id">
+            <column name="product_id"/>
+        </createIndex>
+
+        <!-- Foreign Key Constraints -->
+        <addForeignKeyConstraint baseColumnNames="discount_rule_id" baseTableName="m_discount_application"
+                                 constraintName="FK_discount_application_rule_id" deferrable="false" initiallyDeferred="false"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT" referencedColumnNames="id"
+                                 referencedTableName="m_discount_rule" validate="true"/>
+
+        <addForeignKeyConstraint baseColumnNames="created_by" baseTableName="m_discount_rule"
+                                 constraintName="FK_discount_rule_created_by" deferrable="false" initiallyDeferred="false"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT" referencedColumnNames="id"
+                                 referencedTableName="m_appuser" validate="true"/>
+
+        <addForeignKeyConstraint baseColumnNames="last_modified_by" baseTableName="m_discount_rule"
+                                 constraintName="FK_discount_rule_modified_by" deferrable="false" initiallyDeferred="false"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT" referencedColumnNames="id"
+                                 referencedTableName="m_appuser" validate="true"/>
+
+        <addForeignKeyConstraint baseColumnNames="created_by" baseTableName="m_discount_application"
+                                 constraintName="FK_discount_application_created_by" deferrable="false" initiallyDeferred="false"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT" referencedColumnNames="id"
+                                 referencedTableName="m_appuser" validate="true"/>
+
+        <addForeignKeyConstraint baseColumnNames="last_modified_by" baseTableName="m_discount_application"
+                                 constraintName="FK_discount_application_modified_by" deferrable="false" initiallyDeferred="false"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT" referencedColumnNames="id"
+                                 referencedTableName="m_appuser" validate="true"/>
+
+        <!-- Assignment table foreign keys -->
+        <addForeignKeyConstraint baseTableName="m_discount_rule_charge"
+                                 baseColumnNames="discount_rule_id"
+                                 referencedTableName="m_discount_rule"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_drc_discount_rule_id"/>
+
+        <addForeignKeyConstraint baseTableName="m_discount_rule_charge"
+                                 baseColumnNames="charge_id"
+                                 referencedTableName="m_charge"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_drc_charge_id"/>
+
+        <addForeignKeyConstraint baseTableName="m_discount_rule_product"
+                                 baseColumnNames="discount_rule_id"
+                                 referencedTableName="m_discount_rule"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_drp_discount_rule_id"/>
+
+        <addForeignKeyConstraint baseTableName="m_discount_rule_product"
+                                 baseColumnNames="product_id"
+                                 referencedTableName="m_savings_product"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_drp_product_id"/>
+
+        <!-- Unique constraints to prevent duplicate assignments -->
+        <addUniqueConstraint tableName="m_discount_rule_charge"
+                             columnNames="discount_rule_id,charge_id"
+                             constraintName="uq_drc_rule_charge"/>
+
+        <addUniqueConstraint tableName="m_discount_rule_product"
+                             columnNames="discount_rule_id,product_id"
+                             constraintName="uq_drp_rule_product"/>
+
+        <!-- Add permissions for discount rules management -->
+        <sql>
+            INSERT INTO m_permission (grouping, code, entity_name, action_name, can_maker_checker)
+            VALUES
+            ('portfolio', 'READ_DISCOUNTRULE', 'DISCOUNTRULE', 'READ', false),
+            ('portfolio', 'CREATE_DISCOUNTRULE', 'DISCOUNTRULE', 'CREATE', true),
+            ('portfolio', 'UPDATE_DISCOUNTRULE', 'DISCOUNTRULE', 'UPDATE', true),
+            ('portfolio', 'DELETE_DISCOUNTRULE', 'DISCOUNTRULE', 'DELETE', true);
+        </sql>
+
+    </changeSet>
+
+</databaseChangeLog>

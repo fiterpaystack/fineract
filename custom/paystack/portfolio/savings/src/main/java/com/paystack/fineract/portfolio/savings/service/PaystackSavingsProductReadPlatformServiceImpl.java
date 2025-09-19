@@ -1,15 +1,19 @@
 package com.paystack.fineract.portfolio.savings.service;
 
+import com.paystack.fineract.portfolio.discount.data.DiscountRuleData;
+import com.paystack.fineract.portfolio.discount.service.DiscountRuleService;
 import com.paystack.fineract.portfolio.savings.data.PaystackSavingsProductAdditionalAttributes;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.List;
 import org.apache.fineract.infrastructure.entityaccess.service.FineractEntityAccessUtil;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.portfolio.savings.DepositAccountType;
 import org.apache.fineract.portfolio.savings.data.SavingsProductData;
 import org.apache.fineract.portfolio.savings.exception.SavingsProductNotFoundException;
 import org.apache.fineract.portfolio.savings.service.SavingsProductReadPlatformServiceImpl;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -21,6 +25,9 @@ import org.springframework.stereotype.Service;
 public class PaystackSavingsProductReadPlatformServiceImpl extends SavingsProductReadPlatformServiceImpl {
 
     private final PaystackSavingsProductMapper paystackSavingsProductMapper = new PaystackSavingsProductMapper();
+
+    @Autowired
+    private DiscountRuleService discountRuleService;
 
     public PaystackSavingsProductReadPlatformServiceImpl(PlatformSecurityContext context, JdbcTemplate jdbcTemplate,
             FineractEntityAccessUtil fineractEntityAccessUtil) {
@@ -55,17 +62,33 @@ public class PaystackSavingsProductReadPlatformServiceImpl extends SavingsProduc
         public SavingsProductData mapRow(ResultSet rs, int rowNum) throws SQLException {
             // First map using parent mapper
             SavingsProductData base = savingsProductRowMapper.mapRow(rs, rowNum);
-            HashMap<String, Object> additionalAttriubtes = new HashMap<>();
-            additionalAttriubtes.put(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_AMOUNT, rs.getBigDecimal("emtLevyAmount"));
-            additionalAttriubtes.put(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE_FOR_WITHDRAW,
-                    rs.getBoolean("isEmtLevyApplicableForWithdraw"));
-            additionalAttriubtes.put(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE_FOR_DEPOSIT,
-                    rs.getBoolean("isEmtLevyApplicableForDeposit"));
-            additionalAttriubtes.put(PaystackSavingsProductAdditionalAttributes.EMT_OVERRIDE_GLOBAL_LEVY,
-                    rs.getBoolean("emtOverrideGlobalLevy"));
-            additionalAttriubtes.put(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_THRESHOLD, rs.getBigDecimal("emtLevyThreshold"));
+            HashMap<String, Object> additionalAttributes = new HashMap<>();
 
-            base.setAdditionalAttributes(additionalAttriubtes);
+            // EMT attributes
+            additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_AMOUNT, rs.getBigDecimal("emtLevyAmount"));
+            additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE_FOR_WITHDRAW,
+                    rs.getBoolean("isEmtLevyApplicableForWithdraw"));
+            additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_APPLICABLE_FOR_DEPOSIT,
+                    rs.getBoolean("isEmtLevyApplicableForDeposit"));
+            additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.EMT_OVERRIDE_GLOBAL_LEVY,
+                    rs.getBoolean("emtOverrideGlobalLevy"));
+            additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_THRESHOLD, rs.getBigDecimal("emtLevyThreshold"));
+
+            // Discount attributes - retrieve assigned discount rules for this product
+            try {
+                Long productId = base.getId();
+                List<com.paystack.fineract.portfolio.discount.domain.DiscountRule> assignedRules = discountRuleService
+                        .getAssignedDiscountRules("SAVINGS_PRODUCT", productId);
+                List<DiscountRuleData> assignedRulesData = assignedRules.stream().map(discountRuleService::mapToData).toList();
+                additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.ENABLE_DISCOUNT_ENGINE, !assignedRulesData.isEmpty());
+                additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES, assignedRulesData);
+            } catch (Exception e) {
+                // If discount service is not available or fails, set defaults
+                additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.ENABLE_DISCOUNT_ENGINE, false);
+                additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES, List.of());
+            }
+
+            base.setAdditionalAttributes(additionalAttributes);
 
             return base;
         }

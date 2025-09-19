@@ -1,10 +1,15 @@
 package com.paystack.fineract.portfolio.charge.service;
 
+import com.paystack.fineract.portfolio.charge.data.PaystackChargeData;
+import com.paystack.fineract.portfolio.discount.service.DiscountRuleService;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.MonthDay;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.accounting.common.AccountingDropdownReadPlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainServiceJpa;
 import org.apache.fineract.infrastructure.core.data.EnumOptionData;
@@ -35,19 +40,23 @@ import org.springframework.stereotype.Service;
  */
 @Service
 @Order(2)
+@Slf4j
 public class PaystackChargeReadPlatformServiceImpl extends ChargeReadPlatformServiceImpl implements ChargeReadPlatformService {
 
     private final JdbcTemplate jdbcTemplate;
+    private final DiscountRuleService discountRuleService;
 
     public PaystackChargeReadPlatformServiceImpl(CurrencyReadPlatformService currencyReadPlatformService,
             ChargeDropdownReadPlatformService chargeDropdownReadPlatformService, JdbcTemplate jdbcTemplate,
             DropdownReadPlatformService dropdownReadPlatformService, FineractEntityAccessUtil fineractEntityAccessUtil,
             AccountingDropdownReadPlatformService accountingDropdownReadPlatformService, TaxReadPlatformService taxReadPlatformService,
-            ConfigurationDomainServiceJpa configurationDomainServiceJpa, NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
+            ConfigurationDomainServiceJpa configurationDomainServiceJpa, NamedParameterJdbcTemplate namedParameterJdbcTemplate,
+            DiscountRuleService discountRuleService) {
         super(currencyReadPlatformService, chargeDropdownReadPlatformService, jdbcTemplate, dropdownReadPlatformService,
                 fineractEntityAccessUtil, accountingDropdownReadPlatformService, taxReadPlatformService, configurationDomainServiceJpa,
                 namedParameterJdbcTemplate);
         this.jdbcTemplate = jdbcTemplate;
+        this.discountRuleService = discountRuleService;
     }
 
     /**
@@ -73,10 +82,51 @@ public class PaystackChargeReadPlatformServiceImpl extends ChargeReadPlatformSer
                 chargeData.setChargeSlabs(slabData);
             }
 
-            return chargeData;
+            // Get additional attributes including discount rules (only for savings charges)
+            Map<String, Object> additionalAttributes = new HashMap<>();
+            if (chargeData.getChargeAppliesTo().getId() == 2) { // 2 = Savings
+                additionalAttributes = getAdditionalAttributes(chargeId);
+            }
+
+            // Convert to PaystackChargeData and return as ChargeData for backward compatibility
+            PaystackChargeData paystackChargeData = PaystackChargeData.fromChargeData(chargeData, additionalAttributes);
+            return paystackChargeData.toChargeData();
         } catch (final org.springframework.dao.EmptyResultDataAccessException e) {
             throw new org.apache.fineract.portfolio.charge.exception.ChargeNotFoundException(chargeId, e);
         }
+    }
+
+    /**
+     * Get additional attributes for a charge including discount rules
+     */
+    private Map<String, Object> getAdditionalAttributes(Long chargeId) {
+        Map<String, Object> attributes = new HashMap<>();
+
+        try {
+            // Get assigned discount rules for this charge
+            List<com.paystack.fineract.portfolio.discount.domain.DiscountRule> rules = discountRuleService
+                    .getAssignedDiscountRules("CHARGE", chargeId);
+
+            if (!rules.isEmpty()) {
+                List<Map<String, Object>> discountRules = rules.stream().map(rule -> {
+                    Map<String, Object> ruleMap = new HashMap<>();
+                    ruleMap.put("id", rule.getId());
+                    ruleMap.put("name", rule.getName());
+                    ruleMap.put("ruleType", rule.getRuleType());
+                    ruleMap.put("ruleParametersJson", rule.getRuleParametersJson());
+                    ruleMap.put("active", rule.isActive());
+                    ruleMap.put("rulePriority", rule.getRulePriority());
+                    return ruleMap;
+                }).collect(java.util.stream.Collectors.toList());
+
+                attributes.put("discountRules", discountRules);
+            }
+        } catch (Exception e) {
+            // Log error but don't fail the charge retrieval
+            log.error("Failed to retrieve discount rules for charge {}", chargeId, e);
+        }
+
+        return attributes;
     }
 
     /**
