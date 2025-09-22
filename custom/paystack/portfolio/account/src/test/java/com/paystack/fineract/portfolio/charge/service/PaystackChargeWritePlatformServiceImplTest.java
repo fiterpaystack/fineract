@@ -173,5 +173,3 @@ class PaystackChargeWritePlatformServiceImplTest {
                 () -> service.updateCharge(12L, command));
     }
 }
-
-

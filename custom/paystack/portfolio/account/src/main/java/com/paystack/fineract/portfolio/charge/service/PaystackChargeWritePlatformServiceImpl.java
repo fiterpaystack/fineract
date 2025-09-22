@@ -6,14 +6,14 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Objects;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.accounting.glaccount.domain.GLAccountRepositoryWrapper;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
-import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.entityaccess.service.FineractEntityAccessUtil;
@@ -245,8 +245,7 @@ public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformS
 
     private boolean isConfigEnabled(String name, boolean defaultValue) {
         try {
-            Integer val = this.jdbcTemplate.queryForObject(
-                    "select value from c_configuration where name = ?", Integer.class, name);
+            Integer val = this.jdbcTemplate.queryForObject("select value from c_configuration where name = ?", Integer.class, name);
             if (val == null) {
                 return defaultValue;
             }
