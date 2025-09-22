@@ -128,17 +128,17 @@ public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformS
                 String raw = command.stringValueOfParameterNamed("taxGroupId");
                 if (raw == null || raw.isBlank()) {
                     requestedTaxGroupId = null; // explicit removal or blank treated as removal
-                    } else {
-                        try {
-                            requestedTaxGroupId = Long.valueOf(raw);
-                        } catch (NumberFormatException ex) {
-                            final List<ApiParameterError> errors = new ArrayList<>();
-                            new DataValidatorBuilder(errors).resource("charges").parameter("taxGroupId")
-                                    .failWithCodeNoParameterAddedToErrorCode("invalid.taxgroupid");
-                            log.debug("Invalid taxGroupId value provided: {}", raw, ex);
-                            throw new PlatformApiDataValidationException(errors, ex);
-                        }
+                } else {
+                    try {
+                        requestedTaxGroupId = Long.valueOf(raw);
+                    } catch (NumberFormatException ex) {
+                        final List<ApiParameterError> errors = new ArrayList<>();
+                        new DataValidatorBuilder(errors).resource("charges").parameter("taxGroupId")
+                                .failWithCodeNoParameterAddedToErrorCode("invalid.taxgroupid");
+                        log.debug("Invalid taxGroupId value provided: {}", raw, ex);
+                        throw new PlatformApiDataValidationException(errors, ex);
                     }
+                }
             }
 
             if (Objects.equals(previousTaxGroupId, requestedTaxGroupId)) {
