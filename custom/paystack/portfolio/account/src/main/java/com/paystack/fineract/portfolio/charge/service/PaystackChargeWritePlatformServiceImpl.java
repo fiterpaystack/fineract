@@ -29,6 +29,7 @@ import org.apache.fineract.portfolio.paymenttype.domain.PaymentTypeRepositoryWra
 import org.apache.fineract.portfolio.tax.domain.TaxGroup;
 import org.apache.fineract.portfolio.tax.domain.TaxGroupRepositoryWrapper;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -123,10 +124,20 @@ public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformS
 
             Long previousTaxGroupId = chargeForUpdate.getTaxGroup() != null ? chargeForUpdate.getTaxGroup().getId() : null;
             Long requestedTaxGroupId = null;
-            try {
-                requestedTaxGroupId = command.longValueOfParameterNamed("taxGroupId");
-            } catch (Exception ignore) {
-                // leave as null if unable to parse; null means removal when parameter present
+            if (command.parameterExists("taxGroupId")) {
+                String raw = command.stringValueOfParameterNamed("taxGroupId");
+                if (raw == null || raw.isBlank()) {
+                    requestedTaxGroupId = null; // explicit removal or blank treated as removal
+                } else {
+                    try {
+                        requestedTaxGroupId = Long.valueOf(raw);
+                    } catch (NumberFormatException ex) {
+                        final List<ApiParameterError> errors = new ArrayList<>();
+                        new DataValidatorBuilder(errors).resource("charges").parameter("taxGroupId")
+                                .failWithCodeNoParameterAddedToErrorCode("invalid.taxgroupid");
+                        throw new PlatformApiDataValidationException(errors);
+                    }
+                }
             }
 
             if (Objects.equals(previousTaxGroupId, requestedTaxGroupId)) {
@@ -240,7 +251,7 @@ public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformS
                 return defaultValue;
             }
             return val.intValue() == 1;
-        } catch (Exception e) {
+        } catch (DataAccessException e) {
             log.warn("Could not read config {}: {} -- using default {}", name, e.getMessage(), defaultValue);
             return defaultValue;
         }
