@@ -3,13 +3,16 @@ package com.paystack.fineract.portfolio.charge.service;
 import com.google.gson.JsonArray;
 import com.paystack.fineract.portfolio.discount.service.DiscountRuleService;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.accounting.glaccount.domain.GLAccountRepositoryWrapper;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
+import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.entityaccess.service.FineractEntityAccessUtil;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.portfolio.charge.domain.Charge;
@@ -21,6 +24,7 @@ import org.apache.fineract.portfolio.charge.service.ChargeWritePlatformService;
 import org.apache.fineract.portfolio.charge.service.ChargeWritePlatformServiceJpaRepositoryImpl;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProductRepository;
 import org.apache.fineract.portfolio.paymenttype.domain.PaymentTypeRepositoryWrapper;
+import org.apache.fineract.portfolio.tax.domain.TaxGroup;
 import org.apache.fineract.portfolio.tax.domain.TaxGroupRepositoryWrapper;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -40,6 +44,8 @@ public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformS
     private final ChargeSlabRepository chargeSlabRepository;
     private final ChargeDefinitionCommandFromApiJsonDeserializer fromApiJsonDeserializer;
     private final DiscountRuleService discountRuleService;
+    private final TaxGroupRepositoryWrapper taxGroupRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     public PaystackChargeWritePlatformServiceImpl(PlatformSecurityContext context,
             ChargeDefinitionCommandFromApiJsonDeserializer fromApiJsonDeserializer, ChargeRepository chargeRepository,
@@ -54,6 +60,8 @@ public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformS
         this.chargeSlabRepository = chargeSlabRepository;
         this.fromApiJsonDeserializer = fromApiJsonDeserializer;
         this.discountRuleService = discountRuleService;
+        this.taxGroupRepository = taxGroupRepository;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Override
@@ -99,6 +107,56 @@ public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformS
     @Override
     public CommandProcessingResult updateCharge(final Long chargeId, final JsonCommand command) {
 
+        // If taxGroupId is explicitly present, handle update/removal here to bypass core immutability
+        if (command.parameterExists("taxGroupId")) {
+            // Basic validation on other fields (keeps parity with core validation)
+            this.fromApiJsonDeserializer.validateForUpdate(command.json());
+
+            Optional<Charge> optionalCharge = chargeRepository.findById(chargeId);
+            if (optionalCharge.isEmpty()) {
+                // Delegate to super to throw consistent not-found exception
+                return super.updateCharge(chargeId, command);
+            }
+
+            Charge chargeForUpdate = optionalCharge.get();
+
+            Long previousTaxGroupId = chargeForUpdate.getTaxGroup() != null ? chargeForUpdate.getTaxGroup().getId() : null;
+            Long requestedTaxGroupId = null;
+            try {
+                requestedTaxGroupId = command.longValueOfParameterNamed("taxGroupId");
+            } catch (Exception ignore) {
+                // leave as null if unable to parse; null means removal when parameter present
+            }
+
+            if (Objects.equals(previousTaxGroupId, requestedTaxGroupId)) {
+                // No change, fall back to core to process other fields
+                return super.updateCharge(chargeId, command);
+            }
+
+            // Usage checks (loans, savings, client, share charges)
+            long usageCount = countChargeUsage(chargeId);
+
+            TaxGroup newTaxGroup = null;
+            if (requestedTaxGroupId != null) {
+                newTaxGroup = this.taxGroupRepository.findOneWithNotFoundDetection(requestedTaxGroupId);
+            }
+
+            chargeForUpdate.setTaxGroup(newTaxGroup);
+            this.chargeRepository.save(chargeForUpdate);
+
+            // Build changes map including audit-friendly fields and warnings
+            Map<String, Object> changes = new LinkedHashMap<>();
+            changes.put("previousTaxGroupId", previousTaxGroupId);
+            changes.put("newTaxGroupId", requestedTaxGroupId);
+            if (usageCount > 0) {
+                List<String> warnings = new ArrayList<>();
+                warnings.add("Charge has been used in " + usageCount + " historical records. No retroactive changes.");
+                changes.put("warnings", warnings);
+            }
+
+            return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(chargeId).with(changes).build();
+        }
+
         // Extract parameters BEFORE calling super method to avoid consumption by core Fineract processing
         boolean hasDiscountRules = command.parameterExists("discountRules");
         Integer chargeAppliesToInt = command.integerValueOfParameterNamed("chargeAppliesTo");
@@ -138,5 +196,24 @@ public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformS
         }
 
         return result;
+    }
+
+    private long countChargeUsage(Long chargeId) {
+        long total = 0;
+        total += safeCount("select count(1) from m_loan_charge where charge_id = ?", chargeId);
+        total += safeCount("select count(1) from m_savings_account_charge where charge_id = ?", chargeId);
+        total += safeCount("select count(1) from m_client_charge where charge_id = ?", chargeId);
+        total += safeCount("select count(1) from m_share_account_charge where charge_id = ?", chargeId);
+        return total;
+    }
+
+    private long safeCount(String sql, Long id) {
+        try {
+            Long cnt = this.jdbcTemplate.queryForObject(sql, Long.class, id);
+            return cnt != null ? cnt : 0L;
+        } catch (Exception e) {
+            log.warn("Count query failed: {} -- {}", sql, e.getMessage());
+            return 0L;
+        }
     }
 }
