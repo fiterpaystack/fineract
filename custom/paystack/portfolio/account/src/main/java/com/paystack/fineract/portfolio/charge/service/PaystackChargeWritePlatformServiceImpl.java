@@ -234,9 +234,12 @@ public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformS
 
     private boolean isConfigEnabled(String name, boolean defaultValue) {
         try {
-            Boolean val = this.jdbcTemplate.queryForObject(
-                    "select coalesce(value, default_value) from c_configuration where name = ?", Boolean.class, name);
-            return val != null ? val : defaultValue;
+            Integer val = this.jdbcTemplate.queryForObject(
+                    "select value from c_configuration where name = ?", Integer.class, name);
+            if (val == null) {
+                return defaultValue;
+            }
+            return val.intValue() == 1;
         } catch (Exception e) {
             log.warn("Could not read config {}: {} -- using default {}", name, e.getMessage(), defaultValue);
             return defaultValue;
