@@ -13,6 +13,9 @@ import org.apache.fineract.accounting.glaccount.domain.GLAccountRepositoryWrappe
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
+import org.apache.fineract.infrastructure.core.data.ApiParameterError;
+import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
+import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.entityaccess.service.FineractEntityAccessUtil;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.portfolio.charge.domain.Charge;
@@ -20,7 +23,6 @@ import org.apache.fineract.portfolio.charge.domain.ChargeRepository;
 import org.apache.fineract.portfolio.charge.domain.ChargeSlab;
 import org.apache.fineract.portfolio.charge.domain.ChargeSlabRepository;
 import org.apache.fineract.portfolio.charge.serialization.ChargeDefinitionCommandFromApiJsonDeserializer;
-import org.apache.fineract.portfolio.charge.service.ChargeWritePlatformService;
 import org.apache.fineract.portfolio.charge.service.ChargeWritePlatformServiceJpaRepositoryImpl;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProductRepository;
 import org.apache.fineract.portfolio.paymenttype.domain.PaymentTypeRepositoryWrapper;
@@ -37,8 +39,7 @@ import org.springframework.stereotype.Service;
 @Service
 @Order(2)
 @Slf4j
-public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformServiceJpaRepositoryImpl
-        implements ChargeWritePlatformService {
+public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformServiceJpaRepositoryImpl {
 
     private final ChargeRepository chargeRepository;
     private final ChargeSlabRepository chargeSlabRepository;
@@ -133,8 +134,22 @@ public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformS
                 return super.updateCharge(chargeId, command);
             }
 
+            // Config gating
+            if (!isConfigEnabled("allow-charge-taxgroup-edit", true)) {
+                final List<ApiParameterError> errors = new ArrayList<>();
+                new DataValidatorBuilder(errors).resource("charges").parameter("taxGroupId")
+                        .failWithCodeNoParameterAddedToErrorCode("editing.taxgroup.disabled");
+                throw new PlatformApiDataValidationException(errors);
+            }
+
             // Usage checks (loans, savings, client, share charges)
             long usageCount = countChargeUsage(chargeId);
+            if (usageCount > 0 && !isConfigEnabled("allow-charge-taxgroup-edit-if-used", false)) {
+                final List<ApiParameterError> errors = new ArrayList<>();
+                new DataValidatorBuilder(errors).resource("charges").parameter("taxGroupId")
+                        .failWithCodeNoParameterAddedToErrorCode("editing.taxgroup.not.allowed.when.used");
+                throw new PlatformApiDataValidationException(errors);
+            }
 
             TaxGroup newTaxGroup = null;
             if (requestedTaxGroupId != null) {
@@ -214,6 +229,17 @@ public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformS
         } catch (Exception e) {
             log.warn("Count query failed: {} -- {}", sql, e.getMessage());
             return 0L;
+        }
+    }
+
+    private boolean isConfigEnabled(String name, boolean defaultValue) {
+        try {
+            Boolean val = this.jdbcTemplate.queryForObject(
+                    "select coalesce(value, default_value) from c_configuration where name = ?", Boolean.class, name);
+            return val != null ? val : defaultValue;
+        } catch (Exception e) {
+            log.warn("Could not read config {}: {} -- using default {}", name, e.getMessage(), defaultValue);
+            return defaultValue;
         }
     }
 }
