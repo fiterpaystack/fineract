@@ -129,8 +129,7 @@ class PaystackChargeWritePlatformServiceImplTest {
 
         // Config flags: allow edits, allow when used
         when(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq("allow-charge-taxgroup-edit"))).thenReturn(1);
-        when(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq("allow-charge-taxgroup-edit-if-used")))
-                .thenReturn(1);
+        when(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq("allow-charge-taxgroup-edit-if-used"))).thenReturn(1);
 
         // Usage counts > 0
         when(jdbcTemplate.queryForObject(Mockito.startsWith("select count(1) from m_loan_charge"), eq(Long.class), anyLong()))
