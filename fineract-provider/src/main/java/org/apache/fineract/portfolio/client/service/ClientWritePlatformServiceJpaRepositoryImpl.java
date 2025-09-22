@@ -101,7 +101,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWritePlatformService {
 
-    private final PlatformSecurityContext context;
+    protected final PlatformSecurityContext context;
     private final ClientRepositoryWrapper clientRepository;
     private final ClientNonPersonRepositoryWrapper clientNonPersonRepository;
     private final OfficeRepositoryWrapper officeRepositoryWrapper;
@@ -110,7 +110,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
     private final ClientDataValidator fromApiJsonDeserializer;
     private final AccountNumberGenerator accountNumberGenerator;
     private final StaffRepositoryWrapper staffRepository;
-    private final CodeValueRepositoryWrapper codeValueRepository;
+    protected final CodeValueRepositoryWrapper codeValueRepository;
     private final LoanRepositoryWrapper loanRepositoryWrapper;
     private final SavingsAccountRepositoryWrapper savingsRepositoryWrapper;
     private final SavingsProductRepository savingsProductRepository;
@@ -118,7 +118,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
     private final CommandProcessingService commandProcessingService;
     private final ConfigurationDomainService configurationDomainService;
     private final AccountNumberFormatRepositoryWrapper accountNumberFormatRepository;
-    private final FromJsonHelper fromApiJsonHelper;
+    protected final FromJsonHelper fromApiJsonHelper;
     private final AddressWritePlatformService addressWritePlatformService;
     private final ClientFamilyMembersWritePlatformService clientFamilyMembersWritePlatformService;
     private final BusinessEventNotifierService businessEventNotifierService;
@@ -161,7 +161,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
     /*
      * Guaranteed to throw an exception no matter what the data integrity issue is.
      */
-    private void handleDataIntegrityIssues(final JsonCommand command, final Throwable realCause, final Exception dve) {
+    protected void handleDataIntegrityIssues(final JsonCommand command, final Throwable realCause, final Exception dve) {
         if (realCause.getMessage().contains("external_id")) {
             final String externalId = command.stringValueOfParameterNamed("externalId");
             throw new PlatformDataIntegrityException("error.msg.client.duplicate.externalId",

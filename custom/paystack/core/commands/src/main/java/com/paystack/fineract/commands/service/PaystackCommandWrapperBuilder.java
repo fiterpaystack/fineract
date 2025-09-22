@@ -22,6 +22,10 @@ import org.apache.fineract.commands.service.CommandWrapperBuilder;
 
 public class PaystackCommandWrapperBuilder extends CommandWrapperBuilder {
 
+    public PaystackCommandWrapperBuilder withJson(String withJson) {
+        return (PaystackCommandWrapperBuilder) super.withJson(withJson);
+    }
+
     public CommandWrapperBuilder retryKafkaNotification(final Long id) {
         this.actionName = "RETRY";
         this.entityName = "KAFKANOTIFICATION";
@@ -84,4 +88,14 @@ public class PaystackCommandWrapperBuilder extends CommandWrapperBuilder {
         this.href = "/v1/discount-rules/charges/" + ruleId + "/assign";
         return this;
     }
+
+    public CommandWrapperBuilder upgradeClientToEntity(final Long clientId) {
+        this.actionName = "UPGRADETOENTITY";
+        this.entityName = "CLIENT";
+        this.entityId = clientId;
+        this.clientId = clientId;
+        this.href = "/clients/" + clientId + "?command=upgradeToEntity";
+        return this;
+    }
+
 }
