@@ -72,7 +72,7 @@ class PaystackChargeWritePlatformServiceImplTest {
         // Arrange
         JsonCommand command = Mockito.mock(JsonCommand.class);
         when(command.parameterExists("taxGroupId")).thenReturn(true);
-        when(command.longValueOfParameterNamed("taxGroupId")).thenReturn(5L);
+        when(command.stringValueOfParameterNamed("taxGroupId")).thenReturn("5");
         when(command.json()).thenReturn("{}");
         when(command.commandId()).thenReturn(1L);
 
@@ -87,7 +87,7 @@ class PaystackChargeWritePlatformServiceImplTest {
         when(taxGroupRepository.findOneWithNotFoundDetection(5L)).thenReturn(newGroup);
 
         // Config flags: allow edits, not used
-        when(jdbcTemplate.queryForObject(anyString(), eq(Boolean.class), eq("allow-charge-taxgroup-edit"))).thenReturn(Boolean.TRUE);
+        when(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq("allow-charge-taxgroup-edit"))).thenReturn(1);
 
         // Usage counts all zero
         when(jdbcTemplate.queryForObject(Mockito.startsWith("select count(1) from m_loan_charge"), eq(Long.class), anyLong()))
@@ -115,8 +115,8 @@ class PaystackChargeWritePlatformServiceImplTest {
         // Arrange
         JsonCommand command = Mockito.mock(JsonCommand.class);
         when(command.parameterExists("taxGroupId")).thenReturn(true);
-        // Null indicates removal
-        when(command.longValueOfParameterNamed("taxGroupId")).thenReturn(null);
+        // Null/blank indicates removal
+        when(command.stringValueOfParameterNamed("taxGroupId")).thenReturn(null);
         when(command.json()).thenReturn("{}");
         when(command.commandId()).thenReturn(2L);
 
@@ -128,9 +128,9 @@ class PaystackChargeWritePlatformServiceImplTest {
         when(chargeRepository.save(any(Charge.class))).thenReturn(charge);
 
         // Config flags: allow edits, allow when used
-        when(jdbcTemplate.queryForObject(anyString(), eq(Boolean.class), eq("allow-charge-taxgroup-edit"))).thenReturn(Boolean.TRUE);
-        when(jdbcTemplate.queryForObject(anyString(), eq(Boolean.class), eq("allow-charge-taxgroup-edit-if-used")))
-                .thenReturn(Boolean.TRUE);
+        when(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq("allow-charge-taxgroup-edit"))).thenReturn(1);
+        when(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq("allow-charge-taxgroup-edit-if-used")))
+                .thenReturn(1);
 
         // Usage counts > 0
         when(jdbcTemplate.queryForObject(Mockito.startsWith("select count(1) from m_loan_charge"), eq(Long.class), anyLong()))
@@ -158,7 +158,7 @@ class PaystackChargeWritePlatformServiceImplTest {
         // Arrange
         JsonCommand command = Mockito.mock(JsonCommand.class);
         when(command.parameterExists("taxGroupId")).thenReturn(true);
-        when(command.longValueOfParameterNamed("taxGroupId")).thenReturn(9L);
+        when(command.stringValueOfParameterNamed("taxGroupId")).thenReturn("9");
         when(command.json()).thenReturn("{}");
 
         Charge charge = Mockito.mock(Charge.class);
@@ -166,7 +166,7 @@ class PaystackChargeWritePlatformServiceImplTest {
         when(chargeRepository.findById(12L)).thenReturn(Optional.of(charge));
 
         // Config flags: disallow edits
-        when(jdbcTemplate.queryForObject(anyString(), eq(Boolean.class), eq("allow-charge-taxgroup-edit"))).thenReturn(Boolean.FALSE);
+        when(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq("allow-charge-taxgroup-edit"))).thenReturn(0);
 
         // Act + Assert
         assertThrows(org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException.class,
