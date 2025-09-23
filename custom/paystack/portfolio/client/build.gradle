@@ -18,10 +18,10 @@
  */
 description = 'Paystack Fineract Cleint'
 
-group = 'com.paystack.fineract.client'
+group = 'com.paystack.fineract.portfolio.client'
 
 base {
-    archivesName = 'paystack-fineract-client'
+    archivesName = 'paystack-fineract-portfolio-client'
 }
 
 apply from: 'dependencies.gradle'

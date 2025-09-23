@@ -38,7 +38,7 @@ public class CommandWrapperBuilder {
 
     private Long officeId;
     private Long groupId;
-    private Long clientId;
+    protected Long clientId;
     private Long loanId;
     private Long savingsId;
     protected String actionName;

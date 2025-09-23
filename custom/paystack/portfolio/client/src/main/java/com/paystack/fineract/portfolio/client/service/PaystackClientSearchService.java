@@ -1,4 +1,4 @@
-package com.paystack.fineract.portfolio.client;
+package com.paystack.fineract.portfolio.client.service;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
