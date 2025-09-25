@@ -22,7 +22,6 @@ import com.paystack.fineract.portfolio.discount.annotation.DiscountRuleType;
 import com.paystack.fineract.portfolio.discount.calculator.DiscountRuleCalculator;
 import com.paystack.fineract.portfolio.discount.domain.DiscountContext;
 import com.paystack.fineract.portfolio.discount.repository.PaystackSavingsAccountTransactionRepository;
-import org.apache.fineract.infrastructure.core.service.DateUtils;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -32,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
 import org.springframework.stereotype.Service;
 
