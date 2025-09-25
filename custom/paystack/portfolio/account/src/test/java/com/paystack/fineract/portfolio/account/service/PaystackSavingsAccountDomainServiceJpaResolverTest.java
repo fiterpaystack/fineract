@@ -58,34 +58,25 @@ class PaystackSavingsAccountDomainServiceJpaResolverTest {
         JournalEntryWritePlatformService journalEntryWritePlatformService = mock(JournalEntryWritePlatformService.class);
         ConfigurationDomainService configurationDomainService = mock(ConfigurationDomainService.class);
         PlatformSecurityContext context = mock(PlatformSecurityContext.class);
-        DepositAccountOnHoldTransactionRepository depositAccountOnHoldTransactionRepository = mock(DepositAccountOnHoldTransactionRepository.class);
+        DepositAccountOnHoldTransactionRepository depositAccountOnHoldTransactionRepository = mock(
+                DepositAccountOnHoldTransactionRepository.class);
         BusinessEventNotifierService businessEventNotifierService = mock(BusinessEventNotifierService.class);
         NoteRepository noteRepository = mock(NoteRepository.class);
-        SavingsAccountTransactionSummaryWrapper savingsAccountTransactionSummaryWrapper = mock(SavingsAccountTransactionSummaryWrapper.class);
-        SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService = mock(SavingsAccountChargePaymentWrapperService.class);
+        SavingsAccountTransactionSummaryWrapper savingsAccountTransactionSummaryWrapper = mock(
+                SavingsAccountTransactionSummaryWrapper.class);
+        SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService = mock(
+                SavingsAccountChargePaymentWrapperService.class);
         clientChargeOverrideReadService = mock(ClientChargeOverrideReadService.class);
-        PaystackSavingsProductAttributesRepository savingsProductAttributesRepository = mock(PaystackSavingsProductAttributesRepository.class);
+        PaystackSavingsProductAttributesRepository savingsProductAttributesRepository = mock(
+                PaystackSavingsProductAttributesRepository.class);
         FeeSplitService feeSplitService = mock(FeeSplitService.class);
         ProductDiscountService productDiscountService = mock(ProductDiscountService.class);
 
-        service = new PaystackSavingsAccountDomainServiceJpa(
-                savingsAccountRepository,
-                savingsAccountTransactionRepository,
-                applicationCurrencyRepositoryWrapper,
-                journalEntryWritePlatformService,
-                configurationDomainService,
-                context,
-                depositAccountOnHoldTransactionRepository,
-                businessEventNotifierService,
-                noteRepository,
-                null,
-                savingsAccountTransactionSummaryWrapper,
-                savingsAccountChargePaymentWrapperService,
-                clientChargeOverrideReadService,
-                savingsProductAttributesRepository,
-                feeSplitService,
-                productDiscountService
-        );
+        service = new PaystackSavingsAccountDomainServiceJpa(savingsAccountRepository, savingsAccountTransactionRepository,
+                applicationCurrencyRepositoryWrapper, journalEntryWritePlatformService, configurationDomainService, context,
+                depositAccountOnHoldTransactionRepository, businessEventNotifierService, noteRepository, null,
+                savingsAccountTransactionSummaryWrapper, savingsAccountChargePaymentWrapperService, clientChargeOverrideReadService,
+                savingsProductAttributesRepository, feeSplitService, productDiscountService);
     }
 
     private BigDecimal invokeResolve(Long clientId, org.apache.fineract.portfolio.charge.domain.Charge chargeDef, BigDecimal txnAmount,
@@ -182,5 +173,3 @@ class PaystackSavingsAccountDomainServiceJpaResolverTest {
         assertThat(resolved).isEqualByComparingTo("7");
     }
 }
-
-

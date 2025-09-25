@@ -19,8 +19,8 @@
 
 package com.paystack.fineract.portfolio.account.service;
 
-import com.paystack.fineract.client.charge.service.ClientChargeOverrideReadService;
 import com.paystack.fineract.client.charge.domain.ClientChargeOverride;
+import com.paystack.fineract.client.charge.service.ClientChargeOverrideReadService;
 import com.paystack.fineract.portfolio.account.data.ChargePaymentResult;
 import com.paystack.fineract.portfolio.account.data.SavingsAccountTransactionLimitValidator;
 import com.paystack.fineract.portfolio.discount.service.ProductDiscountService;
@@ -503,8 +503,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
      * Resolve the primary value for a charge using precedence: client override -> tiered (varying) -> product default.
      * For percentage charges, the value represents a percentage. For flat charges, it represents a currency amount.
      */
-    private BigDecimal resolveChargePrimaryValue(Long clientId,
-            org.apache.fineract.portfolio.charge.domain.Charge chargeDefinition,
+    private BigDecimal resolveChargePrimaryValue(Long clientId, org.apache.fineract.portfolio.charge.domain.Charge chargeDefinition,
             BigDecimal transactionAmount, boolean isPercentageOfAmount) {
         // 1) Client-specific override takes precedence if present with a value
         java.util.Optional<ClientChargeOverride> overrideOpt = clientChargeOverrideReadService.getActiveOverride(clientId,
@@ -521,7 +520,8 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
 
         // 3) Fallback to product-level default (or savings-level amount if provided via API for flats)
         // For percentage resolution, savingsAmountFromApi is irrelevant (null). For flat, we cannot access the
-        // SavingsAccountCharge.amount() here; call sites already ignore API-provided amount and rely on override/product.
+        // SavingsAccountCharge.amount() here; call sites already ignore API-provided amount and rely on
+        // override/product.
         return clientChargeOverrideReadService.resolvePrimaryAmount(clientId, chargeDefinition, null);
     }
 
