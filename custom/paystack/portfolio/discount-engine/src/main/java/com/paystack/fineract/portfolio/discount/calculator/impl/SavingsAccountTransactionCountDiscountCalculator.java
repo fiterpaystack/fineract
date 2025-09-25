@@ -22,6 +22,7 @@ import com.paystack.fineract.portfolio.discount.annotation.DiscountRuleType;
 import com.paystack.fineract.portfolio.discount.calculator.DiscountRuleCalculator;
 import com.paystack.fineract.portfolio.discount.domain.DiscountContext;
 import com.paystack.fineract.portfolio.discount.repository.PaystackSavingsAccountTransactionRepository;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -155,39 +156,84 @@ public class SavingsAccountTransactionCountDiscountCalculator implements Discoun
 
     @Override
     public void configure(Map<String, Object> parameters) {
-        if (parameters.containsKey(PARAM_THRESHOLD_COUNT)) {
-            this.thresholdCount = Integer.valueOf(parameters.get(PARAM_THRESHOLD_COUNT).toString());
-        }
+        this.thresholdCount = parseThresholdCount(parameters);
+        this.periodType = parseStringParam(parameters, PARAM_PERIOD_TYPE);
+        this.directionType = parseStringParam(parameters, PARAM_DIRECTION_TYPE);
+        this.discountPercentage = parseDiscountPercentage(parameters);
+        this.includeReversed = parseIncludeReversed(parameters);
+    }
 
-        if (parameters.containsKey(PARAM_PERIOD_TYPE)) {
-            this.periodType = parameters.get(PARAM_PERIOD_TYPE).toString();
+    private Integer parseThresholdCount(Map<String, Object> parameters) {
+        if (!parameters.containsKey(PARAM_THRESHOLD_COUNT)) {
+            return null;
         }
+        Object val = parameters.get(PARAM_THRESHOLD_COUNT);
+        if (val == null) {
+            log.warn("COUNT CALCULATOR: thresholdCount is null. Disabling.");
+            return null;
+        }
+        try {
+            return Integer.valueOf(val.toString());
+        } catch (NumberFormatException e) {
+            warnInvalidParam(PARAM_THRESHOLD_COUNT, val);
+            return null;
+        }
+    }
 
-        if (parameters.containsKey(PARAM_DIRECTION_TYPE)) {
-            this.directionType = parameters.get(PARAM_DIRECTION_TYPE).toString();
+    private String parseStringParam(Map<String, Object> parameters, String key) {
+        if (!parameters.containsKey(key)) {
+            return null;
         }
+        Object val = parameters.get(key);
+        return val != null ? val.toString() : null;
+    }
 
-        if (parameters.containsKey(PARAM_DISCOUNT_PERCENTAGE)) {
-            this.discountPercentage = new BigDecimal(parameters.get(PARAM_DISCOUNT_PERCENTAGE).toString());
+    private BigDecimal parseDiscountPercentage(Map<String, Object> parameters) {
+        if (!parameters.containsKey(PARAM_DISCOUNT_PERCENTAGE)) {
+            return null;
         }
+        Object val = parameters.get(PARAM_DISCOUNT_PERCENTAGE);
+        if (val == null) {
+            return null;
+        }
+        try {
+            return new BigDecimal(val.toString());
+        } catch (NumberFormatException e) {
+            warnInvalidParam(PARAM_DISCOUNT_PERCENTAGE, val);
+            return null;
+        }
+    }
 
-        if (parameters.containsKey(PARAM_INCLUDE_REVERSED)) {
-            this.includeReversed = Boolean.valueOf(parameters.get(PARAM_INCLUDE_REVERSED).toString());
-        } else {
-            this.includeReversed = Boolean.FALSE;
+    private void warnInvalidParam(String key, Object val) {
+        log.warn("COUNT CALCULATOR: Invalid {} '{}'.", key, val);
+    }
+
+    private Boolean parseIncludeReversed(Map<String, Object> parameters) {
+        if (!parameters.containsKey(PARAM_INCLUDE_REVERSED)) {
+            return Boolean.FALSE;
         }
+        Object value = parameters.get(PARAM_INCLUDE_REVERSED);
+        return switch (value) {
+            case Boolean b -> b;
+            case String s -> "true".equalsIgnoreCase(s);
+            case null -> Boolean.FALSE;
+            default -> {
+                log.warn("COUNT CALCULATOR: Unexpected includeReversed type: {}. Defaulting to false.", value.getClass().getSimpleName());
+                yield Boolean.FALSE;
+            }
+        };
     }
 
     private List<SavingsAccountTransaction> getTransactionsForPeriod(DiscountContext context) {
         Long accountId = context.getAccountId();
-        LocalDate endDate = context.getTransactionDate() != null ? context.getTransactionDate() : LocalDate.now();
+        LocalDate endDate = context.getTransactionDate() != null ? context.getTransactionDate() : DateUtils.getBusinessLocalDate();
         LocalDate startDate = resolvePeriodStart(endDate);
         return transactionRepository.findTransactionsForPeriod(accountId, startDate, endDate);
     }
 
     private long countTransactionsForPeriod(DiscountContext context) {
         Long accountId = context.getAccountId();
-        LocalDate endDate = context.getTransactionDate() != null ? context.getTransactionDate() : LocalDate.now();
+        LocalDate endDate = context.getTransactionDate() != null ? context.getTransactionDate() : DateUtils.getBusinessLocalDate();
         LocalDate startDate = resolvePeriodStart(endDate);
         boolean include = includeReversed != null && includeReversed;
         return transactionRepository.countTransactionsForPeriod(accountId, startDate, endDate, include);
