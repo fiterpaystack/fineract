@@ -35,6 +35,7 @@ import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDoma
 import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.organisation.monetary.domain.ApplicationCurrencyRepositoryWrapper;
+import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.note.domain.NoteRepository;
 import org.apache.fineract.portfolio.savings.domain.DepositAccountOnHoldTransactionRepository;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepositoryWrapper;
@@ -79,12 +80,11 @@ class PaystackSavingsAccountDomainServiceJpaResolverTest {
                 savingsProductAttributesRepository, feeSplitService, productDiscountService);
     }
 
-    private BigDecimal invokeResolve(Long clientId, org.apache.fineract.portfolio.charge.domain.Charge chargeDef, BigDecimal txnAmount,
-            boolean isPercentage) throws Exception {
+    private BigDecimal invokeResolve(Long clientId, Charge chargeDef, BigDecimal txnAmount) throws Exception {
         Method method = PaystackSavingsAccountDomainServiceJpa.class.getDeclaredMethod("resolveChargePrimaryValue", Long.class,
                 org.apache.fineract.portfolio.charge.domain.Charge.class, BigDecimal.class, boolean.class);
         method.setAccessible(true);
-        Object result = method.invoke(service, clientId, chargeDef, txnAmount, isPercentage);
+        Object result = method.invoke(service, clientId, chargeDef, txnAmount, false);
         return (BigDecimal) result;
     }
 
@@ -102,7 +102,7 @@ class PaystackSavingsAccountDomainServiceJpaResolverTest {
         when(chargeDef.getHasVaryingCharge()).thenReturn(true);
         when(chargeDef.calculateChargeAmount(txn)).thenReturn(new BigDecimal("10"));
 
-        BigDecimal resolved = invokeResolve(clientId, chargeDef, txn, false);
+        BigDecimal resolved = invokeResolve(clientId, chargeDef, txn);
         assertThat(resolved).isEqualByComparingTo("15");
     }
 
@@ -120,7 +120,7 @@ class PaystackSavingsAccountDomainServiceJpaResolverTest {
         when(chargeDef.getHasVaryingCharge()).thenReturn(true);
         when(chargeDef.calculateChargeAmount(txn)).thenReturn(new BigDecimal("50"));
 
-        BigDecimal resolved = invokeResolve(clientId, chargeDef, txn, false);
+        BigDecimal resolved = invokeResolve(clientId, chargeDef, txn);
         assertThat(resolved).isEqualByComparingTo("15");
     }
 
@@ -135,7 +135,7 @@ class PaystackSavingsAccountDomainServiceJpaResolverTest {
         when(chargeDef.getHasVaryingCharge()).thenReturn(true);
         when(chargeDef.calculateChargeAmount(txn)).thenReturn(new BigDecimal("10"));
 
-        BigDecimal resolved = invokeResolve(clientId, chargeDef, txn, false);
+        BigDecimal resolved = invokeResolve(clientId, chargeDef, txn);
         assertThat(resolved).isEqualByComparingTo("10");
     }
 
@@ -150,7 +150,7 @@ class PaystackSavingsAccountDomainServiceJpaResolverTest {
         when(chargeDef.getHasVaryingCharge()).thenReturn(true);
         when(chargeDef.calculateChargeAmount(txn)).thenReturn(new BigDecimal("25"));
 
-        BigDecimal resolved = invokeResolve(clientId, chargeDef, txn, false);
+        BigDecimal resolved = invokeResolve(clientId, chargeDef, txn);
         assertThat(resolved).isEqualByComparingTo("25");
     }
 
@@ -169,7 +169,7 @@ class PaystackSavingsAccountDomainServiceJpaResolverTest {
         when(clientChargeOverrideReadService.resolvePrimaryAmount(clientId, chargeDef, null)).thenReturn(new BigDecimal("7"));
 
         // resolvePrimaryAmount(client, charge, null) should fallback to charge.getAmount()
-        BigDecimal resolved = invokeResolve(clientId, chargeDef, txn, false);
+        BigDecimal resolved = invokeResolve(clientId, chargeDef, txn);
         assertThat(resolved).isEqualByComparingTo("7");
     }
 }
