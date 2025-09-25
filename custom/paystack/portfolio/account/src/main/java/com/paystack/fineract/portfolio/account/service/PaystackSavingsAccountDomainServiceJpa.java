@@ -20,6 +20,7 @@
 package com.paystack.fineract.portfolio.account.service;
 
 import com.paystack.fineract.client.charge.service.ClientChargeOverrideReadService;
+import com.paystack.fineract.client.charge.domain.ClientChargeOverride;
 import com.paystack.fineract.portfolio.account.data.ChargePaymentResult;
 import com.paystack.fineract.portfolio.account.data.SavingsAccountTransactionLimitValidator;
 import com.paystack.fineract.portfolio.discount.service.ProductDiscountService;
@@ -304,13 +305,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             BigDecimal amountToPay = BigDecimal.ZERO;
 
             if (calc != null && ChargeCalculationType.fromInt(calc).isPercentageOfAmount()) {
-                BigDecimal pctResolved = BigDecimal.ZERO;
-                // 1) Set the percentage from client override (client -> savings -> product)
-                if (charge.getCharge().getHasVaryingCharge()) {
-                    pctResolved = charge.getCharge().calculateChargeAmount(transactionAmount);
-                } else {
-                    pctResolved = clientChargeOverrideReadService.resolvePrimaryAmount(account.clientId(), charge.getCharge(), null);
-                }
+                BigDecimal pctResolved = resolveChargePrimaryValue(account.clientId(), charge.getCharge(), transactionAmount, true);
                 charge.update(pctResolved, charge.getDueDate(), null, null);
 
                 // 2) Compute outstanding using the just-updated percentage
@@ -339,13 +334,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
                 amountToPay = charge.getAmountOutstanding(account.getCurrency()).getAmount();
             } else {
                 // FLAT: resolve primary amount and set it before computing outstanding
-                BigDecimal flatResolved = BigDecimal.ZERO;
-                if (charge.getCharge().getHasVaryingCharge()) {
-                    flatResolved = charge.getCharge().calculateChargeAmount(transactionAmount);
-                } else {
-                    flatResolved = clientChargeOverrideReadService.resolvePrimaryAmount(account.clientId(), charge.getCharge(),
-                            charge.amount());
-                }
+                BigDecimal flatResolved = resolveChargePrimaryValue(account.clientId(), charge.getCharge(), transactionAmount, false);
                 charge.update(flatResolved, charge.getDueDate(), null, null);
                 charge.updateWithdralFeeAmount(transactionAmount);
                 amountToPay = charge.getAmountOutstanding(account.getCurrency()).getAmount();
@@ -462,8 +451,8 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             BigDecimal amountToPay = BigDecimal.ZERO;
 
             if (calc != null && ChargeCalculationType.fromInt(calc).isPercentageOfAmount()) {
-                // 1) Set the percentage from client override (client -> savings -> product)
-                BigDecimal pctResolved = clientChargeOverrideReadService.resolvePrimaryAmount(account.clientId(), charge.getCharge(), null);
+                // 1) Resolve percentage using precedence: client override -> tiered -> product
+                BigDecimal pctResolved = resolveChargePrimaryValue(account.clientId(), charge.getCharge(), transactionAmount, true);
                 charge.update(pctResolved, charge.getDueDate(), null, null);
 
                 // 2) Compute outstanding using the just-updated percentage
@@ -491,9 +480,8 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
 
                 amountToPay = charge.getAmountOutstanding(account.getCurrency()).getAmount();
             } else {
-                // FLAT: resolve primary amount and set it before computing outstanding
-                BigDecimal flatResolved = clientChargeOverrideReadService.resolvePrimaryAmount(account.clientId(), charge.getCharge(),
-                        charge.amount());
+                // FLAT: resolve primary amount and set it before computing outstanding (override -> tiered -> product)
+                BigDecimal flatResolved = resolveChargePrimaryValue(account.clientId(), charge.getCharge(), transactionAmount, false);
                 charge.update(flatResolved, charge.getDueDate(), null, null);
                 charge.updateDepositFeeAmount(transactionAmount);
                 amountToPay = charge.getAmountOutstanding(account.getCurrency()).getAmount();
@@ -509,6 +497,32 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             Money moneyToPay = org.apache.fineract.organisation.monetary.domain.Money.of(account.getCurrency(), discountedAmount);
             payChargeWithVatAndSave(account, charge, moneyToPay, transactionDate, refNo, backdatedTxnsAllowedTill, noteText);
         }
+    }
+
+    /**
+     * Resolve the primary value for a charge using precedence: client override -> tiered (varying) -> product default.
+     * For percentage charges, the value represents a percentage. For flat charges, it represents a currency amount.
+     */
+    private BigDecimal resolveChargePrimaryValue(Long clientId,
+            org.apache.fineract.portfolio.charge.domain.Charge chargeDefinition,
+            BigDecimal transactionAmount, boolean isPercentageOfAmount) {
+        // 1) Client-specific override takes precedence if present with a value
+        java.util.Optional<ClientChargeOverride> overrideOpt = clientChargeOverrideReadService.getActiveOverride(clientId,
+                chargeDefinition.getId());
+        if (overrideOpt.isPresent() && overrideOpt.get().getAmount() != null) {
+            return overrideOpt.get().getAmount();
+        }
+
+        // 2) Tiered (varying) charge applies only if no client override
+        if (Boolean.TRUE.equals(chargeDefinition.getHasVaryingCharge())) {
+            // calculateChargeAmount uses transaction amount ranges to derive the percentage/flat value
+            return chargeDefinition.calculateChargeAmount(transactionAmount);
+        }
+
+        // 3) Fallback to product-level default (or savings-level amount if provided via API for flats)
+        // For percentage resolution, savingsAmountFromApi is irrelevant (null). For flat, we cannot access the
+        // SavingsAccountCharge.amount() here; call sites already ignore API-provided amount and rely on override/product.
+        return clientChargeOverrideReadService.resolvePrimaryAmount(clientId, chargeDefinition, null);
     }
 
     private void payChargeWithVatAndSave(SavingsAccount account, SavingsAccountCharge charge, Money amount, LocalDate transactionDate,
