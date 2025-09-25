@@ -40,4 +40,12 @@ public interface PaystackSavingsAccountTransactionRepository extends SavingsAcco
     @Query("SELECT t FROM SavingsAccountTransaction t WHERE t.savingsAccount.id = :accountId AND t.dateOf BETWEEN :startDate AND :endDate AND t.reversed = false ORDER BY t.dateOf, t.createdDate, t.id")
     List<SavingsAccountTransaction> findTransactionsForPeriod(@Param("accountId") Long accountId, @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
+
+    /**
+     * Count transactions for a specific period. Optionally include reversed transactions. Note: Direction-specific
+     * counting is not included here due to domain-level mapping; use list method for that.
+     */
+    @Query("SELECT COUNT(t) FROM SavingsAccountTransaction t WHERE t.savingsAccount.id = :accountId AND t.dateOf BETWEEN :startDate AND :endDate AND (:includeReversed = true OR t.reversed = false)")
+    long countTransactionsForPeriod(@Param("accountId") Long accountId, @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate, @Param("includeReversed") boolean includeReversed);
 }
