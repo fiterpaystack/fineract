@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="paystack-discount-0002-add-transaction-count-discount" author="paystack">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="m_discount_rule"/>
+        </preConditions>
+        <comment>Add transaction count-based discount feature - no schema changes needed, just documentation</comment>
+
+        <!-- No database schema changes required -->
+        <!-- The TRANSACTION_COUNT rule type is auto-discovered via Spring @DiscountRuleType annotation -->
+        <!-- The existing m_discount_rule table supports this via rule_type and rule_parameters columns -->
+
+        <!-- Add default transaction count discount rule -->
+        <sql><![CDATA[
+            -- Default: 50 daily transactions = 5% discount (can be modified later)
+            INSERT INTO m_discount_rule (name, description, rule_type, rule_parameters, is_active, priority, created_by, created_on_utc, last_modified_by, last_modified_on_utc)
+            VALUES (
+                'Account-Level Transaction Count-Based Fee Discounts',
+                'Apply discount when account reaches 50 transactions in a day (5% discount)',
+                'TRANSACTION_COUNT',
+                '{"thresholdCount": 50, "periodType": "DAILY", "directionType": "ALL", "discountPercentage": 5.00, "includeReversed": false}',
+                true, -- Active by default
+                0,
+                1, -- System user
+                NOW(),
+                1, -- System user
+                NOW()
+            );
+        ]]></sql>
+
+        <!-- Add comment explaining the feature -->
+        <sql><![CDATA[
+            -- Transaction Count-Based Discount Feature
+            -- ======================================
+            --
+            -- This feature allows configuring discount rules based on account transaction counts
+            -- within specified periods (daily, monthly, quarterly).
+            --
+            -- Rule Type: TRANSACTION_COUNT
+            -- Category: ACCOUNT_ACTIVITY
+            --
+            -- Required Parameters:
+            -- - thresholdCount: Minimum number of transactions required (e.g., 50)
+            -- - periodType: Counting window - DAILY, MONTHLY, QUARTERLY
+            -- - directionType: Transaction direction - INFLOW, OUTFLOW, ALL
+            -- - discountPercentage: Discount percentage to apply (0 < p <= 100)
+            --
+            -- Optional Parameters:
+            -- - includeReversed: Whether to include reversed transactions (default: false)
+            --
+            -- Usage:
+            -- 1. Create a discount rule with rule_type = 'TRANSACTION_COUNT'
+            -- 2. Set rule_parameters JSON with the above parameters
+            -- 3. Assign to specific charges (charge-specific) or products (generic fallback)
+            -- 4. The engine will automatically count transactions and apply discounts when thresholds are met
+            --
+            -- Examples:
+            -- - 50 daily transactions = 5% discount
+            -- - 100 monthly inflow transactions = 10% discount
+            -- - 500 quarterly transactions = 15% discount
+            --
+            -- The system automatically handles period resets (no manual counter management needed)
+            -- and supports both charge-specific and generic product-level rules.
+        ]]></sql>
+
+    </changeSet>
+
+</databaseChangeLog>
