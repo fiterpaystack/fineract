@@ -377,12 +377,11 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
             boolean stillExists = updatedCharges.stream().anyMatch(charge -> charge.getId().equals(currentCharge.getCharge().getId()));
 
             if (!stillExists) {
-                // Mark charge as inactive instead of removing it to preserve transaction history
-                if (currentCharge.isActive()) {
-                    currentCharge.inactiavateCharge(DateUtils.getBusinessLocalDate());
+                // Keep charges that are paid to preserve transaction history
+                if (currentCharge.isPaidOrPartiallyPaid(account.getCurrency())) {
+                    newCharges.add(currentCharge);
                     hasChanges = true;
                 }
-                newCharges.add(currentCharge);
             }
             // Note: Charges that still exist are already added to newCharges in the first loop above
         }
