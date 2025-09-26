@@ -390,7 +390,7 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
         // Update the account with the new charges if there were changes
         if (hasChanges) {
             account.update(newCharges);
-            this.savingsAccountRepository.saveAndFlush(account);
+            this.savingsAccountRepository.save(account);
             return true;
         }
 
