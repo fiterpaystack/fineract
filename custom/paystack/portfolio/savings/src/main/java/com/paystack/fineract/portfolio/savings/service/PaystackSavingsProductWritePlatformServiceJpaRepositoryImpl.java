@@ -405,7 +405,7 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
             BigDecimal currentAmount = accountCharge.getAmount();
             BigDecimal newAmount = updatedCharge.getAmount();
 
-            if (currentAmount == null || !currentAmount.equals(newAmount)) {
+            if (!java.util.Objects.equals(currentAmount, newAmount)) {
                 accountCharge.update(newAmount, accountCharge.getDueDate(), updatedCharge.getFeeOnMonthDay(), updatedCharge.feeInterval());
                 hasChanges = true;
             }
