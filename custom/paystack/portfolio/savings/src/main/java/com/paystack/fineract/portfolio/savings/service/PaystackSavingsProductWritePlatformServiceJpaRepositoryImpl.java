@@ -113,7 +113,7 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
             if (baseChanges != null) {
                 builder.with(baseChanges);
             }
-            Map<String, Object> changes = baseChanges != null ? baseResult.getChanges() : new HashMap<>();
+            Map<String, Object> changes = baseChanges != null ? baseChanges : new HashMap<>();
 
             // EMT changes
             if (command.parameterExists("isEmtLevyApplicable")) {
