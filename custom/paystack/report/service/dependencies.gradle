@@ -38,6 +38,10 @@ dependencies {
         exclude group: 'org.eclipse.persistence', module: 'jakarta.persistence'
     }
 
+    // Apache POI for Excel generation
+    implementation 'org.apache.poi:poi:5.4.1'
+    implementation 'org.apache.poi:poi-ooxml:5.4.1'
+
     //Pentaho jars
     implementation files('libs/antlr-complete-3.5.2.jar')
     implementation files('libs/asm-3.2.jar')
