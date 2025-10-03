@@ -15,7 +15,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.accounting.common.AccountingConstants.FinancialActivity;
 import org.apache.fineract.accounting.common.AccountingRuleType;
@@ -23,7 +25,9 @@ import org.apache.fineract.accounting.financialactivityaccount.domain.FinancialA
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
+import org.apache.fineract.infrastructure.core.domain.FineractContext;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
+import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
 import org.apache.fineract.infrastructure.entityaccess.service.FineractEntityAccessUtil;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.portfolio.charge.domain.Charge;
@@ -42,7 +46,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,6 +55,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends SavingsProductWritePlatformServiceJpaRepositoryImpl {
 
+    private final JdbcTemplate jdbcTemplate;
     private final SavingsProductRepository savingsProductRepository;
     private final ExtendedSavingsAccountRepository savingsAccountRepository;
     private final FinancialActivityAccountRepositoryWrapper financialActivityAccountRepositoryWrapper;
@@ -63,13 +68,14 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
             SavingsProductRepository savingProductRepository, SavingsProductDataValidator fromApiJsonDataValidator,
             SavingsProductAssembler savingsProductAssembler,
             org.apache.fineract.accounting.producttoaccountmapping.service.ProductToGLAccountMappingWritePlatformService accountMappingWritePlatformService,
-            FineractEntityAccessUtil fineractEntityAccessUtil,
+            FineractEntityAccessUtil fineractEntityAccessUtil, JdbcTemplate jdbcTemplate,
             FinancialActivityAccountRepositoryWrapper financialActivityAccountRepositoryWrapper,
             PaystackSavingsProductAttributesRepository paystackSavingsProductAttributesRepository,
             SavingsAccountRepository savingsAccountRepository) {
         super(context, savingProductRepository, fromApiJsonDataValidator, savingsProductAssembler, accountMappingWritePlatformService,
                 fineractEntityAccessUtil);
         this.savingsProductRepository = savingProductRepository;
+        this.jdbcTemplate = jdbcTemplate;
         this.savingsAccountRepository = (ExtendedSavingsAccountRepository) savingsAccountRepository;
         this.financialActivityAccountRepositoryWrapper = financialActivityAccountRepositoryWrapper;
         this.paystackSavingsProductAttributesRepository = paystackSavingsProductAttributesRepository;
@@ -269,10 +275,27 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
         }
 
         log.info("Starting asynchronous cascade of charge changes for product ID: {}", product.getId());
-        cascadeChargeChangesToAccountsAsync(product.getId(), product.charges());
+
+        // Capture the current FineractContext to pass to the new thread
+        FineractContext fineractContext = ThreadLocalContextUtil.getContext();
+
+        // Execute the method asynchronously using CompletableFuture
+        CompletableFuture.runAsync(() -> {
+            try {
+                // Initialize the new thread with the captured context
+                ThreadLocalContextUtil.init(fineractContext);
+
+                // Execute the method in the new thread
+                cascadeChargeChangesToAccountsAsync(product.getId(), product.charges());
+            } finally {
+                // Clean up thread local variables
+                ThreadLocalContextUtil.reset();
+            }
+        });
+
+        log.info("Charge cascade processing scheduled asynchronously for product ID: {}", product.getId());
     }
 
-    @Async("savingsAsyncExecutor")
     public void cascadeChargeChangesToAccountsAsync(Long productId, Set<Charge> updatedCharges) {
         try {
             long totalAccounts = savingsAccountRepository.countSavingsAccountsByProductId(productId);
@@ -349,13 +372,16 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
             currentChargesMap.put(charge.getCharge().getId(), charge);
         }
 
-        // Create new set of charges for the account
-        Set<SavingsAccountCharge> newCharges = new HashSet<>();
+        // Track if any changes were made
         boolean hasChanges = false;
+
+        // Set to track charges that should be kept
+        Set<Long> chargeIdsToKeep = new HashSet<>();
 
         // Add or update charges based on the product's charges
         for (Charge charge : updatedCharges) {
             SavingsAccountCharge existingAccountCharge = currentChargesMap.get(charge.getId());
+            chargeIdsToKeep.add(charge.getId());
 
             if (existingAccountCharge != null) {
                 // Update existing charge with new charge details
@@ -363,37 +389,55 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
                 if (chargeUpdated) {
                     hasChanges = true;
                 }
-                newCharges.add(existingAccountCharge);
             } else {
                 // Create new charge for the account
                 SavingsAccountCharge newAccountCharge = createNewAccountCharge(account, charge);
-                newCharges.add(newAccountCharge);
+                currentCharges.add(newAccountCharge);
                 hasChanges = true;
             }
         }
 
-        // Remove charges that are no longer in the product
+        // Process charges that are no longer in the product
+        Set<SavingsAccountCharge> chargesToRemove = new HashSet<>();
         for (SavingsAccountCharge currentCharge : currentCharges) {
-            boolean stillExists = updatedCharges.stream().anyMatch(charge -> charge.getId().equals(currentCharge.getCharge().getId()));
-
-            if (!stillExists) {
+            Long chargeId = currentCharge.getCharge().getId();
+            if (!chargeIdsToKeep.contains(chargeId)) {
                 // Keep charges that are paid to preserve transaction history
                 if (currentCharge.isPaidOrPartiallyPaid(account.getCurrency())) {
-                    newCharges.add(currentCharge);
+                    // Keep the charge but mark that changes were made
+                    hasChanges = true;
+                }
+                // If the charge is a penalty or recurring and has already been applied on the account, disable it
+                else if (this.chargeHasPaidTransactions(currentCharge.getId())) {
+                    currentCharge.inactiavateCharge(DateUtils.getBusinessLocalDate());
+                    hasChanges = true;
+                }
+                // Otherwise, remove the charge
+                else {
+                    chargesToRemove.add(currentCharge);
                     hasChanges = true;
                 }
             }
-            // Note: Charges that still exist are already added to newCharges in the first loop above
         }
 
-        // Update the account with the new charges if there were changes
+        // Remove charges that should be removed
+        currentCharges.removeAll(chargesToRemove);
+
+        // Save the account if there were changes
         if (hasChanges) {
-            account.update(newCharges);
             this.savingsAccountRepository.save(account);
             return true;
         }
 
         return false;
+    }
+
+    private boolean chargeHasPaidTransactions(Long savingsAccountChargeId) {
+        if (savingsAccountChargeId == null) {
+            return false;
+        }
+        String query = "SELECT COUNT(1) FROM m_savings_account_charge_paid_by WHERE savings_account_charge_id = ?";
+        return jdbcTemplate.queryForObject(query, Integer.class, savingsAccountChargeId) > 0;
     }
 
     private boolean updateExistingAccountCharge(SavingsAccountCharge accountCharge, Charge updatedCharge) {
@@ -405,10 +449,16 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
             BigDecimal currentAmount = accountCharge.getAmount();
             BigDecimal newAmount = updatedCharge.getAmount();
 
-            if (!java.util.Objects.equals(currentAmount, newAmount)) {
+            if (!Objects.equals(currentAmount, newAmount) && !accountCharge.isPaid()) {
                 accountCharge.update(newAmount, accountCharge.getDueDate(), updatedCharge.getFeeOnMonthDay(), updatedCharge.feeInterval());
                 hasChanges = true;
             }
+        }
+
+        // If disabled charge is added back, re-enable it
+        if (accountCharge.isNotActive()) {
+            accountCharge.reactivateCharge();
+            hasChanges = true;
         }
 
         return hasChanges;

@@ -921,6 +921,13 @@ public class SavingsAccountCharge extends AbstractAuditableWithUTCDateTimeCustom
         this.paid = true;
     }
 
+    public void reactivateCharge() {
+        this.inactivationDate = null;
+        this.status = true;
+        this.amountOutstanding = this.amount;
+        this.paid = false;
+    }
+
     public boolean isActive() {
         return this.status;
     }
