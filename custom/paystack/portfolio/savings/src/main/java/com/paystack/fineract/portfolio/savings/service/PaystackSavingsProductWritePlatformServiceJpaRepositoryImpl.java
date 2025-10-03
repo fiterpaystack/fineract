@@ -65,13 +65,13 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
     private DiscountRuleService discountRuleService;
 
     public PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl(PlatformSecurityContext context,
-                                                                       SavingsProductRepository savingProductRepository, SavingsProductDataValidator fromApiJsonDataValidator,
-                                                                       SavingsProductAssembler savingsProductAssembler,
-                                                                       org.apache.fineract.accounting.producttoaccountmapping.service.ProductToGLAccountMappingWritePlatformService accountMappingWritePlatformService,
-                                                                       FineractEntityAccessUtil fineractEntityAccessUtil, JdbcTemplate jdbcTemplate,
-                                                                       FinancialActivityAccountRepositoryWrapper financialActivityAccountRepositoryWrapper,
-                                                                       PaystackSavingsProductAttributesRepository paystackSavingsProductAttributesRepository,
-                                                                       SavingsAccountRepository savingsAccountRepository) {
+            SavingsProductRepository savingProductRepository, SavingsProductDataValidator fromApiJsonDataValidator,
+            SavingsProductAssembler savingsProductAssembler,
+            org.apache.fineract.accounting.producttoaccountmapping.service.ProductToGLAccountMappingWritePlatformService accountMappingWritePlatformService,
+            FineractEntityAccessUtil fineractEntityAccessUtil, JdbcTemplate jdbcTemplate,
+            FinancialActivityAccountRepositoryWrapper financialActivityAccountRepositoryWrapper,
+            PaystackSavingsProductAttributesRepository paystackSavingsProductAttributesRepository,
+            SavingsAccountRepository savingsAccountRepository) {
         super(context, savingProductRepository, fromApiJsonDataValidator, savingsProductAssembler, accountMappingWritePlatformService,
                 fineractEntityAccessUtil);
         this.savingsProductRepository = savingProductRepository;
@@ -406,12 +406,12 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
                 if (currentCharge.isPaidOrPartiallyPaid(account.getCurrency())) {
                     // Keep the charge but mark that changes were made
                     hasChanges = true;
-                } 
+                }
                 // If the charge is a penalty or recurring and has already been applied on the account, disable it
                 else if (this.chargeHasPaidTransactions(currentCharge.getId())) {
                     currentCharge.inactiavateCharge(DateUtils.getBusinessLocalDate());
                     hasChanges = true;
-                } 
+                }
                 // Otherwise, remove the charge
                 else {
                     chargesToRemove.add(currentCharge);
