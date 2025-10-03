@@ -433,6 +433,9 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
     }
 
     private boolean chargeHasPaidTransactions(Long savingsAccountChargeId) {
+        if (savingsAccountChargeId == null) {
+            return false;
+        }
         String query = "SELECT COUNT(1) FROM m_savings_account_charge_paid_by WHERE savings_account_charge_id = ?";
         return jdbcTemplate.queryForObject(query, Integer.class, savingsAccountChargeId) > 0;
     }
