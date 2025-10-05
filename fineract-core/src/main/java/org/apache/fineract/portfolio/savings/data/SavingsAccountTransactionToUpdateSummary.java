@@ -34,6 +34,7 @@ public class SavingsAccountTransactionToUpdateSummary {
     private final boolean isWithdrawal;
     private final boolean isNotReversed;
     private final boolean isWithdrawalFeeAndNotReversed;
+    private final boolean isDepositFeeAndNotReversed;
     private final boolean isAnnualFeeAndNotReversed;
     private final boolean isWaiveFeeChargeAndNotReversed;
     private final boolean isWaivePenaltyChargeAndNotReversed;

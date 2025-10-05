@@ -120,6 +120,12 @@ public class SavingsAccountSummaryData implements Serializable {
                         this.accountBalance = Money.of(currency, this.accountBalance).minus(transactionAmount).getAmount();
                     }
                 break;
+                case DEPOSIT_FEE:
+                    if (transaction.isDepositFeeAndNotReversed() && transaction.isNotReversed()) {
+                        this.totalFeeCharge = Money.of(currency, this.totalFeeCharge).plus(transactionAmount).getAmount();
+                        this.accountBalance = Money.of(currency, this.accountBalance).minus(transactionAmount).getAmount();
+                    }
+                break;
                 case ANNUAL_FEE:
                     if (transaction.isAnnualFeeAndNotReversed() && transaction.isNotReversed()) {
                         this.totalAnnualFees = Money.of(currency, this.totalAnnualFees).plus(transactionAmount).getAmount();
@@ -266,8 +272,6 @@ public class SavingsAccountSummaryData implements Serializable {
         this.totalAnnualFees = wrapper.calculateTotalAnnualFees(currency, transactions);
         this.totalFeeCharge = wrapper.calculateTotalFeesCharge(currency, transactions);
         this.totalPenaltyCharge = wrapper.calculateTotalPenaltyCharge(currency, transactions);
-        this.totalFeeCharge = wrapper.calculateTotalFeesChargeWaived(currency, transactions);
-        this.totalPenaltyCharge = wrapper.calculateTotalPenaltyChargeWaived(currency, transactions);
         this.totalOverdraftInterestDerived = wrapper.calculateTotalOverdraftInterest(currency, transactions);
         this.totalWithholdTax = wrapper.calculateTotalWithholdTaxWithdrawal(currency, transactions);
 
