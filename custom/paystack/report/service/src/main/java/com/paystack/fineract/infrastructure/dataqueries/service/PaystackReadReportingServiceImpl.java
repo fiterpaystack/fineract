@@ -45,8 +45,8 @@ public class PaystackReadReportingServiceImpl extends ReadReportingServiceImpl i
      * list in the future, simply add the column name to this set. The Excel export will check this list and force
      * string data type for these columns.
      */
-    private static final Set<String> STRING_COLUMNS = new HashSet<>(
-            Arrays.asList("Account No", "Client Account No", "External Id", "CustomerID", "Mobile", "Phone Number", "BVN"));
+    private static final Set<String> STRING_COLUMNS = new HashSet<>(Arrays.asList("Account No", "Client Account No", "External Id",
+            "CustomerID", "Mobile", "Phone Number", "BVN", "Incorporation No", "Tax ID"));
 
     @Autowired
     public PaystackReadReportingServiceImpl(JdbcTemplate jdbcTemplate, PlatformSecurityContext context,
