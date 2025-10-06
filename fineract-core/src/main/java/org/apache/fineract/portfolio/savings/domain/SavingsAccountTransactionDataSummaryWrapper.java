@@ -95,7 +95,8 @@ public final class SavingsAccountTransactionDataSummaryWrapper {
     public BigDecimal calculateTotalFeesCharge(final CurrencyData currency, final List<SavingsAccountTransactionData> transactions) {
         Money total = Money.zero(currency);
         for (final SavingsAccountTransactionData transaction : transactions) {
-            if (transaction.isFeeChargeAndNotReversed() && !transaction.isReversalTransaction()) {
+            if ((transaction.isFeeChargeAndNotReversed() || transaction.isDepositFeeAndNotReversed())
+                    && !transaction.isReversalTransaction()) {
                 total = total.plus(transaction.getAmount());
             }
         }
