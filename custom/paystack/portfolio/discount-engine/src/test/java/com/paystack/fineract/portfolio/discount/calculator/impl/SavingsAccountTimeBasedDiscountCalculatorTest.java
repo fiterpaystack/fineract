@@ -18,6 +18,11 @@
  */
 package com.paystack.fineract.portfolio.discount.calculator.impl;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
+
 import com.paystack.fineract.portfolio.discount.domain.DiscountContext;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -32,11 +37,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for SavingsAccountTimeBasedDiscountCalculator
@@ -114,8 +114,8 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         @DisplayName("Should apply weekend discount with date range constraint")
         void shouldApplyWeekendDiscountWithDateRange() {
             // Given
-            Map<String, Object> parameters = createWeekendParametersWithDateRange(BigDecimal.valueOf(15.0), 
-                List.of("SATURDAY", "SUNDAY"), "2024-01-01", "2024-01-31");
+            Map<String, Object> parameters = createWeekendParametersWithDateRange(BigDecimal.valueOf(15.0), List.of("SATURDAY", "SUNDAY"),
+                    "2024-01-01", "2024-01-31");
             calculator.configure(parameters);
 
             DiscountContext context = createContext(LocalDate.of(2024, 1, 6)); // Saturday within range
@@ -132,8 +132,8 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         @DisplayName("Should not apply weekend discount outside date range")
         void shouldNotApplyWeekendDiscountOutsideDateRange() {
             // Given
-            Map<String, Object> parameters = createWeekendParametersWithDateRange(BigDecimal.valueOf(15.0), 
-                List.of("SATURDAY", "SUNDAY"), "2024-01-01", "2024-01-31");
+            Map<String, Object> parameters = createWeekendParametersWithDateRange(BigDecimal.valueOf(15.0), List.of("SATURDAY", "SUNDAY"),
+                    "2024-01-01", "2024-01-31");
             calculator.configure(parameters);
 
             DiscountContext context = createContext(LocalDate.of(2024, 2, 3)); // Saturday outside range
@@ -193,8 +193,7 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         @DisplayName("Should apply holiday discount with date range constraint")
         void shouldApplyHolidayDiscountWithDateRange() {
             // Given
-            Map<String, Object> parameters = createHolidayParametersWithDateRange(BigDecimal.valueOf(25.0), 
-                "2024-12-01", "2024-12-31");
+            Map<String, Object> parameters = createHolidayParametersWithDateRange(BigDecimal.valueOf(25.0), "2024-12-01", "2024-12-31");
             calculator.configure(parameters);
 
             when(holidayRepositoryWrapper.isHoliday(anyLong(), any(LocalDate.class))).thenReturn(true);
@@ -213,8 +212,7 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         @DisplayName("Should not apply holiday discount outside date range")
         void shouldNotApplyHolidayDiscountOutsideDateRange() {
             // Given
-            Map<String, Object> parameters = createHolidayParametersWithDateRange(BigDecimal.valueOf(25.0), 
-                "2024-12-01", "2024-12-31");
+            Map<String, Object> parameters = createHolidayParametersWithDateRange(BigDecimal.valueOf(25.0), "2024-12-01", "2024-12-31");
             calculator.configure(parameters);
 
             // No mock setup needed since date is outside range, holiday check won't be called
@@ -255,8 +253,7 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         @DisplayName("Should apply date range discount within range")
         void shouldApplyDateRangeDiscountWithinRange() {
             // Given
-            Map<String, Object> parameters = createDateRangeParameters(BigDecimal.valueOf(30.0), 
-                "2024-11-24", "2024-11-30");
+            Map<String, Object> parameters = createDateRangeParameters(BigDecimal.valueOf(30.0), "2024-11-24", "2024-11-30");
             calculator.configure(parameters);
 
             DiscountContext context = createContext(LocalDate.of(2024, 11, 26)); // Black Friday week
@@ -273,8 +270,7 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         @DisplayName("Should not apply date range discount outside range")
         void shouldNotApplyDateRangeDiscountOutsideRange() {
             // Given
-            Map<String, Object> parameters = createDateRangeParameters(BigDecimal.valueOf(30.0), 
-                "2024-11-24", "2024-11-30");
+            Map<String, Object> parameters = createDateRangeParameters(BigDecimal.valueOf(30.0), "2024-11-24", "2024-11-30");
             calculator.configure(parameters);
 
             DiscountContext context = createContext(LocalDate.of(2024, 12, 1)); // After range
@@ -291,8 +287,8 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         @DisplayName("Should apply date range discount with custom date format")
         void shouldApplyDateRangeDiscountWithCustomDateFormat() {
             // Given
-            Map<String, Object> parameters = createDateRangeParametersWithFormat(BigDecimal.valueOf(25.0), 
-                "24/11/2024", "30/11/2024", "dd/MM/yyyy");
+            Map<String, Object> parameters = createDateRangeParametersWithFormat(BigDecimal.valueOf(25.0), "24/11/2024", "30/11/2024",
+                    "dd/MM/yyyy");
             calculator.configure(parameters);
 
             DiscountContext context = createContext(LocalDate.of(2024, 11, 26));
@@ -414,21 +410,19 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         @DisplayName("Should return correct rule description")
         void shouldReturnCorrectRuleDescription() {
             assertThat(calculator.getRuleDescription())
-                .isEqualTo("Time-based fee discount calculator supporting weekends, holidays, and date ranges");
+                    .isEqualTo("Time-based fee discount calculator supporting weekends, holidays, and date ranges");
         }
 
         @Test
         @DisplayName("Should return required parameters")
         void shouldReturnRequiredParameters() {
-            assertThat(calculator.getRequiredParameters())
-                .containsExactly("timeRuleType", "discountPercentage");
+            assertThat(calculator.getRequiredParameters()).containsExactly("timeRuleType", "discountPercentage");
         }
 
         @Test
         @DisplayName("Should return optional parameters")
         void shouldReturnOptionalParameters() {
-            assertThat(calculator.getOptionalParameters())
-                .containsExactly("weekendDays", "startDate", "endDate", "dateFormat");
+            assertThat(calculator.getOptionalParameters()).containsExactly("weekendDays", "startDate", "endDate", "dateFormat");
         }
 
         @Test
@@ -442,10 +436,7 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
             assertThat(calculator.isApplicable(null)).isFalse();
 
             // Invalid context - null account ID
-            DiscountContext invalidContext = DiscountContext.builder()
-                .accountId(null)
-                .transactionAmount(BigDecimal.valueOf(100))
-                .build();
+            DiscountContext invalidContext = DiscountContext.builder().accountId(null).transactionAmount(BigDecimal.valueOf(100)).build();
             assertThat(calculator.isApplicable(invalidContext)).isFalse();
         }
 
@@ -475,8 +466,8 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         return parameters;
     }
 
-    private Map<String, Object> createWeekendParametersWithDateRange(BigDecimal discountPercentage, 
-            List<String> weekendDays, String startDate, String endDate) {
+    private Map<String, Object> createWeekendParametersWithDateRange(BigDecimal discountPercentage, List<String> weekendDays,
+            String startDate, String endDate) {
         Map<String, Object> parameters = createWeekendParameters(discountPercentage, weekendDays);
         parameters.put("startDate", startDate);
         parameters.put("endDate", endDate);
@@ -490,16 +481,14 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         return parameters;
     }
 
-    private Map<String, Object> createHolidayParametersWithDateRange(BigDecimal discountPercentage, 
-            String startDate, String endDate) {
+    private Map<String, Object> createHolidayParametersWithDateRange(BigDecimal discountPercentage, String startDate, String endDate) {
         Map<String, Object> parameters = createHolidayParameters(discountPercentage);
         parameters.put("startDate", startDate);
         parameters.put("endDate", endDate);
         return parameters;
     }
 
-    private Map<String, Object> createDateRangeParameters(BigDecimal discountPercentage, 
-            String startDate, String endDate) {
+    private Map<String, Object> createDateRangeParameters(BigDecimal discountPercentage, String startDate, String endDate) {
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("timeRuleType", "DATE_RANGE");
         parameters.put("discountPercentage", discountPercentage);
@@ -508,28 +497,20 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         return parameters;
     }
 
-    private Map<String, Object> createDateRangeParametersWithFormat(BigDecimal discountPercentage, 
-            String startDate, String endDate, String dateFormat) {
+    private Map<String, Object> createDateRangeParametersWithFormat(BigDecimal discountPercentage, String startDate, String endDate,
+            String dateFormat) {
         Map<String, Object> parameters = createDateRangeParameters(discountPercentage, startDate, endDate);
         parameters.put("dateFormat", dateFormat);
         return parameters;
     }
 
     private DiscountContext createContext(LocalDate transactionDate) {
-        return DiscountContext.builder()
-                .accountId(1L)
-                .officeId(1L)
-                .transactionDate(transactionDate)
-                .transactionAmount(BigDecimal.valueOf(100))
-                .build();
+        return DiscountContext.builder().accountId(1L).officeId(1L).transactionDate(transactionDate)
+                .transactionAmount(BigDecimal.valueOf(100)).build();
     }
 
     private DiscountContext createContextWithNullOffice(LocalDate transactionDate) {
-        return DiscountContext.builder()
-                .accountId(1L)
-                .officeId(null)
-                .transactionDate(transactionDate)
-                .transactionAmount(BigDecimal.valueOf(100))
-                .build();
+        return DiscountContext.builder().accountId(1L).officeId(null).transactionDate(transactionDate)
+                .transactionAmount(BigDecimal.valueOf(100)).build();
     }
 }

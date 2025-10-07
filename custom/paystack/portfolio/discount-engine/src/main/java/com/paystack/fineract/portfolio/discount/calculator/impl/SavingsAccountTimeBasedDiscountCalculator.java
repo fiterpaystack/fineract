@@ -38,9 +38,8 @@ import org.apache.fineract.organisation.holiday.domain.HolidayRepositoryWrapper;
 import org.springframework.stereotype.Service;
 
 /**
- * Savings Account Time-Based Fee Discount Calculator
- * Implements time-based fee discounts for weekends, holidays, and specific date ranges.
- * Supports charge-specific rules with generic fallback logic.
+ * Savings Account Time-Based Fee Discount Calculator Implements time-based fee discounts for weekends, holidays, and
+ * specific date ranges. Supports charge-specific rules with generic fallback logic.
  */
 @DiscountRuleType(value = "TIME_BASED", category = "SAVINGS_ACCOUNT")
 @Service
@@ -121,11 +120,10 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
         try {
             LocalDate transactionDate = getTransactionDate(context);
             boolean isApplicable = isTimeRuleApplicable(transactionDate, context);
-            
+
             return isApplicable ? computePercentageDiscount(originalAmount) : BigDecimal.ZERO;
         } catch (Exception e) {
-            log.error("TIME_BASED CALCULATOR: Error calculating time-based discount for account {}", 
-                     context.getAccountId(), e);
+            log.error("TIME_BASED CALCULATOR: Error calculating time-based discount for account {}", context.getAccountId(), e);
             return BigDecimal.ZERO;
         }
     }
@@ -138,9 +136,8 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
 
     @Override
     public boolean isValid(DiscountContext context) {
-        return timeRuleType != null && !timeRuleType.trim().isEmpty()
-                && discountPercentage != null && discountPercentage.compareTo(BigDecimal.ZERO) > 0
-                && discountPercentage.compareTo(MAX_DISCOUNT_PERCENTAGE) <= 0
+        return timeRuleType != null && !timeRuleType.trim().isEmpty() && discountPercentage != null
+                && discountPercentage.compareTo(BigDecimal.ZERO) > 0 && discountPercentage.compareTo(MAX_DISCOUNT_PERCENTAGE) <= 0
                 && isValidTimeRuleType(timeRuleType);
     }
 
@@ -195,12 +192,11 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
             log.warn("TIME_BASED CALCULATOR: Office ID is null, cannot check holiday");
             return false;
         }
-        
+
         try {
             return holidayRepositoryWrapper.isHoliday(context.getOfficeId(), transactionDate);
         } catch (Exception e) {
-            log.error("TIME_BASED CALCULATOR: Error checking holiday for date {} and office {}", 
-                     transactionDate, context.getOfficeId(), e);
+            log.error("TIME_BASED CALCULATOR: Error checking holiday for date {} and office {}", transactionDate, context.getOfficeId(), e);
             return false;
         }
     }
@@ -224,7 +220,7 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
 
         boolean afterStart = startDate == null || !transactionDate.isBefore(startDate);
         boolean beforeEnd = endDate == null || !transactionDate.isAfter(endDate);
-        
+
         return afterStart && beforeEnd;
     }
 
@@ -232,17 +228,15 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
      * Get transaction date from context or current business date
      */
     private LocalDate getTransactionDate(DiscountContext context) {
-        return context.getTransactionDate() != null ? 
-               context.getTransactionDate() : DateUtils.getBusinessLocalDate();
+        return context.getTransactionDate() != null ? context.getTransactionDate() : DateUtils.getBusinessLocalDate();
     }
 
     /**
      * Compute percentage discount amount
      */
     private BigDecimal computePercentageDiscount(BigDecimal originalAmount) {
-        BigDecimal discount = originalAmount.multiply(discountPercentage)
-                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-        
+        BigDecimal discount = originalAmount.multiply(discountPercentage).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
         // Ensure discount doesn't exceed original amount
         return discount.compareTo(originalAmount) > 0 ? originalAmount : discount;
     }
@@ -251,9 +245,8 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
      * Validate time rule type
      */
     private boolean isValidTimeRuleType(String timeRuleType) {
-        return TIME_RULE_WEEKEND.equals(timeRuleType) || 
-               TIME_RULE_HOLIDAY.equals(timeRuleType) || 
-               TIME_RULE_DATE_RANGE.equals(timeRuleType);
+        return TIME_RULE_WEEKEND.equals(timeRuleType) || TIME_RULE_HOLIDAY.equals(timeRuleType)
+                || TIME_RULE_DATE_RANGE.equals(timeRuleType);
     }
 
     /**
