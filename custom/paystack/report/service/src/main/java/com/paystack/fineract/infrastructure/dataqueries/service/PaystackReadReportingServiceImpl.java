@@ -114,7 +114,7 @@ public class PaystackReadReportingServiceImpl extends ReadReportingServiceImpl i
                         String columnName = columnHeaders.get(j).getColumnName();
 
                         // Check if this column should always be treated as a string
-                        if (STRING_COLUMNS.contains(columnName)) {
+                        if (STRING_COLUMNS.contains(columnName) || columnName.contains("ID")) {
                             // Force as string for specified columns
                             cell.setCellValue(cellValue);
                         } else if (columnName.contains("Date")) {
