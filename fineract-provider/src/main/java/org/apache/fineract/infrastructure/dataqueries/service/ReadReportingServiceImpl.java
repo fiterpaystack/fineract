@@ -70,7 +70,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class ReadReportingServiceImpl implements ReadReportingService {
 
-    private final JdbcTemplate jdbcTemplate;
+    protected final JdbcTemplate jdbcTemplate;
     private final PlatformSecurityContext context;
     private final GenericDataService genericDataService;
     private final SqlInjectionPreventerService sqlInjectionPreventerService;

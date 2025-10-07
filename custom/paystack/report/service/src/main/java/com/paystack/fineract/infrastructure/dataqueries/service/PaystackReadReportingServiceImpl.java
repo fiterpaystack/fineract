@@ -5,7 +5,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -32,6 +33,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -41,18 +43,70 @@ import org.springframework.stereotype.Service;
 public class PaystackReadReportingServiceImpl extends ReadReportingServiceImpl implements PaystackReadReportingService {
 
     /**
-     * Columns that should always be treated as strings even if they contain numeric values. To add more columns to this
-     * list in the future, simply add the column name to this set. The Excel export will check this list and force
-     * string data type for these columns.
+     * Columns that should always be treated as strings even if they contain numeric values. These values are fetched
+     * from the string_columns table in the database. The Excel export will check this list and force string data type
+     * for these columns.
      */
-    private static final Set<String> STRING_COLUMNS = new HashSet<>(Arrays.asList("Account No", "Client Account No", "External Id",
-            "CustomerID", "Mobile", "Phone Number", "BVN", "Incorporation No", "Tax ID"));
+    private final Set<String> stringColumns = new HashSet<>();
+
+    /**
+     * Timestamp when the string columns were last loaded from the database. Used to determine when to refresh the
+     * cache.
+     */
+    private Instant lastLoadTime = Instant.MIN;
+
+    /**
+     * JDBC template for database operations.
+     */
+    private final JdbcTemplate jdbcTemplate;
 
     @Autowired
     public PaystackReadReportingServiceImpl(JdbcTemplate jdbcTemplate, PlatformSecurityContext context,
             GenericDataService genericDataService, SqlInjectionPreventerService sqlInjectionPreventerService,
             DatabaseSpecificSQLGenerator sqlGenerator, FineractProperties fineractProperties) {
         super(jdbcTemplate, context, genericDataService, sqlInjectionPreventerService, sqlGenerator, fineractProperties);
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    /**
+     * Loads string columns from the database if the cache is expired or empty. The cache expires after 1 hour.
+     */
+    public void loadStringColumns() {
+        if (isCacheExpired()) {
+            refreshStringColumns();
+        }
+    }
+
+    /**
+     * Checks if the string columns cache has expired. The cache expires after 1 hour.
+     *
+     * @return true if the cache has expired, false otherwise
+     */
+    private boolean isCacheExpired() {
+        return lastLoadTime.plus(1, ChronoUnit.HOURS).isBefore(Instant.now());
+    }
+
+    /**
+     * Refreshes the string columns cache by loading the values from the database.
+     */
+    private void refreshStringColumns() {
+        try {
+            log.info("Loading string columns from database");
+            List<String> columns = jdbcTemplate.query("SELECT column_name FROM string_columns",
+                    (rs, rowNum) -> rs.getString("column_name"));
+
+            // Clear and update the cache
+            stringColumns.clear();
+            stringColumns.addAll(columns);
+
+            // Update the last load time
+            lastLoadTime = Instant.now();
+
+            log.info("Loaded {} string columns from database", columns.size());
+        } catch (DataAccessException e) {
+            log.error("Error loading string columns from database", e);
+            // If there's an error, we'll continue with the current set
+        }
     }
 
     @Override
@@ -101,6 +155,7 @@ public class PaystackReadReportingServiceImpl extends ReadReportingServiceImpl i
 
             // Create data rows
             List<ResultsetRowData> data = result.getData();
+            this.loadStringColumns(); // Load columns
             for (int i = 0; i < data.size(); i++) {
                 Row row = sheet.createRow(i + 1);
                 List<Object> rowData = data.get(i).getRow();
@@ -114,7 +169,7 @@ public class PaystackReadReportingServiceImpl extends ReadReportingServiceImpl i
                         String columnName = columnHeaders.get(j).getColumnName();
 
                         // Check if this column should always be treated as a string
-                        if (STRING_COLUMNS.contains(columnName) || columnName.contains("ID")) {
+                        if (this.stringColumns.contains(columnName)) {
                             // Force as string for specified columns
                             cell.setCellValue(cellValue);
                         } else if (columnName.contains("Date")) {
