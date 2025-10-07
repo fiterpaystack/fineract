@@ -55,17 +55,11 @@ public class PaystackReadReportingServiceImpl extends ReadReportingServiceImpl i
      */
     private Instant lastLoadTime = Instant.MIN;
 
-    /**
-     * JDBC template for database operations.
-     */
-    private final JdbcTemplate jdbcTemplate;
-
     @Autowired
     public PaystackReadReportingServiceImpl(JdbcTemplate jdbcTemplate, PlatformSecurityContext context,
             GenericDataService genericDataService, SqlInjectionPreventerService sqlInjectionPreventerService,
             DatabaseSpecificSQLGenerator sqlGenerator, FineractProperties fineractProperties) {
         super(jdbcTemplate, context, genericDataService, sqlInjectionPreventerService, sqlGenerator, fineractProperties);
-        this.jdbcTemplate = jdbcTemplate;
     }
 
     /**
