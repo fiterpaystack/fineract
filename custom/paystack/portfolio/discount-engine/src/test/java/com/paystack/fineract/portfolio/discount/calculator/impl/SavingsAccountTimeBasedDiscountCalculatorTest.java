@@ -45,6 +45,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @DisplayName("SavingsAccountTimeBasedDiscountCalculator Tests")
 class SavingsAccountTimeBasedDiscountCalculatorTest {
 
+    // Test date constants
+    private static final String TEST_START_DATE_JAN = "2024-01-01";
+    private static final String TEST_END_DATE_JAN = "2024-01-31";
+    private static final String TEST_START_DATE_DEC = "2024-12-01";
+    private static final String TEST_END_DATE_DEC = "2024-12-31";
+    private static final String TEST_START_DATE_NOV = "24/11/2024";
+    private static final String TEST_END_DATE_NOV = "30/11/2024";
+    private static final String TEST_DATE_FORMAT = "dd/MM/yyyy";
+
     @Mock
     private HolidayRepositoryWrapper holidayRepositoryWrapper;
 
@@ -115,7 +124,7 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         void shouldApplyWeekendDiscountWithDateRange() {
             // Given
             Map<String, Object> parameters = createWeekendParametersWithDateRange(BigDecimal.valueOf(15.0), List.of("SATURDAY", "SUNDAY"),
-                    "2024-01-01", "2024-01-31");
+                    TEST_START_DATE_JAN, TEST_END_DATE_JAN);
             calculator.configure(parameters);
 
             DiscountContext context = createContext(LocalDate.of(2024, 1, 6)); // Saturday within range
@@ -133,7 +142,7 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         void shouldNotApplyWeekendDiscountOutsideDateRange() {
             // Given
             Map<String, Object> parameters = createWeekendParametersWithDateRange(BigDecimal.valueOf(15.0), List.of("SATURDAY", "SUNDAY"),
-                    "2024-01-01", "2024-01-31");
+                    TEST_START_DATE_JAN, TEST_END_DATE_JAN);
             calculator.configure(parameters);
 
             DiscountContext context = createContext(LocalDate.of(2024, 2, 3)); // Saturday outside range
@@ -193,7 +202,7 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         @DisplayName("Should apply holiday discount with date range constraint")
         void shouldApplyHolidayDiscountWithDateRange() {
             // Given
-            Map<String, Object> parameters = createHolidayParametersWithDateRange(BigDecimal.valueOf(25.0), "2024-12-01", "2024-12-31");
+            Map<String, Object> parameters = createHolidayParametersWithDateRange(BigDecimal.valueOf(25.0), TEST_START_DATE_DEC, TEST_END_DATE_DEC);
             calculator.configure(parameters);
 
             when(holidayRepositoryWrapper.isHoliday(anyLong(), any(LocalDate.class))).thenReturn(true);
@@ -212,7 +221,7 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         @DisplayName("Should not apply holiday discount outside date range")
         void shouldNotApplyHolidayDiscountOutsideDateRange() {
             // Given
-            Map<String, Object> parameters = createHolidayParametersWithDateRange(BigDecimal.valueOf(25.0), "2024-12-01", "2024-12-31");
+            Map<String, Object> parameters = createHolidayParametersWithDateRange(BigDecimal.valueOf(25.0), TEST_START_DATE_DEC, TEST_END_DATE_DEC);
             calculator.configure(parameters);
 
             // No mock setup needed since date is outside range, holiday check won't be called
@@ -287,8 +296,8 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         @DisplayName("Should apply date range discount with custom date format")
         void shouldApplyDateRangeDiscountWithCustomDateFormat() {
             // Given
-            Map<String, Object> parameters = createDateRangeParametersWithFormat(BigDecimal.valueOf(25.0), "24/11/2024", "30/11/2024",
-                    "dd/MM/yyyy");
+            Map<String, Object> parameters = createDateRangeParametersWithFormat(BigDecimal.valueOf(25.0), TEST_START_DATE_NOV, TEST_END_DATE_NOV,
+                    TEST_DATE_FORMAT);
             calculator.configure(parameters);
 
             DiscountContext context = createContext(LocalDate.of(2024, 11, 26));

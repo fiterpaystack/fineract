@@ -28,6 +28,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -294,14 +295,14 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
     @SuppressWarnings("unchecked")
     private List<String> parseWeekendDays(Map<String, Object> parameters) {
         if (!parameters.containsKey(PARAM_WEEKEND_DAYS)) {
-            return null;
+      return Collections.emptyList();
         }
         Object val = parameters.get(PARAM_WEEKEND_DAYS);
         if (val instanceof List) {
             return (List<String>) val;
         }
         log.warn("TIME_BASED CALCULATOR: Invalid weekend days format '{}'", val);
-        return null;
+    return Collections.emptyList();
     }
 
     /**
