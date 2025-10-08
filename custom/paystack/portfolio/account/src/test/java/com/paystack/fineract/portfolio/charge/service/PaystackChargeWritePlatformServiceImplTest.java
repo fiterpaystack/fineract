@@ -72,6 +72,7 @@ class PaystackChargeWritePlatformServiceImplTest {
         // Arrange
         JsonCommand command = Mockito.mock(JsonCommand.class);
         when(command.parameterExists("taxGroupId")).thenReturn(true);
+        when(command.parameterExists("discountRules")).thenReturn(false);
         when(command.stringValueOfParameterNamed("taxGroupId")).thenReturn("5");
         when(command.json()).thenReturn("{}");
         when(command.commandId()).thenReturn(1L);
@@ -115,6 +116,7 @@ class PaystackChargeWritePlatformServiceImplTest {
         // Arrange
         JsonCommand command = Mockito.mock(JsonCommand.class);
         when(command.parameterExists("taxGroupId")).thenReturn(true);
+        when(command.parameterExists("discountRules")).thenReturn(false);
         // Null/blank indicates removal
         when(command.stringValueOfParameterNamed("taxGroupId")).thenReturn(null);
         when(command.json()).thenReturn("{}");
@@ -157,6 +159,7 @@ class PaystackChargeWritePlatformServiceImplTest {
         // Arrange
         JsonCommand command = Mockito.mock(JsonCommand.class);
         when(command.parameterExists("taxGroupId")).thenReturn(true);
+        when(command.parameterExists("discountRules")).thenReturn(false);
         when(command.stringValueOfParameterNamed("taxGroupId")).thenReturn("9");
         when(command.json()).thenReturn("{}");
 
