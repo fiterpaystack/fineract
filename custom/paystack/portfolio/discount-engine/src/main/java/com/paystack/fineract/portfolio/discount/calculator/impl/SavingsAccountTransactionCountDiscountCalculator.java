@@ -260,13 +260,13 @@ public class SavingsAccountTransactionCountDiscountCalculator implements Discoun
      *
      * @param directionType
      *            The direction type (INFLOW, OUTFLOW, ALL)
-     * @return List of transaction type IDs, or empty list for ALL direction
+     * @return List of transaction type IDs for the specified direction
      */
     private List<Integer> getTransactionTypesForDirection(String directionType) {
         if (directionType == null) {
-            return getAllTransactionTypes(); // Count all transaction types
+            return getAllTransactionTypes(); // Count all transaction types when direction is not specified
         }
-
+        
         return switch (directionType.toUpperCase()) {
             case "INFLOW" -> INFLOW_TRANSACTION_TYPES;
             case "OUTFLOW" -> OUTFLOW_TRANSACTION_TYPES;

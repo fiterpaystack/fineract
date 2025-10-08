@@ -54,11 +54,11 @@ public interface PaystackSavingsAccountTransactionRepository extends SavingsAcco
      * @param includeReversed
      *            Whether to include reversed transactions
      * @param transactionTypes
-     *            List of transaction type IDs to filter by. If null or empty, counts all transaction types.
+     *            List of transaction type IDs to filter by.
      */
     @Query("SELECT COUNT(t) FROM SavingsAccountTransaction t WHERE t.savingsAccount.id = :accountId "
             + "AND t.dateOf BETWEEN :startDate AND :endDate " + "AND (:includeReversed = true OR t.reversed = false) "
-            + "AND (:transactionTypes IS NULL OR :transactionTypes IS EMPTY OR t.typeOf IN :transactionTypes)")
+            + "AND t.typeOf IN :transactionTypes")
     long countTransactionsForPeriod(@Param("accountId") Long accountId, @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate, @Param("includeReversed") boolean includeReversed,
             @Param("transactionTypes") List<Integer> transactionTypes);

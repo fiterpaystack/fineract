@@ -207,6 +207,7 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
     private boolean isDateRangeApplicable(LocalDate transactionDate) {
         // For DATE_RANGE rule type, the date range is already checked in isWithinDateRange()
         // This method can be used for additional date range logic if needed
+        log.info("transactionDate = {}", transactionDate);
         return true;
     }
 
