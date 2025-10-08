@@ -25,6 +25,7 @@ import com.paystack.fineract.portfolio.discount.repository.PaystackSavingsAccoun
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -32,7 +33,6 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
-import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
 import org.springframework.stereotype.Service;
 
 /**
@@ -53,6 +53,15 @@ public class SavingsAccountTransactionCountDiscountCalculator implements Discoun
     private static final String PARAM_PERIOD_TYPE = "periodType";
     private static final String PARAM_DIRECTION_TYPE = "directionType";
     private static final String PARAM_DISCOUNT_PERCENTAGE = "discountPercentage";
+
+    // Transaction type constants for direction filtering
+    // Based on SavingsAccountTransactionType.isCredit() and isDebit() methods
+    private static final List<Integer> INFLOW_TRANSACTION_TYPES = Arrays.asList(1, 3, 8); // DEPOSIT, INTEREST_POSTING,
+                                                                                          // DIVIDEND_PAYOUT
+    private static final List<Integer> OUTFLOW_TRANSACTION_TYPES = Arrays.asList(2, 4, 5, 7, 17, 18, 22, 23, 24); // All
+                                                                                                                  // balance-affecting
+                                                                                                                  // debit
+                                                                                                                  // transactions
 
     private Integer thresholdCount;
     private String periodType; // DAILY, MONTHLY, QUARTERLY
@@ -120,16 +129,17 @@ public class SavingsAccountTransactionCountDiscountCalculator implements Discoun
     }
 
     private boolean hasReachedThreshold(DiscountContext context) {
-        if ("ALL".equalsIgnoreCase(directionType)) {
-            long countAll = countTransactionsForPeriod(context);
-            return countAll >= thresholdCount;
-        }
-        List<SavingsAccountTransaction> transactions = getTransactionsForPeriod(context);
-        if (transactions.isEmpty()) {
-            return false;
-        }
-        long count = transactions.stream().filter(t -> (includeReversed != null && includeReversed) || !t.isReversed())
-                .filter(this::matchesDirection).count();
+        Long accountId = context.getAccountId();
+        LocalDate endDate = context.getTransactionDate() != null ? context.getTransactionDate() : DateUtils.getBusinessLocalDate();
+        LocalDate startDate = resolvePeriodStart(endDate);
+        boolean include = includeReversed != null && includeReversed;
+
+        // ✅ Get transaction types based on direction
+        List<Integer> transactionTypes = getTransactionTypesForDirection(directionType);
+
+        // ✅ Use enhanced database-level counting with transaction type filtering
+        long count = transactionRepository.countTransactionsForPeriod(accountId, startDate, endDate, include, transactionTypes);
+
         return count >= thresholdCount;
     }
 
@@ -224,21 +234,6 @@ public class SavingsAccountTransactionCountDiscountCalculator implements Discoun
         };
     }
 
-    private List<SavingsAccountTransaction> getTransactionsForPeriod(DiscountContext context) {
-        Long accountId = context.getAccountId();
-        LocalDate endDate = context.getTransactionDate() != null ? context.getTransactionDate() : DateUtils.getBusinessLocalDate();
-        LocalDate startDate = resolvePeriodStart(endDate);
-        return transactionRepository.findTransactionsForPeriod(accountId, startDate, endDate);
-    }
-
-    private long countTransactionsForPeriod(DiscountContext context) {
-        Long accountId = context.getAccountId();
-        LocalDate endDate = context.getTransactionDate() != null ? context.getTransactionDate() : DateUtils.getBusinessLocalDate();
-        LocalDate startDate = resolvePeriodStart(endDate);
-        boolean include = includeReversed != null && includeReversed;
-        return transactionRepository.countTransactionsForPeriod(accountId, startDate, endDate, include);
-    }
-
     private LocalDate resolvePeriodStart(LocalDate endDate) {
         if (periodType == null) {
             log.warn("COUNT CALCULATOR: Null period type, defaulting to DAILY");
@@ -260,15 +255,39 @@ public class SavingsAccountTransactionCountDiscountCalculator implements Discoun
         };
     }
 
-    private boolean matchesDirection(SavingsAccountTransaction transaction) {
+    /**
+     * Get transaction types based on direction type.
+     *
+     * @param directionType
+     *            The direction type (INFLOW, OUTFLOW, ALL)
+     * @return List of transaction type IDs for the specified direction
+     */
+    private List<Integer> getTransactionTypesForDirection(String directionType) {
+        if (directionType == null) {
+            return getAllTransactionTypes(); // Count all transaction types when direction is not specified
+        }
+
         return switch (directionType.toUpperCase()) {
-            case "INFLOW" -> transaction.isCredit();
-            case "OUTFLOW" -> transaction.isDebit();
-            case "ALL" -> true;
+            case "INFLOW" -> INFLOW_TRANSACTION_TYPES;
+            case "OUTFLOW" -> OUTFLOW_TRANSACTION_TYPES;
+            case "ALL" -> getAllTransactionTypes();
             default -> {
                 log.warn("COUNT CALCULATOR: Unknown direction type: {}, defaulting to ALL", directionType);
-                yield true;
+                yield getAllTransactionTypes();
             }
         };
     }
+
+    /**
+     * Get all transaction types (INFLOW + OUTFLOW combined).
+     *
+     * @return Combined list of all balance-affecting transaction types
+     */
+    private List<Integer> getAllTransactionTypes() {
+        List<Integer> allTransactions = new ArrayList<>();
+        allTransactions.addAll(INFLOW_TRANSACTION_TYPES);
+        allTransactions.addAll(OUTFLOW_TRANSACTION_TYPES);
+        return allTransactions;
+    }
+
 }
