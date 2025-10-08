@@ -266,7 +266,7 @@ public class SavingsAccountTransactionCountDiscountCalculator implements Discoun
         if (directionType == null) {
             return getAllTransactionTypes(); // Count all transaction types when direction is not specified
         }
-        
+
         return switch (directionType.toUpperCase()) {
             case "INFLOW" -> INFLOW_TRANSACTION_TYPES;
             case "OUTFLOW" -> OUTFLOW_TRANSACTION_TYPES;

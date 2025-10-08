@@ -202,7 +202,8 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         @DisplayName("Should apply holiday discount with date range constraint")
         void shouldApplyHolidayDiscountWithDateRange() {
             // Given
-            Map<String, Object> parameters = createHolidayParametersWithDateRange(BigDecimal.valueOf(25.0), TEST_START_DATE_DEC, TEST_END_DATE_DEC);
+            Map<String, Object> parameters = createHolidayParametersWithDateRange(BigDecimal.valueOf(25.0), TEST_START_DATE_DEC,
+                    TEST_END_DATE_DEC);
             calculator.configure(parameters);
 
             when(holidayRepositoryWrapper.isHoliday(anyLong(), any(LocalDate.class))).thenReturn(true);
@@ -221,7 +222,8 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         @DisplayName("Should not apply holiday discount outside date range")
         void shouldNotApplyHolidayDiscountOutsideDateRange() {
             // Given
-            Map<String, Object> parameters = createHolidayParametersWithDateRange(BigDecimal.valueOf(25.0), TEST_START_DATE_DEC, TEST_END_DATE_DEC);
+            Map<String, Object> parameters = createHolidayParametersWithDateRange(BigDecimal.valueOf(25.0), TEST_START_DATE_DEC,
+                    TEST_END_DATE_DEC);
             calculator.configure(parameters);
 
             // No mock setup needed since date is outside range, holiday check won't be called
@@ -296,8 +298,8 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         @DisplayName("Should apply date range discount with custom date format")
         void shouldApplyDateRangeDiscountWithCustomDateFormat() {
             // Given
-            Map<String, Object> parameters = createDateRangeParametersWithFormat(BigDecimal.valueOf(25.0), TEST_START_DATE_NOV, TEST_END_DATE_NOV,
-                    TEST_DATE_FORMAT);
+            Map<String, Object> parameters = createDateRangeParametersWithFormat(BigDecimal.valueOf(25.0), TEST_START_DATE_NOV,
+                    TEST_END_DATE_NOV, TEST_DATE_FORMAT);
             calculator.configure(parameters);
 
             DiscountContext context = createContext(LocalDate.of(2024, 11, 26));

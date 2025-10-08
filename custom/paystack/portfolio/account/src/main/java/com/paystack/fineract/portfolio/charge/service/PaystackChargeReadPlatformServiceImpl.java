@@ -1,6 +1,7 @@
 package com.paystack.fineract.portfolio.charge.service;
 
 import com.paystack.fineract.portfolio.charge.data.PaystackChargeData;
+import com.paystack.fineract.portfolio.discount.data.DiscountRuleData;
 import com.paystack.fineract.portfolio.discount.service.DiscountRuleService;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
@@ -82,15 +83,15 @@ public class PaystackChargeReadPlatformServiceImpl extends ChargeReadPlatformSer
                 chargeData.setChargeSlabs(slabData);
             }
 
-            // Get additional attributes including discount rules (only for savings charges)
-            Map<String, Object> additionalAttributes = new HashMap<>();
-            if (chargeData.getChargeAppliesTo().getId() == 2) { // 2 = Savings
-                additionalAttributes = getAdditionalAttributes(chargeId);
-            }
+            // Get additional attributes including discount rules for all charges
+            Map<String, Object> additionalAttributes = getAdditionalAttributes(chargeId);
+            log.debug("Retrieved additional attributes for charge {}: {}", chargeId, additionalAttributes);
 
             // Convert to PaystackChargeData and return as ChargeData for backward compatibility
             PaystackChargeData paystackChargeData = PaystackChargeData.fromChargeData(chargeData, additionalAttributes);
-            return paystackChargeData.toChargeData();
+            ChargeData result = paystackChargeData.toChargeData();
+            log.debug("Final ChargeData additionalAttributes: {}", result.getAdditionalAttributes());
+            return result;
         } catch (final org.springframework.dao.EmptyResultDataAccessException e) {
             throw new org.apache.fineract.portfolio.charge.exception.ChargeNotFoundException(chargeId, e);
         }
@@ -99,31 +100,27 @@ public class PaystackChargeReadPlatformServiceImpl extends ChargeReadPlatformSer
     /**
      * Get additional attributes for a charge including discount rules
      */
-    private Map<String, Object> getAdditionalAttributes(Long chargeId) {
+    Map<String, Object> getAdditionalAttributes(Long chargeId) {
         Map<String, Object> attributes = new HashMap<>();
+        log.debug("Getting additional attributes for charge: {}", chargeId);
 
         try {
             // Get assigned discount rules for this charge
             List<com.paystack.fineract.portfolio.discount.domain.DiscountRule> rules = discountRuleService
                     .getAssignedDiscountRules("CHARGE", chargeId);
+            log.debug("Found {} discount rules for charge {}", rules.size(), chargeId);
 
-            if (!rules.isEmpty()) {
-                List<Map<String, Object>> discountRules = rules.stream().map(rule -> {
-                    Map<String, Object> ruleMap = new HashMap<>();
-                    ruleMap.put("id", rule.getId());
-                    ruleMap.put("name", rule.getName());
-                    ruleMap.put("ruleType", rule.getRuleType());
-                    ruleMap.put("ruleParametersJson", rule.getRuleParametersJson());
-                    ruleMap.put("active", rule.isActive());
-                    ruleMap.put("rulePriority", rule.getRulePriority());
-                    return ruleMap;
-                }).collect(java.util.stream.Collectors.toList());
+            List<DiscountRuleData> discountRules = rules.stream().map(discountRuleService::mapToData).toList();
 
-                attributes.put("discountRules", discountRules);
-            }
+            // Set enableDiscountEngine flag based on whether rules exist
+            attributes.put("enableDiscountEngine", !discountRules.isEmpty());
+            attributes.put("discountRules", discountRules);
+            log.debug("Set additional attributes: {}", attributes);
         } catch (Exception e) {
-            // Log error but don't fail the charge retrieval
+            // If discount service is not available or fails, set defaults
             log.error("Failed to retrieve discount rules for charge {}", chargeId, e);
+            attributes.put("enableDiscountEngine", false);
+            attributes.put("discountRules", List.of());
         }
 
         return attributes;

@@ -295,14 +295,14 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
     @SuppressWarnings("unchecked")
     private List<String> parseWeekendDays(Map<String, Object> parameters) {
         if (!parameters.containsKey(PARAM_WEEKEND_DAYS)) {
-      return Collections.emptyList();
+            return Collections.emptyList();
         }
         Object val = parameters.get(PARAM_WEEKEND_DAYS);
         if (val instanceof List) {
             return (List<String>) val;
         }
         log.warn("TIME_BASED CALCULATOR: Invalid weekend days format '{}'", val);
-    return Collections.emptyList();
+        return Collections.emptyList();
     }
 
     /**

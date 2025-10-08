@@ -109,86 +109,22 @@ public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformS
     @Override
     public CommandProcessingResult updateCharge(final Long chargeId, final JsonCommand command) {
 
-        // If taxGroupId is explicitly present, handle update/removal here to bypass core immutability
-        if (command.parameterExists("taxGroupId")) {
-            // Basic validation on other fields (keeps parity with core validation)
-            this.fromApiJsonDeserializer.validateForUpdate(command.json());
-
-            Optional<Charge> optionalCharge = chargeRepository.findById(chargeId);
-            if (optionalCharge.isEmpty()) {
-                // Delegate to super to throw consistent not-found exception
-                return super.updateCharge(chargeId, command);
-            }
-
-            Charge chargeForUpdate = optionalCharge.get();
-
-            Long previousTaxGroupId = chargeForUpdate.getTaxGroup() != null ? chargeForUpdate.getTaxGroup().getId() : null;
-            Long requestedTaxGroupId = null;
-            if (command.parameterExists("taxGroupId")) {
-                String raw = command.stringValueOfParameterNamed("taxGroupId");
-                if (raw == null || raw.isBlank()) {
-                    requestedTaxGroupId = null; // explicit removal or blank treated as removal
-                } else {
-                    try {
-                        requestedTaxGroupId = Long.valueOf(raw);
-                    } catch (NumberFormatException ex) {
-                        final List<ApiParameterError> errors = new ArrayList<>();
-                        new DataValidatorBuilder(errors).resource("charges").parameter("taxGroupId")
-                                .failWithCodeNoParameterAddedToErrorCode("invalid.taxgroupid");
-                        log.debug("Invalid taxGroupId value provided: {}", raw, ex);
-                        throw new PlatformApiDataValidationException(errors, ex);
-                    }
-                }
-            }
-
-            if (Objects.equals(previousTaxGroupId, requestedTaxGroupId)) {
-                // No change, fall back to core to process other fields
-                return super.updateCharge(chargeId, command);
-            }
-
-            // Config gating
-            if (!isConfigEnabled("allow-charge-taxgroup-edit", true)) {
-                final List<ApiParameterError> errors = new ArrayList<>();
-                new DataValidatorBuilder(errors).resource("charges").parameter("taxGroupId")
-                        .failWithCodeNoParameterAddedToErrorCode("editing.taxgroup.disabled");
-                throw new PlatformApiDataValidationException(errors);
-            }
-
-            // Usage checks (loans, savings, client, share charges)
-            long usageCount = countChargeUsage(chargeId);
-            if (usageCount > 0 && !isConfigEnabled("allow-charge-taxgroup-edit-if-used", false)) {
-                final List<ApiParameterError> errors = new ArrayList<>();
-                new DataValidatorBuilder(errors).resource("charges").parameter("taxGroupId")
-                        .failWithCodeNoParameterAddedToErrorCode("editing.taxgroup.not.allowed.when.used");
-                throw new PlatformApiDataValidationException(errors);
-            }
-
-            TaxGroup newTaxGroup = null;
-            if (requestedTaxGroupId != null) {
-                newTaxGroup = this.taxGroupRepository.findOneWithNotFoundDetection(requestedTaxGroupId);
-            }
-
-            chargeForUpdate.setTaxGroup(newTaxGroup);
-            this.chargeRepository.save(chargeForUpdate);
-
-            // Build changes map including audit-friendly fields and warnings
-            Map<String, Object> changes = new LinkedHashMap<>();
-            changes.put("previousTaxGroupId", previousTaxGroupId);
-            changes.put("newTaxGroupId", requestedTaxGroupId);
-            if (usageCount > 0) {
-                List<String> warnings = new ArrayList<>();
-                warnings.add("Charge has been used in " + usageCount + " historical records. No retroactive changes.");
-                changes.put("warnings", warnings);
-            }
-
-            return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(chargeId).with(changes).build();
-        }
-
         // Extract parameters BEFORE calling super method to avoid consumption by core Fineract processing
         boolean hasDiscountRules = command.parameterExists("discountRules");
         Integer chargeAppliesToInt = command.integerValueOfParameterNamed("chargeAppliesTo");
+        boolean hasTaxGroupId = command.parameterExists("taxGroupId");
 
-        CommandProcessingResult result = super.updateCharge(chargeId, command);
+        CommandProcessingResult result;
+
+        // Handle taxGroupId updates if present
+        if (hasTaxGroupId) {
+            result = handleTaxGroupUpdate(chargeId, command);
+        } else {
+            // Use standard core processing
+            result = super.updateCharge(chargeId, command);
+        }
+
+        // Handle charge slabs if needed
         Map<String, Object> changes = result.getChanges();
         if (changes != null && changes.containsKey("chargeSlabs")) {
             Optional<Charge> optionalCharge = chargeRepository.findById(chargeId);
@@ -200,29 +136,113 @@ public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformS
 
         // Handle discount rules if provided and charge applies to savings
         if (hasDiscountRules && chargeAppliesToInt != null && chargeAppliesToInt == 2) {
-
-            try {
-                JsonArray discountRulesArray = command.arrayOfParameterNamed("discountRules");
-                List<Long> ruleIds = new ArrayList<>();
-
-                if (discountRulesArray != null && discountRulesArray.size() > 0) {
-                    for (int i = 0; i < discountRulesArray.size(); i++) {
-                        ruleIds.add(discountRulesArray.get(i).getAsJsonObject().get("id").getAsLong());
-                    }
-                }
-
-                // Remove all existing assignments and assign new ones
-                discountRuleService.removeAllDiscountRulesFromCharge(chargeId);
-                if (!ruleIds.isEmpty()) {
-                    discountRuleService.assignDiscountRulesToCharge(chargeId, ruleIds);
-                }
-            } catch (Exception e) {
-                log.error("Error updating discount rules for charge {}", chargeId, e);
-                throw new RuntimeException("Failed to update discount rules: " + e.getMessage(), e);
-            }
+            handleDiscountRulesUpdate(chargeId, command);
         }
 
         return result;
+    }
+
+    /**
+     * Handle tax group updates with proper validation and usage checks
+     */
+    private CommandProcessingResult handleTaxGroupUpdate(Long chargeId, JsonCommand command) {
+        // Basic validation on other fields (keeps parity with core validation)
+        this.fromApiJsonDeserializer.validateForUpdate(command.json());
+
+        Optional<Charge> optionalCharge = chargeRepository.findById(chargeId);
+        if (optionalCharge.isEmpty()) {
+            // Delegate to super to throw consistent not-found exception
+            return super.updateCharge(chargeId, command);
+        }
+
+        Charge chargeForUpdate = optionalCharge.get();
+
+        Long previousTaxGroupId = chargeForUpdate.getTaxGroup() != null ? chargeForUpdate.getTaxGroup().getId() : null;
+        Long requestedTaxGroupId = null;
+
+        String raw = command.stringValueOfParameterNamed("taxGroupId");
+        if (raw == null || raw.isBlank()) {
+            requestedTaxGroupId = null; // explicit removal or blank treated as removal
+        } else {
+            try {
+                requestedTaxGroupId = Long.valueOf(raw);
+            } catch (NumberFormatException ex) {
+                final List<ApiParameterError> errors = new ArrayList<>();
+                new DataValidatorBuilder(errors).resource("charges").parameter("taxGroupId")
+                        .failWithCodeNoParameterAddedToErrorCode("invalid.taxgroupid");
+                log.debug("Invalid taxGroupId value provided: {}", raw, ex);
+                throw new PlatformApiDataValidationException(errors, ex);
+            }
+        }
+
+        if (Objects.equals(previousTaxGroupId, requestedTaxGroupId)) {
+            // No change, fall back to core to process other fields
+            return super.updateCharge(chargeId, command);
+        }
+
+        // Config gating
+        if (!isConfigEnabled("allow-charge-taxgroup-edit", true)) {
+            final List<ApiParameterError> errors = new ArrayList<>();
+            new DataValidatorBuilder(errors).resource("charges").parameter("taxGroupId")
+                    .failWithCodeNoParameterAddedToErrorCode("editing.taxgroup.disabled");
+            throw new PlatformApiDataValidationException(errors);
+        }
+
+        // Usage checks (loans, savings, client, share charges)
+        long usageCount = countChargeUsage(chargeId);
+        if (usageCount > 0 && !isConfigEnabled("allow-charge-taxgroup-edit-if-used", false)) {
+            final List<ApiParameterError> errors = new ArrayList<>();
+            new DataValidatorBuilder(errors).resource("charges").parameter("taxGroupId")
+                    .failWithCodeNoParameterAddedToErrorCode("editing.taxgroup.not.allowed.when.used");
+            throw new PlatformApiDataValidationException(errors);
+        }
+
+        TaxGroup newTaxGroup = null;
+        if (requestedTaxGroupId != null) {
+            newTaxGroup = this.taxGroupRepository.findOneWithNotFoundDetection(requestedTaxGroupId);
+        }
+
+        chargeForUpdate.setTaxGroup(newTaxGroup);
+        this.chargeRepository.save(chargeForUpdate);
+
+        // Build changes map including audit-friendly fields and warnings
+        Map<String, Object> changes = new LinkedHashMap<>();
+        changes.put("previousTaxGroupId", previousTaxGroupId);
+        changes.put("newTaxGroupId", requestedTaxGroupId);
+        if (usageCount > 0) {
+            List<String> warnings = new ArrayList<>();
+            warnings.add("Charge has been used in " + usageCount + " historical records. No retroactive changes.");
+            changes.put("warnings", warnings);
+        }
+
+        return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(chargeId).with(changes).build();
+    }
+
+    /**
+     * Handle discount rules updates for charges
+     */
+    private void handleDiscountRulesUpdate(Long chargeId, JsonCommand command) {
+        try {
+            JsonArray discountRulesArray = command.arrayOfParameterNamed("discountRules");
+            List<Long> ruleIds = new ArrayList<>();
+
+            if (discountRulesArray != null && discountRulesArray.size() > 0) {
+                for (int i = 0; i < discountRulesArray.size(); i++) {
+                    ruleIds.add(discountRulesArray.get(i).getAsJsonObject().get("id").getAsLong());
+                }
+            }
+
+            // Remove all existing assignments and assign new ones
+            discountRuleService.removeAllDiscountRulesFromCharge(chargeId);
+            if (!ruleIds.isEmpty()) {
+                discountRuleService.assignDiscountRulesToCharge(chargeId, ruleIds);
+            }
+
+            log.info("Successfully updated discount rules for charge {}: {}", chargeId, ruleIds);
+        } catch (Exception e) {
+            log.error("Error updating discount rules for charge {}", chargeId, e);
+            throw new RuntimeException("Failed to update discount rules: " + e.getMessage(), e);
+        }
     }
 
     private long countChargeUsage(Long chargeId) {
