@@ -63,7 +63,7 @@ public class PaystackSavingsAccountAssembler extends SavingsAccountAssembler {
     }
 
     /**
-     * Append any product level charges removed during account creating; flag them as inactive
+     * Append any product level charges removed during account creation; flag them as inactive
      *
      * @param account
      */
