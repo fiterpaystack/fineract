@@ -94,13 +94,13 @@ public class PaystackSavingsAccountAssembler extends SavingsAccountAssembler {
                 ChargeCalculationType chargeCalculation = ChargeCalculationType.fromInt(productCharge.getChargeCalculation());
                 BigDecimal amount = productCharge.getAmount();
                 LocalDate dueDate = account.getActivationDate() != null ? account.getActivationDate() : account.getSubmittedOnDate();
-                boolean status = true; // Initially active, will be inactivated later
+                boolean isActive = true; // Initially active, will be inactivated later
                 MonthDay feeOnMonthDay = productCharge.getFeeOnMonthDay();
                 Integer feeInterval = productCharge.feeInterval();
 
                 // Create a new charge without associating it with the account yet
                 SavingsAccountCharge newCharge = SavingsAccountCharge.createNewWithoutSavingsAccount(productCharge, amount, chargeTime,
-                        chargeCalculation, dueDate, status, feeOnMonthDay, feeInterval);
+                        chargeCalculation, dueDate, isActive, feeOnMonthDay, feeInterval);
 
                 // Add the charge to the account
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMMM yyyy");
