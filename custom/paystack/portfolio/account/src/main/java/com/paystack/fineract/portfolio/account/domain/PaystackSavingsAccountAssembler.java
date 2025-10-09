@@ -3,8 +3,14 @@ package com.paystack.fineract.portfolio.account.domain;
 import com.paystack.fineract.client.charge.service.ClientChargeOverrideReadService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.MonthDay;
+import java.time.format.DateTimeFormatter;
+import java.util.Set;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
+import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.charge.domain.ChargeCalculationType;
+import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.group.domain.Group;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
@@ -14,6 +20,7 @@ import org.apache.fineract.portfolio.savings.domain.SavingsAccountChargeAssemble
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepositoryWrapper;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransactionDataSummaryWrapper;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransactionSummaryWrapper;
+import org.apache.fineract.portfolio.savings.domain.SavingsProduct;
 import org.apache.fineract.portfolio.savings.domain.SavingsProductRepository;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.springframework.context.annotation.Primary;
@@ -51,7 +58,58 @@ public class PaystackSavingsAccountAssembler extends SavingsAccountAssembler {
         if (clientId != null) {
             applyClientOverridesToCharges(account, clientId);
         }
+        appendProductCharges(account);
         return account;
+    }
+
+    /**
+     * Append any product level charges removed during account creation; flag them as inactive
+     *
+     * @param account
+     */
+    private void appendProductCharges(SavingsAccount account) {
+        SavingsProduct product = account.savingsProduct();
+        Set<Charge> productCharges = product.charges();
+        Set<SavingsAccountCharge> accountCharges = account.charges();
+
+        // Get the current date to use for inactivation
+        LocalDate currentDate = DateUtils.getBusinessLocalDate();
+
+        // For each charge in the product, check if it exists in the account
+        for (Charge productCharge : productCharges) {
+            boolean chargeExists = false;
+
+            // Check if this product charge already exists in the account
+            for (SavingsAccountCharge accountCharge : accountCharges) {
+                if (accountCharge.getCharge().getId().equals(productCharge.getId())) {
+                    chargeExists = true;
+                    break;
+                }
+            }
+
+            // If the charge doesn't exist in the account, add it and mark it as inactive
+            if (!chargeExists) {
+                // Create a new SavingsAccountCharge
+                ChargeTimeType chargeTime = ChargeTimeType.fromInt(productCharge.getChargeTimeType());
+                ChargeCalculationType chargeCalculation = ChargeCalculationType.fromInt(productCharge.getChargeCalculation());
+                BigDecimal amount = productCharge.getAmount();
+                LocalDate dueDate = account.getActivationDate() != null ? account.getActivationDate() : account.getSubmittedOnDate();
+                boolean isActive = true; // Initially active, will be inactivated later
+                MonthDay feeOnMonthDay = productCharge.getFeeOnMonthDay();
+                Integer feeInterval = productCharge.feeInterval();
+
+                // Create a new charge without associating it with the account yet
+                SavingsAccountCharge newCharge = SavingsAccountCharge.createNewWithoutSavingsAccount(productCharge, amount, chargeTime,
+                        chargeCalculation, dueDate, isActive, feeOnMonthDay, feeInterval);
+
+                // Add the charge to the account
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMMM yyyy");
+                newCharge.update(account);
+                // Mark the charge as inactive
+                newCharge.inactiavateCharge(currentDate);
+                account.addCharge(formatter, newCharge, productCharge);
+            }
+        }
     }
 
     @Override
@@ -61,6 +119,7 @@ public class PaystackSavingsAccountAssembler extends SavingsAccountAssembler {
         if (client != null) {
             applyClientOverridesToCharges(account, client.getId());
         }
+        appendProductCharges(account);
         return account;
     }
 
