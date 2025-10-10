@@ -7,11 +7,15 @@ import com.paystack.fineract.portfolio.discount.domain.DiscountContext;
 import com.paystack.fineract.portfolio.discount.domain.DiscountRule;
 import com.paystack.fineract.portfolio.discount.factory.DiscountRuleCalculatorFactory;
 import com.paystack.fineract.portfolio.discount.repository.DiscountRuleRepositoryWrapper;
+import com.paystack.fineract.portfolio.discount.repository.DiscountRuleRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import com.paystack.fineract.portfolio.discount.domain.policy.DiscountAssignmentPolicy;
+import com.paystack.fineract.portfolio.discount.domain.policy.DiscountCombinationStrategy;
+import com.paystack.fineract.portfolio.discount.domain.policy.DiscountPolicyEntityType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
@@ -35,9 +39,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class DiscountRuleService {
 
     private final DiscountRuleRepositoryWrapper repositoryWrapper;
+    private final DiscountRuleRepository discountRuleRepository;
     private final ChargeRepository chargeRepository;
     private final SavingsProductRepository savingsProductRepository;
     private final DiscountRuleCalculatorFactory calculatorFactory;
+    private final DiscountAssignmentPolicyService policyService;
 
     /**
      * Create a new discount rule from JsonCommand
@@ -161,21 +167,9 @@ public class DiscountRuleService {
         Charge charge = chargeRepository.findById(chargeId)
                 .orElseThrow(() -> new IllegalArgumentException("Charge not found: " + chargeId));
 
-        // Find all discount rules assigned to this charge
-        List<DiscountRule> allRules = repositoryWrapper.findAllActive();
-
-        int removedCount = 0;
-
-        for (DiscountRule rule : allRules) {
-            if (rule.isAssignedToCharge(chargeId)) {
-                rule.unassignFromCharge(charge);
-                repositoryWrapper.save(rule);
-                removedCount++;
-            }
-        }
-
+        int removedCount = discountRuleRepository.deleteAssignmentsByCharge(chargeId);
         if (removedCount > 0) {
-            // Rules were removed
+            policyService.deletePolicyIfExists(DiscountPolicyEntityType.CHARGE, chargeId);
         }
     }
 
@@ -216,35 +210,43 @@ public class DiscountRuleService {
         SavingsProduct product = savingsProductRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
 
-        // Find all discount rules assigned to this product
-        List<DiscountRule> allRules = repositoryWrapper.findAllActive();
-        int removedCount = 0;
-
-        for (DiscountRule rule : allRules) {
-            if (rule.isAssignedToProduct(productId)) {
-                rule.unassignFromProduct(product);
-                repositoryWrapper.save(rule);
-                removedCount++;
-            }
+        int removedCount = discountRuleRepository.deleteAssignmentsByProduct(productId);
+        if (removedCount > 0) {
+            policyService.deletePolicyIfExists(DiscountPolicyEntityType.SAVINGS_PRODUCT, productId);
         }
-
     }
 
     /**
      * Get assigned discount rules for an entity
      */
     @Transactional(readOnly = true)
-    public List<DiscountRule> getAssignedDiscountRules(String entityType, Long entityId) {
-        List<DiscountRule> allRules = repositoryWrapper.findAllActive();
+    public List<DiscountRule> getAssignedDiscountRules(DiscountPolicyEntityType entityType, Long entityId) {
+        return switch (entityType) {
+            case CHARGE -> discountRuleRepository.findActiveByChargeOrdered(entityId);
+            case SAVINGS_PRODUCT -> discountRuleRepository.findActiveByProductOrdered(entityId);
+        };
+    }
 
-        return allRules.stream().filter(rule -> {
-            if ("CHARGE".equals(entityType)) {
-                return rule.isAssignedToCharge(entityId);
-            } else if ("SAVINGS_PRODUCT".equals(entityType)) {
-                return rule.isAssignedToProduct(entityId);
+    /**
+     * Backward-compatible variant using String; prefer enum overload.
+     */
+    public List<DiscountRule> getAssignedDiscountRules(String entityType, Long entityId) {
+        if (entityType == null) {
+            return List.of();
+        }
+        try {
+            DiscountPolicyEntityType type = DiscountPolicyEntityType.valueOf(entityType);
+            return getAssignedDiscountRules(type, entityId);
+        } catch (IllegalArgumentException ex) {
+            // Support case-insensitive inputs like "SAVINGS_PRODUCT"
+            String normalized = entityType.trim().toUpperCase();
+            try {
+                DiscountPolicyEntityType type = DiscountPolicyEntityType.valueOf(normalized);
+                return getAssignedDiscountRules(type, entityId);
+            } catch (Exception ignore) {
+                return List.of();
             }
-            return false;
-        }).collect(Collectors.toList());
+        }
     }
 
     /**
@@ -281,7 +283,7 @@ public class DiscountRuleService {
     }
 
     /**
-     * Apply discount using the new calculator system
+     * Apply discount using the new calculator system with policy-based AND gating and combination.
      */
     @Transactional(readOnly = true)
     public BigDecimal applyDiscountWithCalculator(String entityType, Long entityId, BigDecimal originalAmount, DiscountContext context) {
@@ -296,6 +298,22 @@ public class DiscountRuleService {
             return originalAmount;
         }
 
+        // Resolve policy for the target entity
+        DiscountPolicyEntityType policyEntityType = "CHARGE".equals(entityType) ? 
+            DiscountPolicyEntityType.CHARGE : DiscountPolicyEntityType.SAVINGS_PRODUCT;
+        DiscountAssignmentPolicy policy = policyService.resolvePolicyOrDefault(policyEntityType, entityId);
+
+        // If AND is required, check all rules are applicable/valid
+        if (policy.isAndRequired()) {
+            for (DiscountRule rule : rules) {
+                if (!isRuleApplicableAndValid(rule, context)) {
+                    log.debug("AND policy requires all rules to be applicable; rule {} failed, returning original amount", rule.getName());
+                    return originalAmount;
+                }
+            }
+        }
+
+        // Calculate discounts for applicable rules
         BigDecimal totalDiscount = BigDecimal.ZERO;
         LocalDate evaluationDate = LocalDate.now();
 
@@ -308,9 +326,34 @@ public class DiscountRuleService {
             }
         }
 
-        BigDecimal finalAmount = originalAmount.subtract(totalDiscount);
+        // Apply combination strategy
+        BigDecimal finalDiscount = applyCombinationStrategy(totalDiscount, originalAmount, policy.getCombinationStrategy());
+        return originalAmount.subtract(finalDiscount);
+    }
 
-        return finalAmount;
+    /**
+     * Check if rule is both applicable and valid for the context.
+     */
+    private boolean isRuleApplicableAndValid(DiscountRule rule, DiscountContext context) {
+        if (rule.getRuleType() != null && rule.getRuleParametersJson() != null) {
+            try {
+                DiscountRuleCalculator calculator = calculatorFactory.createCalculator(rule.getRuleType(), rule.getRuleParameters());
+                return calculator.isApplicable(context) && calculator.isValid(context);
+            } catch (Exception e) {
+                log.warn("Failed to check rule {} applicability: {}", rule.getName(), e.getMessage());
+                return false;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Apply combination strategy to total discount amount.
+     */
+    private BigDecimal applyCombinationStrategy(BigDecimal totalDiscount, BigDecimal originalAmount, DiscountCombinationStrategy strategy) {
+        return switch (strategy) {
+            case SUM_CAP -> totalDiscount.min(originalAmount);
+        };
     }
 
     /**

@@ -4,6 +4,9 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.paystack.fineract.portfolio.discount.service.DiscountRuleService;
 import com.paystack.fineract.portfolio.savings.data.PaystackSavingsProductAdditionalAttributes;
+import com.paystack.fineract.portfolio.discount.domain.policy.DiscountCombinationStrategy;
+import com.paystack.fineract.portfolio.discount.domain.policy.DiscountPolicyEntityType;
+import com.paystack.fineract.portfolio.discount.service.DiscountAssignmentPolicyService;
 import com.paystack.fineract.portfolio.savings.domain.ExtendedSavingsAccountRepository;
 import com.paystack.fineract.portfolio.savings.domain.PaystackSavingsProductAttributes;
 import com.paystack.fineract.portfolio.savings.domain.PaystackSavingsProductAttributesRepository;
@@ -63,6 +66,8 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
 
     @Autowired
     private DiscountRuleService discountRuleService;
+    @Autowired
+    private DiscountAssignmentPolicyService policyService;
 
     public PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl(PlatformSecurityContext context,
             SavingsProductRepository savingProductRepository, SavingsProductDataValidator fromApiJsonDataValidator,
@@ -244,18 +249,44 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
                 }
 
                 if (discountRulesArray != null && !discountRulesArray.isEmpty()) {
-                    // Extract discount rule IDs and assign them to the product
+                    // Extract discount rule IDs and assign them to the product, set priorities if provided
                     List<Long> discountRuleIds = new ArrayList<>();
+                    List<Map.Entry<Long, Integer>> priorities = new ArrayList<>();
                     for (int i = 0; i < discountRulesArray.size(); i++) {
                         JsonObject ruleObject = discountRulesArray.get(i).getAsJsonObject();
                         if (ruleObject.has("id")) {
-                            discountRuleIds.add(ruleObject.get("id").getAsLong());
+                            long ruleId = ruleObject.get("id").getAsLong();
+                            discountRuleIds.add(ruleId);
+                            if (ruleObject.has("assignmentPriority")) {
+                                priorities.add(Map.entry(ruleId, ruleObject.get("assignmentPriority").getAsInt()));
+                            }
                         }
                     }
 
                     if (!discountRuleIds.isEmpty()) {
                         // Assign discount rules to product using the discount rule service
                         discountRuleService.assignDiscountRulesToProduct(productId, discountRuleIds);
+                        // Apply assignment priorities if provided
+                        for (var p : priorities) {
+                            this.jdbcTemplate.update(
+                                    "UPDATE m_discount_rule_product SET assignment_priority = ? WHERE product_id = ? AND discount_rule_id = ?",
+                                    p.getValue(), productId, p.getKey());
+                        }
+                        // Optional policy toggles
+                        Boolean allRulesRequired = command.booleanObjectValueOfParameterNamed("allRulesRequired");
+                        String combination = command.stringValueOfParameterNamed("combinationStrategy");
+                        if (allRulesRequired != null || (combination != null && !combination.isBlank())) {
+                            DiscountCombinationStrategy strategy = DiscountCombinationStrategy.SUM_CAP;
+                            if (combination != null && !combination.isBlank()) {
+                                try {
+                                    strategy = DiscountCombinationStrategy.valueOf(combination.trim().toUpperCase());
+                                } catch (Exception ignore) {
+                                    // default stays SUM_CAP
+                                }
+                            }
+                            policyService.upsertPolicy(DiscountPolicyEntityType.SAVINGS_PRODUCT, productId,
+                                    Boolean.TRUE.equals(allRulesRequired), strategy);
+                        }
                         return true;
                     }
                 }

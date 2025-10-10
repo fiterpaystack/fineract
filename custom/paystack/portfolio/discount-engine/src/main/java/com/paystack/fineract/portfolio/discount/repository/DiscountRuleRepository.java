@@ -23,6 +23,9 @@ import com.paystack.fineract.portfolio.discount.domain.DiscountRule;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
@@ -46,4 +49,50 @@ public interface DiscountRuleRepository extends JpaRepository<DiscountRule, Long
      * Check if discount rule exists by ID and is active
      */
     boolean existsByIdAndActiveTrue(Long id);
+
+    /**
+     * Find active rules assigned to a charge ordered by assignment priority then rule priority.
+     */
+    @Query(value = "SELECT dr.* FROM m_discount_rule dr "
+        + "JOIN m_discount_rule_charge rc ON rc.discount_rule_id = dr.id "
+        + "WHERE rc.charge_id = :chargeId AND dr.is_active = true "
+        + "ORDER BY rc.assignment_priority DESC, dr.priority DESC, dr.id ASC", nativeQuery = true)
+    List<DiscountRule> findActiveByChargeOrdered(@Param("chargeId") Long chargeId);
+
+    /**
+     * Find active rules assigned to a product ordered by assignment priority then rule priority.
+     */
+    @Query(value = "SELECT dr.* FROM m_discount_rule dr "
+        + "JOIN m_discount_rule_product rp ON rp.discount_rule_id = dr.id "
+        + "WHERE rp.product_id = :productId AND dr.is_active = true "
+        + "ORDER BY rp.assignment_priority DESC, dr.priority DESC, dr.id ASC", nativeQuery = true)
+    List<DiscountRule> findActiveByProductOrdered(@Param("productId") Long productId);
+
+    /**
+     * Bulk delete assignments by charge ID.
+     */
+    @Modifying
+    @Query(value = "DELETE FROM m_discount_rule_charge WHERE charge_id = :chargeId", nativeQuery = true)
+    int deleteAssignmentsByCharge(@Param("chargeId") Long chargeId);
+
+    /**
+     * Bulk delete assignments by product ID.
+     */
+    @Modifying
+    @Query(value = "DELETE FROM m_discount_rule_product WHERE product_id = :productId", nativeQuery = true)
+    int deleteAssignmentsByProduct(@Param("productId") Long productId);
+
+    /**
+     * Update assignment priority for a specific charge-rule association.
+     */
+    @Modifying
+    @Query(value = "UPDATE m_discount_rule_charge SET assignment_priority = :priority WHERE charge_id = :chargeId AND discount_rule_id = :ruleId", nativeQuery = true)
+    int updateChargeAssignmentPriority(@Param("chargeId") Long chargeId, @Param("ruleId") Long ruleId, @Param("priority") int priority);
+
+    /**
+     * Update assignment priority for a specific product-rule association.
+     */
+    @Modifying
+    @Query(value = "UPDATE m_discount_rule_product SET assignment_priority = :priority WHERE product_id = :productId AND discount_rule_id = :ruleId", nativeQuery = true)
+    int updateProductAssignmentPriority(@Param("productId") Long productId, @Param("ruleId") Long ruleId, @Param("priority") int priority);
 }

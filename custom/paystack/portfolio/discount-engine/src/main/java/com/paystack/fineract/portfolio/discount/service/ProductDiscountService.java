@@ -2,6 +2,9 @@ package com.paystack.fineract.portfolio.discount.service;
 
 import com.paystack.fineract.portfolio.discount.calculator.DiscountRuleCalculator;
 import com.paystack.fineract.portfolio.discount.domain.DiscountContext;
+import com.paystack.fineract.portfolio.discount.domain.policy.DiscountAssignmentPolicy;
+import com.paystack.fineract.portfolio.discount.domain.policy.DiscountCombinationStrategy;
+import com.paystack.fineract.portfolio.discount.domain.policy.DiscountPolicyEntityType;
 import com.paystack.fineract.portfolio.discount.factory.DiscountRuleCalculatorFactory;
 import jakarta.annotation.PreDestroy;
 import java.math.BigDecimal;
@@ -25,6 +28,7 @@ public class ProductDiscountService {
 
     private final DiscountRuleService discountRuleService;
     private final DiscountRuleCalculatorFactory calculatorFactory;
+    private final DiscountAssignmentPolicyService policyService;
     private final ThreadLocal<Set<String>> appliedDiscounts = ThreadLocal.withInitial(HashSet::new);
 
     /**
@@ -114,7 +118,7 @@ public class ProductDiscountService {
     }
 
     /**
-     * Apply discount rules to an amount using the new calculator system
+     * Apply discount rules to an amount using the new calculator system with policy-based AND gating and combination.
      */
     private BigDecimal applyRulesWithCalculator(List<com.paystack.fineract.portfolio.discount.domain.DiscountRule> rules,
             BigDecimal originalAmount, DiscountContext context) {
@@ -122,6 +126,28 @@ public class ProductDiscountService {
             return originalAmount;
         }
 
+        if (rules.isEmpty()) {
+            return originalAmount;
+        }
+
+        // Resolve policy for the target entity
+        DiscountPolicyEntityType entityType = context.getChargeId() != null ? 
+            DiscountPolicyEntityType.CHARGE : DiscountPolicyEntityType.SAVINGS_PRODUCT;
+        Long entityId = context.getChargeId() != null ? context.getChargeId() : context.getProductId();
+        
+        DiscountAssignmentPolicy policy = policyService.resolvePolicyOrDefault(entityType, entityId);
+
+        // If AND is required, check all rules are applicable/valid
+        if (policy.isAndRequired()) {
+            for (com.paystack.fineract.portfolio.discount.domain.DiscountRule rule : rules) {
+                if (!isRuleApplicableAndValid(rule, context)) {
+                    log.debug("AND policy requires all rules to be applicable; rule {} failed, returning original amount", rule.getName());
+                    return originalAmount;
+                }
+            }
+        }
+
+        // Calculate discounts for applicable rules
         BigDecimal totalDiscount = BigDecimal.ZERO;
         java.time.LocalDate evaluationDate = java.time.LocalDate.now();
 
@@ -134,9 +160,34 @@ public class ProductDiscountService {
             }
         }
 
-        BigDecimal finalAmount = originalAmount.subtract(totalDiscount);
+        // Apply combination strategy
+        BigDecimal finalDiscount = applyCombinationStrategy(totalDiscount, originalAmount, policy.getCombinationStrategy());
+        return originalAmount.subtract(finalDiscount);
+    }
 
-        return finalAmount;
+    /**
+     * Check if rule is both applicable and valid for the context.
+     */
+    private boolean isRuleApplicableAndValid(com.paystack.fineract.portfolio.discount.domain.DiscountRule rule, DiscountContext context) {
+        if (rule.getRuleType() != null && rule.getRuleParametersJson() != null) {
+            try {
+                DiscountRuleCalculator calculator = calculatorFactory.createCalculator(rule.getRuleType(), rule.getRuleParameters());
+                return calculator.isApplicable(context) && calculator.isValid(context);
+            } catch (Exception e) {
+                log.warn("Failed to check rule {} applicability: {}", rule.getName(), e.getMessage());
+                return false;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Apply combination strategy to total discount amount.
+     */
+    private BigDecimal applyCombinationStrategy(BigDecimal totalDiscount, BigDecimal originalAmount, DiscountCombinationStrategy strategy) {
+        return switch (strategy) {
+            case SUM_CAP -> totalDiscount.min(originalAmount);
+        };
     }
 
     /**

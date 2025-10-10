@@ -1,6 +1,9 @@
 package com.paystack.fineract.portfolio.charge.service;
 
 import com.google.gson.JsonArray;
+import com.paystack.fineract.portfolio.discount.domain.policy.DiscountCombinationStrategy;
+import com.paystack.fineract.portfolio.discount.domain.policy.DiscountPolicyEntityType;
+import com.paystack.fineract.portfolio.discount.service.DiscountAssignmentPolicyService;
 import com.paystack.fineract.portfolio.discount.service.DiscountRuleService;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -46,6 +49,7 @@ public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformS
     private final ChargeSlabRepository chargeSlabRepository;
     private final ChargeDefinitionCommandFromApiJsonDeserializer fromApiJsonDeserializer;
     private final DiscountRuleService discountRuleService;
+    private final DiscountAssignmentPolicyService policyService;
     private final TaxGroupRepositoryWrapper taxGroupRepository;
     private final JdbcTemplate jdbcTemplate;
 
@@ -54,7 +58,7 @@ public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformS
             LoanProductRepository loanProductRepository, JdbcTemplate jdbcTemplate, FineractEntityAccessUtil fineractEntityAccessUtil,
             GLAccountRepositoryWrapper glAccountRepository, TaxGroupRepositoryWrapper taxGroupRepository,
             PaymentTypeRepositoryWrapper paymentTyperepositoryWrapper, ChargeSlabRepository chargeSlabRepository,
-            DiscountRuleService discountRuleService) {
+            DiscountRuleService discountRuleService, DiscountAssignmentPolicyService policyService) {
         super(context, fromApiJsonDeserializer, chargeRepository, loanProductRepository, jdbcTemplate, fineractEntityAccessUtil,
                 glAccountRepository, taxGroupRepository, paymentTyperepositoryWrapper);
 
@@ -64,6 +68,7 @@ public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformS
         this.discountRuleService = discountRuleService;
         this.taxGroupRepository = taxGroupRepository;
         this.jdbcTemplate = jdbcTemplate;
+        this.policyService = policyService;
     }
 
     @Override
@@ -91,11 +96,37 @@ public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformS
                 JsonArray discountRulesArray = command.arrayOfParameterNamed("discountRules");
                 if (discountRulesArray != null && discountRulesArray.size() > 0) {
                     List<Long> ruleIds = new ArrayList<>();
+                    List<Map.Entry<Long, Integer>> priorities = new ArrayList<>();
                     for (int i = 0; i < discountRulesArray.size(); i++) {
-                        ruleIds.add(discountRulesArray.get(i).getAsJsonObject().get("id").getAsLong());
+                        var obj = discountRulesArray.get(i).getAsJsonObject();
+                        long ruleId = obj.get("id").getAsLong();
+                        ruleIds.add(ruleId);
+                        if (obj.has("assignmentPriority")) {
+                            priorities.add(Map.entry(ruleId, obj.get("assignmentPriority").getAsInt()));
+                        }
                     }
 
                     discountRuleService.assignDiscountRulesToCharge(result.getResourceId(), ruleIds);
+                    // Apply assignment priorities if provided
+                    for (var p : priorities) {
+                        this.jdbcTemplate.update("UPDATE m_discount_rule_charge SET assignment_priority = ? WHERE charge_id = ? AND discount_rule_id = ?",
+                                p.getValue(), result.getResourceId(), p.getKey());
+                    }
+                    // Optional policy toggles
+                    Boolean allRulesRequired = command.booleanObjectValueOfParameterNamed("allRulesRequired");
+                    String combination = command.stringValueOfParameterNamed("combinationStrategy");
+                    if (allRulesRequired != null || (combination != null && !combination.isBlank())) {
+                        DiscountCombinationStrategy strategy = DiscountCombinationStrategy.SUM_CAP;
+                        if (combination != null && !combination.isBlank()) {
+                            try {
+                                strategy = DiscountCombinationStrategy.valueOf(combination.trim().toUpperCase());
+                            } catch (Exception ignore) {
+                                // default stays SUM_CAP
+                            }
+                        }
+                        policyService.upsertPolicy(DiscountPolicyEntityType.CHARGE, result.getResourceId(),
+                                Boolean.TRUE.equals(allRulesRequired), strategy);
+                    }
                 }
             } catch (Exception e) {
                 log.error("Error assigning discount rules to charge {}", result.getResourceId(), e);
@@ -225,10 +256,16 @@ public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformS
         try {
             JsonArray discountRulesArray = command.arrayOfParameterNamed("discountRules");
             List<Long> ruleIds = new ArrayList<>();
+            List<Map.Entry<Long, Integer>> priorities = new ArrayList<>();
 
             if (discountRulesArray != null && discountRulesArray.size() > 0) {
                 for (int i = 0; i < discountRulesArray.size(); i++) {
-                    ruleIds.add(discountRulesArray.get(i).getAsJsonObject().get("id").getAsLong());
+                    var obj = discountRulesArray.get(i).getAsJsonObject();
+                    long ruleId = obj.get("id").getAsLong();
+                    ruleIds.add(ruleId);
+                    if (obj.has("assignmentPriority")) {
+                        priorities.add(Map.entry(ruleId, obj.get("assignmentPriority").getAsInt()));
+                    }
                 }
             }
 
@@ -236,6 +273,10 @@ public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformS
             discountRuleService.removeAllDiscountRulesFromCharge(chargeId);
             if (!ruleIds.isEmpty()) {
                 discountRuleService.assignDiscountRulesToCharge(chargeId, ruleIds);
+                for (var p : priorities) {
+                    this.jdbcTemplate.update("UPDATE m_discount_rule_charge SET assignment_priority = ? WHERE charge_id = ? AND discount_rule_id = ?",
+                            p.getValue(), chargeId, p.getKey());
+                }
             }
 
             log.info("Successfully updated discount rules for charge {}: {}", chargeId, ruleIds);
