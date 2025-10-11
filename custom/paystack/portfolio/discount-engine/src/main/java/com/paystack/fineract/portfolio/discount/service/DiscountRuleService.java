@@ -3,6 +3,8 @@ package com.paystack.fineract.portfolio.discount.service;
 import com.paystack.fineract.portfolio.discount.calculator.DiscountRuleCalculator;
 import com.paystack.fineract.portfolio.discount.data.DiscountRuleData;
 import com.paystack.fineract.portfolio.discount.data.DiscountRuleTypeInfo;
+import com.paystack.fineract.portfolio.discount.data.DiscountRuleAssignmentData;
+import com.paystack.fineract.portfolio.discount.data.DiscountAssignmentPolicyData;
 import com.paystack.fineract.portfolio.discount.domain.DiscountContext;
 import com.paystack.fineract.portfolio.discount.domain.DiscountRule;
 import com.paystack.fineract.portfolio.discount.factory.DiscountRuleCalculatorFactory;
@@ -10,6 +12,8 @@ import com.paystack.fineract.portfolio.discount.repository.DiscountRuleRepositor
 import com.paystack.fineract.portfolio.discount.repository.DiscountRuleRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -163,10 +167,6 @@ public class DiscountRuleService {
     @Transactional
     public void removeAllDiscountRulesFromCharge(Long chargeId) {
 
-        // Validate charge exists
-        Charge charge = chargeRepository.findById(chargeId)
-                .orElseThrow(() -> new IllegalArgumentException("Charge not found: " + chargeId));
-
         int removedCount = discountRuleRepository.deleteAssignmentsByCharge(chargeId);
         if (removedCount > 0) {
             policyService.deletePolicyIfExists(DiscountPolicyEntityType.CHARGE, chargeId);
@@ -280,6 +280,108 @@ public class DiscountRuleService {
         data.setCreatedBy(rule.getCreatedBy().orElse(null));
         data.setLastModifiedBy(rule.getLastModifiedBy().orElse(null));
         return data;
+    }
+
+    /**
+     * Get assignment data for a charge with priority and policy information
+     */
+    @Transactional(readOnly = true)
+    public List<DiscountRuleAssignmentData> getAssignmentDataForCharge(Long chargeId) {
+        List<Object[]> results = discountRuleRepository.findAssignmentDataByCharge(chargeId);
+        return results.stream()
+            .map(this::mapToAssignmentData)
+            .peek(data -> {
+                data.setEntityType(DiscountPolicyEntityType.CHARGE.name());
+                data.setEntityId(chargeId);
+            })
+            .toList();
+    }
+
+    /**
+     * Get assignment data for a product with priority and policy information
+     */
+    @Transactional(readOnly = true)
+    public List<DiscountRuleAssignmentData> getAssignmentDataForProduct(Long productId) {
+        List<Object[]> results = discountRuleRepository.findAssignmentDataByProduct(productId);
+        return results.stream()
+            .map(this::mapToAssignmentData)
+            .peek(data -> {
+                data.setEntityType(DiscountPolicyEntityType.SAVINGS_PRODUCT.name());
+                data.setEntityId(productId);
+            })
+            .toList();
+    }
+
+    /**
+     * Get policy data for an entity
+     */
+    @Transactional(readOnly = true)
+    public DiscountAssignmentPolicyData getPolicyDataForEntity(DiscountPolicyEntityType entityType, Long entityId) {
+        DiscountAssignmentPolicy policy = policyService.resolvePolicyOrDefault(entityType, entityId);
+        return mapToPolicyData(policy, entityType, entityId);
+    }
+
+    /**
+     * Map raw query result to assignment data
+     */
+    private DiscountRuleAssignmentData mapToAssignmentData(Object[] row) {
+        return DiscountRuleAssignmentData.builder()
+            .ruleId(getLong(row[0]))
+            .ruleName(getString(row[1]))
+            .ruleDescription(getString(row[2]))
+            .active(getBoolean(row[3]))
+            .rulePriority(getInteger(row[4]))
+            .ruleType(getString(row[5]))
+            .ruleParametersJson(getString(row[6]))
+            .createdOnUtc(getOffsetDateTime(row[7]))
+            .lastModifiedOnUtc(getOffsetDateTime(row[8]))
+            .createdBy(getLong(row[9]))
+            .lastModifiedBy(getLong(row[10]))
+            .assignmentPriority(getInteger(row[11]))
+            .build();
+    }
+
+    /**
+     * Map policy entity to policy data
+     */
+    private DiscountAssignmentPolicyData mapToPolicyData(DiscountAssignmentPolicy policy, DiscountPolicyEntityType entityType, Long entityId) {
+        return DiscountAssignmentPolicyData.builder()
+            .id(policy.getId())
+            .entityType(entityType.name())
+            .entityId(entityId)
+            .allRulesRequired(policy.isAndRequired())
+            .combinationStrategy(policy.getCombinationStrategy().name())
+            .createdOnUtc(policy.getCreatedDate().orElse(null))
+            .lastModifiedOnUtc(policy.getLastModifiedDate().orElse(null))
+            .createdBy(policy.getCreatedBy().orElse(null))
+            .lastModifiedBy(policy.getLastModifiedBy().orElse(null))
+            .build();
+    }
+
+    // Helper methods for safe type conversion
+    private Long getLong(Object value) {
+        return value != null ? ((Number) value).longValue() : null;
+    }
+
+    private String getString(Object value) {
+        return value != null ? value.toString() : null;
+    }
+
+    private Boolean getBoolean(Object value) {
+        return value != null ? (Boolean) value : false;
+    }
+
+    private Integer getInteger(Object value) {
+        return value != null ? ((Number) value).intValue() : null;
+    }
+
+    private OffsetDateTime getOffsetDateTime(Object value) {
+        if (value instanceof OffsetDateTime) {
+            return (OffsetDateTime) value;
+        } else if (value instanceof java.time.LocalDateTime) {
+            return ((java.time.LocalDateTime) value).atOffset(ZoneOffset.UTC);
+        }
+        return null;
     }
 
     /**

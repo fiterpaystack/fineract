@@ -98,29 +98,33 @@ public class PaystackChargeReadPlatformServiceImpl extends ChargeReadPlatformSer
     }
 
     /**
-     * Get additional attributes for a charge including discount rules
+     * Get additional attributes for a charge including discount rules with assignment priority and policy
      */
     Map<String, Object> getAdditionalAttributes(Long chargeId) {
         Map<String, Object> attributes = new HashMap<>();
         log.debug("Getting additional attributes for charge: {}", chargeId);
 
         try {
-            // Get assigned discount rules for this charge
-            List<com.paystack.fineract.portfolio.discount.domain.DiscountRule> rules = discountRuleService
-                    .getAssignedDiscountRules("CHARGE", chargeId);
-            log.debug("Found {} discount rules for charge {}", rules.size(), chargeId);
+            // Get assigned discount rules with assignment priority for this charge
+            List<com.paystack.fineract.portfolio.discount.data.DiscountRuleAssignmentData> assignmentData = discountRuleService
+                    .getAssignmentDataForCharge(chargeId);
+            log.debug("Found {} discount rule assignments for charge {}", assignmentData.size(), chargeId);
 
-            List<DiscountRuleData> discountRules = rules.stream().map(discountRuleService::mapToData).toList();
+            // Get policy data for this charge
+            com.paystack.fineract.portfolio.discount.data.DiscountAssignmentPolicyData policyData = discountRuleService
+                    .getPolicyDataForEntity(com.paystack.fineract.portfolio.discount.domain.policy.DiscountPolicyEntityType.CHARGE, chargeId);
 
             // Set enableDiscountEngine flag based on whether rules exist
-            attributes.put("enableDiscountEngine", !discountRules.isEmpty());
-            attributes.put("discountRules", discountRules);
+            attributes.put("enableDiscountEngine", !assignmentData.isEmpty());
+            attributes.put("discountRules", assignmentData);
+            attributes.put("discountPolicy", policyData);
             log.debug("Set additional attributes: {}", attributes);
         } catch (Exception e) {
             // If discount service is not available or fails, set defaults
             log.error("Failed to retrieve discount rules for charge {}", chargeId, e);
             attributes.put("enableDiscountEngine", false);
             attributes.put("discountRules", List.of());
+            attributes.put("discountPolicy", null);
         }
 
         return attributes;

@@ -74,18 +74,24 @@ public class PaystackSavingsProductReadPlatformServiceImpl extends SavingsProduc
                     rs.getBoolean("emtOverrideGlobalLevy"));
             additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_THRESHOLD, rs.getBigDecimal("emtLevyThreshold"));
 
-            // Discount attributes - retrieve assigned discount rules for this product
+            // Discount attributes - retrieve assigned discount rules with assignment priority and policy for this product
             try {
                 Long productId = base.getId();
-                List<com.paystack.fineract.portfolio.discount.domain.DiscountRule> assignedRules = discountRuleService
-                        .getAssignedDiscountRules("SAVINGS_PRODUCT", productId);
-                List<DiscountRuleData> assignedRulesData = assignedRules.stream().map(discountRuleService::mapToData).toList();
-                additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.ENABLE_DISCOUNT_ENGINE, !assignedRulesData.isEmpty());
-                additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES, assignedRulesData);
+                List<com.paystack.fineract.portfolio.discount.data.DiscountRuleAssignmentData> assignmentData = discountRuleService
+                        .getAssignmentDataForProduct(productId);
+                
+                // Get policy data for this product
+                com.paystack.fineract.portfolio.discount.data.DiscountAssignmentPolicyData policyData = discountRuleService
+                        .getPolicyDataForEntity(com.paystack.fineract.portfolio.discount.domain.policy.DiscountPolicyEntityType.SAVINGS_PRODUCT, productId);
+                
+                additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.ENABLE_DISCOUNT_ENGINE, !assignmentData.isEmpty());
+                additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES, assignmentData);
+                additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.DISCOUNT_POLICY, policyData);
             } catch (Exception e) {
                 // If discount service is not available or fails, set defaults
                 additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.ENABLE_DISCOUNT_ENGINE, false);
                 additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES, List.of());
+                additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.DISCOUNT_POLICY, null);
             }
 
             base.setAdditionalAttributes(additionalAttributes);

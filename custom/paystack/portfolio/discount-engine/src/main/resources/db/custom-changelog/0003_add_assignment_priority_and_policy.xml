@@ -4,44 +4,38 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
 
-    <changeSet id="paystack-discount-0003-add-assignment-priority-and-policy" author="paystack">
+    <!-- Add assignment_priority to existing join tables -->
+    <changeSet id="paystack-discount-0003-1-add-assignment-priority-columns" author="paystack">
         <preConditions onFail="MARK_RAN">
             <and>
                 <tableExists tableName="m_discount_rule_charge"/>
                 <tableExists tableName="m_discount_rule_product"/>
             </and>
         </preConditions>
-        <comment>Add assignment-level priority, per-entity evaluation policy, and cascade cleanup</comment>
+        <comment>Add assignment_priority column to join tables</comment>
 
-        <!-- Add assignment_priority to existing join tables (idempotent) -->
-        <preConditions onFail="CONTINUE">
-            <not>
-                <columnExists tableName="m_discount_rule_charge" columnName="assignment_priority"/>
-            </not>
-        </preConditions>
         <addColumn tableName="m_discount_rule_charge">
             <column name="assignment_priority" type="int" defaultValueNumeric="0">
                 <constraints nullable="false"/>
             </column>
         </addColumn>
 
-        <preConditions onFail="CONTINUE">
-            <not>
-                <columnExists tableName="m_discount_rule_product" columnName="assignment_priority"/>
-            </not>
-        </preConditions>
         <addColumn tableName="m_discount_rule_product">
             <column name="assignment_priority" type="int" defaultValueNumeric="0">
                 <constraints nullable="false"/>
             </column>
         </addColumn>
+    </changeSet>
 
-        <!-- Create policy table (entity_type + entity_id) -->
+    <!-- Create policy table -->
+    <changeSet id="paystack-discount-0003-2-create-policy-table" author="paystack">
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="m_discount_assignment_policy"/>
             </not>
         </preConditions>
+        <comment>Create discount assignment policy table</comment>
+
         <createTable tableName="m_discount_assignment_policy">
             <column name="id" type="bigint" autoIncrement="true">
                 <constraints primaryKey="true"/>
@@ -66,7 +60,6 @@
             <column name="last_modified_by" type="bigint"/>
         </createTable>
 
-        <!-- Unique and lookup indexes for policy table -->
         <addUniqueConstraint tableName="m_discount_assignment_policy"
                              columnNames="entity_type,entity_id"
                              constraintName="uq_dap_entity_type_id"/>
@@ -75,8 +68,18 @@
             <column name="entity_type"/>
             <column name="entity_id"/>
         </createIndex>
+    </changeSet>
 
-        <!-- Indexes to support priority-ordered retrieval on join tables -->
+    <!-- Add priority indexes -->
+    <changeSet id="paystack-discount-0003-3-add-priority-indexes" author="paystack">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="m_discount_rule_charge"/>
+                <tableExists tableName="m_discount_rule_product"/>
+            </and>
+        </preConditions>
+        <comment>Add indexes for priority-ordered retrieval</comment>
+
         <createIndex tableName="m_discount_rule_charge" indexName="idx_drc_priority">
             <column name="charge_id"/>
             <column name="assignment_priority" descending="true"/>
@@ -88,11 +91,18 @@
             <column name="assignment_priority" descending="true"/>
             <column name="discount_rule_id"/>
         </createIndex>
+    </changeSet>
 
-        <!-- Recreate FKs on join tables with ON DELETE CASCADE for cleanup -->
-        <preConditions onFail="CONTINUE">
-            <foreignKeyConstraintExists foreignKeyName="fk_drc_discount_rule_id"/>
+    <!-- Update foreign key constraints with CASCADE -->
+    <changeSet id="paystack-discount-0003-4-update-fk-constraints" author="paystack">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="m_discount_rule_charge"/>
+                <tableExists tableName="m_discount_rule_product"/>
+            </and>
         </preConditions>
+        <comment>Update foreign key constraints to include CASCADE delete</comment>
+
         <dropForeignKeyConstraint baseTableName="m_discount_rule_charge" constraintName="fk_drc_discount_rule_id"/>
         <addForeignKeyConstraint baseTableName="m_discount_rule_charge"
                                  baseColumnNames="discount_rule_id"
@@ -101,9 +111,6 @@
                                  constraintName="fk_drc_discount_rule_id"
                                  onDelete="CASCADE" onUpdate="RESTRICT"/>
 
-        <preConditions onFail="CONTINUE">
-            <foreignKeyConstraintExists foreignKeyName="fk_drc_charge_id"/>
-        </preConditions>
         <dropForeignKeyConstraint baseTableName="m_discount_rule_charge" constraintName="fk_drc_charge_id"/>
         <addForeignKeyConstraint baseTableName="m_discount_rule_charge"
                                  baseColumnNames="charge_id"
@@ -112,9 +119,6 @@
                                  constraintName="fk_drc_charge_id"
                                  onDelete="CASCADE" onUpdate="RESTRICT"/>
 
-        <preConditions onFail="CONTINUE">
-            <foreignKeyConstraintExists foreignKeyName="fk_drp_discount_rule_id"/>
-        </preConditions>
         <dropForeignKeyConstraint baseTableName="m_discount_rule_product" constraintName="fk_drp_discount_rule_id"/>
         <addForeignKeyConstraint baseTableName="m_discount_rule_product"
                                  baseColumnNames="discount_rule_id"
@@ -123,9 +127,6 @@
                                  constraintName="fk_drp_discount_rule_id"
                                  onDelete="CASCADE" onUpdate="RESTRICT"/>
 
-        <preConditions onFail="CONTINUE">
-            <foreignKeyConstraintExists foreignKeyName="fk_drp_product_id"/>
-        </preConditions>
         <dropForeignKeyConstraint baseTableName="m_discount_rule_product" constraintName="fk_drp_product_id"/>
         <addForeignKeyConstraint baseTableName="m_discount_rule_product"
                                  baseColumnNames="product_id"
@@ -133,8 +134,15 @@
                                  referencedColumnNames="id"
                                  constraintName="fk_drp_product_id"
                                  onDelete="CASCADE" onUpdate="RESTRICT"/>
+    </changeSet>
 
-        <!-- Optional FKs to appuser for audit columns on policy table -->
+    <!-- Add audit foreign keys to policy table -->
+    <changeSet id="paystack-discount-0003-5-add-audit-fks" author="paystack">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="m_discount_assignment_policy"/>
+        </preConditions>
+        <comment>Add foreign key constraints for audit columns</comment>
+
         <addForeignKeyConstraint baseTableName="m_discount_assignment_policy"
                                  baseColumnNames="created_by"
                                  referencedTableName="m_appuser"
@@ -148,7 +156,6 @@
                                  referencedColumnNames="id"
                                  constraintName="FK_dap_modified_by"
                                  onDelete="RESTRICT" onUpdate="RESTRICT"/>
-
     </changeSet>
 
 </databaseChangeLog>

@@ -4,6 +4,7 @@ import com.paystack.fineract.portfolio.charge.serialization.PaystackChargeDefini
 import com.paystack.fineract.portfolio.charge.service.PaystackChargeReadPlatformServiceImpl;
 import com.paystack.fineract.portfolio.charge.service.PaystackChargeWritePlatformServiceImpl;
 import com.paystack.fineract.portfolio.discount.service.DiscountRuleService;
+import com.paystack.fineract.portfolio.discount.service.DiscountAssignmentPolicyService;
 import org.apache.fineract.accounting.common.AccountingDropdownReadPlatformService;
 import org.apache.fineract.accounting.glaccount.domain.GLAccountRepositoryWrapper;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainServiceJpa;
@@ -60,9 +61,9 @@ public class PaystackChargeConfiguration {
             ChargeRepository chargeRepository, LoanProductRepository loanProductRepository, JdbcTemplate jdbcTemplate,
             FineractEntityAccessUtil fineractEntityAccessUtil, GLAccountRepositoryWrapper glAccountRepository,
             TaxGroupRepositoryWrapper taxGroupRepository, PaymentTypeRepositoryWrapper paymentTyperepositoryWrapper,
-            ChargeSlabRepository chargeSlabRepository, DiscountRuleService discountRuleService) {
+            ChargeSlabRepository chargeSlabRepository, DiscountRuleService discountRuleService, DiscountAssignmentPolicyService discountAssignmentPolicyService) {
         return new PaystackChargeWritePlatformServiceImpl(context, fromApiJsonDeserializer, chargeRepository, loanProductRepository,
                 jdbcTemplate, fineractEntityAccessUtil, glAccountRepository, taxGroupRepository, paymentTyperepositoryWrapper,
-                chargeSlabRepository, discountRuleService);
+                chargeSlabRepository, discountRuleService, discountAssignmentPolicyService);
     }
 }
