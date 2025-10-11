@@ -1,6 +1,5 @@
 package com.paystack.fineract.portfolio.savings.service;
 
-import com.paystack.fineract.portfolio.discount.data.DiscountRuleData;
 import com.paystack.fineract.portfolio.discount.service.DiscountRuleService;
 import com.paystack.fineract.portfolio.savings.data.PaystackSavingsProductAdditionalAttributes;
 import java.sql.ResultSet;

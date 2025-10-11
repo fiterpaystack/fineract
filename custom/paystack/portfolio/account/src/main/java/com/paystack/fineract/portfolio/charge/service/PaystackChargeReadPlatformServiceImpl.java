@@ -1,7 +1,6 @@
 package com.paystack.fineract.portfolio.charge.service;
 
 import com.paystack.fineract.portfolio.charge.data.PaystackChargeData;
-import com.paystack.fineract.portfolio.discount.data.DiscountRuleData;
 import com.paystack.fineract.portfolio.discount.service.DiscountRuleService;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
