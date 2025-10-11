@@ -53,7 +53,7 @@ class DiscountAssignmentPolicyServiceTest {
         // Given
         DiscountPolicyEntityType entityType = DiscountPolicyEntityType.CHARGE;
         Long entityId = 1L;
-        DiscountAssignmentPolicy existingPolicy = createPolicy(1L, true);
+        DiscountAssignmentPolicy existingPolicy = createPolicy(true);
 
         when(policyRepository.findByEntityTypeAndEntityId(entityType, entityId)).thenReturn(Optional.of(existingPolicy));
 
@@ -91,7 +91,7 @@ class DiscountAssignmentPolicyServiceTest {
         boolean allRulesRequired = true;
         DiscountCombinationStrategy combinationStrategy = DiscountCombinationStrategy.SUM_CAP;
 
-        DiscountAssignmentPolicy existingPolicy = createPolicy(1L, false);
+        DiscountAssignmentPolicy existingPolicy = createPolicy(false);
         when(policyRepository.findByEntityTypeAndEntityId(entityType, entityId)).thenReturn(Optional.of(existingPolicy));
 
         // When
@@ -130,7 +130,7 @@ class DiscountAssignmentPolicyServiceTest {
         // Given
         DiscountPolicyEntityType entityType = DiscountPolicyEntityType.CHARGE;
         Long entityId = 1L;
-        DiscountAssignmentPolicy existingPolicy = createPolicy(1L, true);
+        DiscountAssignmentPolicy existingPolicy = createPolicy(true);
 
         when(policyRepository.findByEntityTypeAndEntityId(entityType, entityId)).thenReturn(Optional.of(existingPolicy));
 
@@ -157,9 +157,9 @@ class DiscountAssignmentPolicyServiceTest {
         // No delete call should be made
     }
 
-    private DiscountAssignmentPolicy createPolicy(Long id, boolean andRequired) {
+    private DiscountAssignmentPolicy createPolicy(boolean andRequired) {
         DiscountAssignmentPolicy policy = new DiscountAssignmentPolicy();
-        policy.setId(id);
+        policy.setId(1L);
         policy.setEntityType(DiscountPolicyEntityType.CHARGE);
         policy.setEntityId(1L);
         policy.setAllRulesRequired(andRequired);
