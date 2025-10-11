@@ -23,10 +23,10 @@ import com.paystack.fineract.portfolio.discount.domain.DiscountRule;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -53,19 +53,17 @@ public interface DiscountRuleRepository extends JpaRepository<DiscountRule, Long
     /**
      * Find active rules assigned to a charge ordered by assignment priority then rule priority.
      */
-    @Query(value = "SELECT dr.* FROM m_discount_rule dr "
-        + "JOIN m_discount_rule_charge rc ON rc.discount_rule_id = dr.id "
-        + "WHERE rc.charge_id = :chargeId AND dr.is_active = true "
-        + "ORDER BY rc.assignment_priority DESC, dr.priority DESC, dr.id ASC", nativeQuery = true)
+    @Query(value = "SELECT dr.* FROM m_discount_rule dr " + "JOIN m_discount_rule_charge rc ON rc.discount_rule_id = dr.id "
+            + "WHERE rc.charge_id = :chargeId AND dr.is_active = true "
+            + "ORDER BY rc.assignment_priority DESC, dr.priority DESC, dr.id ASC", nativeQuery = true)
     List<DiscountRule> findActiveByChargeOrdered(@Param("chargeId") Long chargeId);
 
     /**
      * Find active rules assigned to a product ordered by assignment priority then rule priority.
      */
-    @Query(value = "SELECT dr.* FROM m_discount_rule dr "
-        + "JOIN m_discount_rule_product rp ON rp.discount_rule_id = dr.id "
-        + "WHERE rp.product_id = :productId AND dr.is_active = true "
-        + "ORDER BY rp.assignment_priority DESC, dr.priority DESC, dr.id ASC", nativeQuery = true)
+    @Query(value = "SELECT dr.* FROM m_discount_rule dr " + "JOIN m_discount_rule_product rp ON rp.discount_rule_id = dr.id "
+            + "WHERE rp.product_id = :productId AND dr.is_active = true "
+            + "ORDER BY rp.assignment_priority DESC, dr.priority DESC, dr.id ASC", nativeQuery = true)
     List<DiscountRule> findActiveByProductOrdered(@Param("productId") Long productId);
 
     /**
@@ -100,31 +98,31 @@ public interface DiscountRuleRepository extends JpaRepository<DiscountRule, Long
      * Get assignment data for charge with priority information.
      */
     @Query(value = """
-        SELECT dr.id as ruleId, dr.name as ruleName, dr.description as ruleDescription, 
-               dr.is_active as active, dr.priority as rulePriority, dr.rule_type as ruleType,
-               dr.rule_parameters as ruleParametersJson, dr.created_date as createdOnUtc,
-               dr.last_modified_date as lastModifiedOnUtc, dr.created_by as createdBy,
-               dr.last_modified_by as lastModifiedBy, rp.assignment_priority as assignmentPriority
-        FROM m_discount_rule dr
-        JOIN m_discount_rule_charge rp ON rp.discount_rule_id = dr.id
-        WHERE rp.charge_id = :chargeId AND dr.is_active = true
-        ORDER BY rp.assignment_priority DESC, dr.priority DESC, dr.id ASC
-        """, nativeQuery = true)
+            SELECT dr.id as ruleId, dr.name as ruleName, dr.description as ruleDescription,
+                   dr.is_active as active, dr.priority as rulePriority, dr.rule_type as ruleType,
+                   dr.rule_parameters as ruleParametersJson, dr.created_date as createdOnUtc,
+                   dr.last_modified_date as lastModifiedOnUtc, dr.created_by as createdBy,
+                   dr.last_modified_by as lastModifiedBy, rp.assignment_priority as assignmentPriority
+            FROM m_discount_rule dr
+            JOIN m_discount_rule_charge rp ON rp.discount_rule_id = dr.id
+            WHERE rp.charge_id = :chargeId AND dr.is_active = true
+            ORDER BY rp.assignment_priority DESC, dr.priority DESC, dr.id ASC
+            """, nativeQuery = true)
     List<Object[]> findAssignmentDataByCharge(@Param("chargeId") Long chargeId);
 
     /**
      * Get assignment data for product with priority information.
      */
     @Query(value = """
-        SELECT dr.id as ruleId, dr.name as ruleName, dr.description as ruleDescription, 
-               dr.is_active as active, dr.priority as rulePriority, dr.rule_type as ruleType,
-               dr.rule_parameters as ruleParametersJson, dr.created_date as createdOnUtc,
-               dr.last_modified_date as lastModifiedOnUtc, dr.created_by as createdBy,
-               dr.last_modified_by as lastModifiedBy, rp.assignment_priority as assignmentPriority
-        FROM m_discount_rule dr
-        JOIN m_discount_rule_product rp ON rp.discount_rule_id = dr.id
-        WHERE rp.product_id = :productId AND dr.is_active = true
-        ORDER BY rp.assignment_priority DESC, dr.priority DESC, dr.id ASC
-        """, nativeQuery = true)
+            SELECT dr.id as ruleId, dr.name as ruleName, dr.description as ruleDescription,
+                   dr.is_active as active, dr.priority as rulePriority, dr.rule_type as ruleType,
+                   dr.rule_parameters as ruleParametersJson, dr.created_date as createdOnUtc,
+                   dr.last_modified_date as lastModifiedOnUtc, dr.created_by as createdBy,
+                   dr.last_modified_by as lastModifiedBy, rp.assignment_priority as assignmentPriority
+            FROM m_discount_rule dr
+            JOIN m_discount_rule_product rp ON rp.discount_rule_id = dr.id
+            WHERE rp.product_id = :productId AND dr.is_active = true
+            ORDER BY rp.assignment_priority DESC, dr.priority DESC, dr.id ASC
+            """, nativeQuery = true)
     List<Object[]> findAssignmentDataByProduct(@Param("productId") Long productId);
 }

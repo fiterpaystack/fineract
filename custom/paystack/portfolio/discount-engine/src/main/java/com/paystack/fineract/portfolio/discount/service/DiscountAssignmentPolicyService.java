@@ -34,8 +34,7 @@ public class DiscountAssignmentPolicyService {
 
     @Transactional
     public void deletePolicyIfExists(DiscountPolicyEntityType entityType, Long entityId) {
-        policyRepository.findByEntityTypeAndEntityId(entityType, entityId)
-            .ifPresent(policyRepository::delete);
+        policyRepository.findByEntityTypeAndEntityId(entityType, entityId).ifPresent(policyRepository::delete);
     }
 
     @Transactional
@@ -50,5 +49,3 @@ public class DiscountAssignmentPolicyService {
         return policyRepository.save(policy);
     }
 }
-
-

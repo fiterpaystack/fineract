@@ -131,10 +131,10 @@ public class ProductDiscountService {
         }
 
         // Resolve policy for the target entity
-        DiscountPolicyEntityType entityType = context.getChargeId() != null ? 
-            DiscountPolicyEntityType.CHARGE : DiscountPolicyEntityType.SAVINGS_PRODUCT;
+        DiscountPolicyEntityType entityType = context.getChargeId() != null ? DiscountPolicyEntityType.CHARGE
+                : DiscountPolicyEntityType.SAVINGS_PRODUCT;
         Long entityId = context.getChargeId() != null ? context.getChargeId() : context.getProductId();
-        
+
         DiscountAssignmentPolicy policy = policyService.resolvePolicyOrDefault(entityType, entityId);
 
         // If AND is required, check all rules are applicable/valid

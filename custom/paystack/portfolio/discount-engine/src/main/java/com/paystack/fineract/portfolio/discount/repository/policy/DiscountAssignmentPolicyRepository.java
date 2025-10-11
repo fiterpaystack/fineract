@@ -8,8 +8,8 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface DiscountAssignmentPolicyRepository extends JpaRepository<DiscountAssignmentPolicy, Long> {
+
     Optional<DiscountAssignmentPolicy> findByEntityTypeAndEntityId(DiscountPolicyEntityType entityType, Long entityId);
+
     void deleteByEntityTypeAndEntityId(DiscountPolicyEntityType entityType, Long entityId);
 }
-
-

@@ -1,15 +1,18 @@
 package com.paystack.fineract.portfolio.discount.service;
 
 import com.paystack.fineract.portfolio.discount.calculator.DiscountRuleCalculator;
+import com.paystack.fineract.portfolio.discount.data.DiscountAssignmentPolicyData;
+import com.paystack.fineract.portfolio.discount.data.DiscountRuleAssignmentData;
 import com.paystack.fineract.portfolio.discount.data.DiscountRuleData;
 import com.paystack.fineract.portfolio.discount.data.DiscountRuleTypeInfo;
-import com.paystack.fineract.portfolio.discount.data.DiscountRuleAssignmentData;
-import com.paystack.fineract.portfolio.discount.data.DiscountAssignmentPolicyData;
 import com.paystack.fineract.portfolio.discount.domain.DiscountContext;
 import com.paystack.fineract.portfolio.discount.domain.DiscountRule;
+import com.paystack.fineract.portfolio.discount.domain.policy.DiscountAssignmentPolicy;
+import com.paystack.fineract.portfolio.discount.domain.policy.DiscountCombinationStrategy;
+import com.paystack.fineract.portfolio.discount.domain.policy.DiscountPolicyEntityType;
 import com.paystack.fineract.portfolio.discount.factory.DiscountRuleCalculatorFactory;
-import com.paystack.fineract.portfolio.discount.repository.DiscountRuleRepositoryWrapper;
 import com.paystack.fineract.portfolio.discount.repository.DiscountRuleRepository;
+import com.paystack.fineract.portfolio.discount.repository.DiscountRuleRepositoryWrapper;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -17,9 +20,6 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import com.paystack.fineract.portfolio.discount.domain.policy.DiscountAssignmentPolicy;
-import com.paystack.fineract.portfolio.discount.domain.policy.DiscountCombinationStrategy;
-import com.paystack.fineract.portfolio.discount.domain.policy.DiscountPolicyEntityType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
@@ -288,13 +288,10 @@ public class DiscountRuleService {
     @Transactional(readOnly = true)
     public List<DiscountRuleAssignmentData> getAssignmentDataForCharge(Long chargeId) {
         List<Object[]> results = discountRuleRepository.findAssignmentDataByCharge(chargeId);
-        return results.stream()
-            .map(this::mapToAssignmentData)
-            .peek(data -> {
-                data.setEntityType(DiscountPolicyEntityType.CHARGE.name());
-                data.setEntityId(chargeId);
-            })
-            .toList();
+        return results.stream().map(this::mapToAssignmentData).peek(data -> {
+            data.setEntityType(DiscountPolicyEntityType.CHARGE.name());
+            data.setEntityId(chargeId);
+        }).toList();
     }
 
     /**
@@ -303,13 +300,10 @@ public class DiscountRuleService {
     @Transactional(readOnly = true)
     public List<DiscountRuleAssignmentData> getAssignmentDataForProduct(Long productId) {
         List<Object[]> results = discountRuleRepository.findAssignmentDataByProduct(productId);
-        return results.stream()
-            .map(this::mapToAssignmentData)
-            .peek(data -> {
-                data.setEntityType(DiscountPolicyEntityType.SAVINGS_PRODUCT.name());
-                data.setEntityId(productId);
-            })
-            .toList();
+        return results.stream().map(this::mapToAssignmentData).peek(data -> {
+            data.setEntityType(DiscountPolicyEntityType.SAVINGS_PRODUCT.name());
+            data.setEntityId(productId);
+        }).toList();
     }
 
     /**
@@ -325,37 +319,21 @@ public class DiscountRuleService {
      * Map raw query result to assignment data
      */
     private DiscountRuleAssignmentData mapToAssignmentData(Object[] row) {
-        return DiscountRuleAssignmentData.builder()
-            .ruleId(getLong(row[0]))
-            .ruleName(getString(row[1]))
-            .ruleDescription(getString(row[2]))
-            .active(getBoolean(row[3]))
-            .rulePriority(getInteger(row[4]))
-            .ruleType(getString(row[5]))
-            .ruleParametersJson(getString(row[6]))
-            .createdOnUtc(getOffsetDateTime(row[7]))
-            .lastModifiedOnUtc(getOffsetDateTime(row[8]))
-            .createdBy(getLong(row[9]))
-            .lastModifiedBy(getLong(row[10]))
-            .assignmentPriority(getInteger(row[11]))
-            .build();
+        return DiscountRuleAssignmentData.builder().ruleId(getLong(row[0])).ruleName(getString(row[1])).ruleDescription(getString(row[2]))
+                .active(getBoolean(row[3])).rulePriority(getInteger(row[4])).ruleType(getString(row[5]))
+                .ruleParametersJson(getString(row[6])).createdOnUtc(getOffsetDateTime(row[7])).lastModifiedOnUtc(getOffsetDateTime(row[8]))
+                .createdBy(getLong(row[9])).lastModifiedBy(getLong(row[10])).assignmentPriority(getInteger(row[11])).build();
     }
 
     /**
      * Map policy entity to policy data
      */
-    private DiscountAssignmentPolicyData mapToPolicyData(DiscountAssignmentPolicy policy, DiscountPolicyEntityType entityType, Long entityId) {
-        return DiscountAssignmentPolicyData.builder()
-            .id(policy.getId())
-            .entityType(entityType.name())
-            .entityId(entityId)
-            .allRulesRequired(policy.isAndRequired())
-            .combinationStrategy(policy.getCombinationStrategy().name())
-            .createdOnUtc(policy.getCreatedDate().orElse(null))
-            .lastModifiedOnUtc(policy.getLastModifiedDate().orElse(null))
-            .createdBy(policy.getCreatedBy().orElse(null))
-            .lastModifiedBy(policy.getLastModifiedBy().orElse(null))
-            .build();
+    private DiscountAssignmentPolicyData mapToPolicyData(DiscountAssignmentPolicy policy, DiscountPolicyEntityType entityType,
+            Long entityId) {
+        return DiscountAssignmentPolicyData.builder().id(policy.getId()).entityType(entityType.name()).entityId(entityId)
+                .allRulesRequired(policy.isAndRequired()).combinationStrategy(policy.getCombinationStrategy().name())
+                .createdOnUtc(policy.getCreatedDate().orElse(null)).lastModifiedOnUtc(policy.getLastModifiedDate().orElse(null))
+                .createdBy(policy.getCreatedBy().orElse(null)).lastModifiedBy(policy.getLastModifiedBy().orElse(null)).build();
     }
 
     // Helper methods for safe type conversion
@@ -401,8 +379,8 @@ public class DiscountRuleService {
         }
 
         // Resolve policy for the target entity
-        DiscountPolicyEntityType policyEntityType = "CHARGE".equals(entityType) ? 
-            DiscountPolicyEntityType.CHARGE : DiscountPolicyEntityType.SAVINGS_PRODUCT;
+        DiscountPolicyEntityType policyEntityType = "CHARGE".equals(entityType) ? DiscountPolicyEntityType.CHARGE
+                : DiscountPolicyEntityType.SAVINGS_PRODUCT;
         DiscountAssignmentPolicy policy = policyService.resolvePolicyOrDefault(policyEntityType, entityId);
 
         // If AND is required, check all rules are applicable/valid

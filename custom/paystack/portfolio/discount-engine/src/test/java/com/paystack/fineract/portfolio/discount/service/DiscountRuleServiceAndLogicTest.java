@@ -1,12 +1,11 @@
 package com.paystack.fineract.portfolio.discount.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.paystack.fineract.portfolio.discount.domain.policy.DiscountAssignmentPolicy;
 import com.paystack.fineract.portfolio.discount.domain.policy.DiscountCombinationStrategy;
-import org.junit.jupiter.api.Test;
-
 import java.math.BigDecimal;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class DiscountRuleServiceAndLogicTest {
 

@@ -19,22 +19,21 @@
 
 package com.paystack.fineract.portfolio.discount.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.paystack.fineract.portfolio.discount.domain.policy.DiscountAssignmentPolicy;
 import com.paystack.fineract.portfolio.discount.domain.policy.DiscountCombinationStrategy;
 import com.paystack.fineract.portfolio.discount.domain.policy.DiscountPolicyEntityType;
 import com.paystack.fineract.portfolio.discount.repository.policy.DiscountAssignmentPolicyRepository;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class DiscountAssignmentPolicyServiceTest {
@@ -55,9 +54,8 @@ class DiscountAssignmentPolicyServiceTest {
         DiscountPolicyEntityType entityType = DiscountPolicyEntityType.CHARGE;
         Long entityId = 1L;
         DiscountAssignmentPolicy existingPolicy = createPolicy(1L, true);
-        
-        when(policyRepository.findByEntityTypeAndEntityId(entityType, entityId))
-            .thenReturn(Optional.of(existingPolicy));
+
+        when(policyRepository.findByEntityTypeAndEntityId(entityType, entityId)).thenReturn(Optional.of(existingPolicy));
 
         // When
         DiscountAssignmentPolicy result = policyService.resolvePolicyOrDefault(entityType, entityId);
@@ -72,9 +70,8 @@ class DiscountAssignmentPolicyServiceTest {
         // Given
         DiscountPolicyEntityType entityType = DiscountPolicyEntityType.SAVINGS_PRODUCT;
         Long entityId = 2L;
-        
-        when(policyRepository.findByEntityTypeAndEntityId(entityType, entityId))
-            .thenReturn(Optional.empty());
+
+        when(policyRepository.findByEntityTypeAndEntityId(entityType, entityId)).thenReturn(Optional.empty());
 
         // When
         DiscountAssignmentPolicy result = policyService.resolvePolicyOrDefault(entityType, entityId);
@@ -93,10 +90,9 @@ class DiscountAssignmentPolicyServiceTest {
         Long entityId = 1L;
         boolean allRulesRequired = true;
         DiscountCombinationStrategy combinationStrategy = DiscountCombinationStrategy.SUM_CAP;
-        
+
         DiscountAssignmentPolicy existingPolicy = createPolicy(1L, false);
-        when(policyRepository.findByEntityTypeAndEntityId(entityType, entityId))
-            .thenReturn(Optional.of(existingPolicy));
+        when(policyRepository.findByEntityTypeAndEntityId(entityType, entityId)).thenReturn(Optional.of(existingPolicy));
 
         // When
         policyService.upsertPolicy(entityType, entityId, allRulesRequired, combinationStrategy);
@@ -114,15 +110,13 @@ class DiscountAssignmentPolicyServiceTest {
         Long entityId = 2L;
         boolean allRulesRequired = true;
         DiscountCombinationStrategy combinationStrategy = DiscountCombinationStrategy.SUM_CAP;
-        
-        when(policyRepository.findByEntityTypeAndEntityId(entityType, entityId))
-            .thenReturn(Optional.empty());
-        when(policyRepository.save(any(DiscountAssignmentPolicy.class)))
-            .thenAnswer(invocation -> {
-                DiscountAssignmentPolicy policy = invocation.getArgument(0);
-                policy.setId(1L);
-                return policy;
-            });
+
+        when(policyRepository.findByEntityTypeAndEntityId(entityType, entityId)).thenReturn(Optional.empty());
+        when(policyRepository.save(any(DiscountAssignmentPolicy.class))).thenAnswer(invocation -> {
+            DiscountAssignmentPolicy policy = invocation.getArgument(0);
+            policy.setId(1L);
+            return policy;
+        });
 
         // When
         policyService.upsertPolicy(entityType, entityId, allRulesRequired, combinationStrategy);
@@ -137,9 +131,8 @@ class DiscountAssignmentPolicyServiceTest {
         DiscountPolicyEntityType entityType = DiscountPolicyEntityType.CHARGE;
         Long entityId = 1L;
         DiscountAssignmentPolicy existingPolicy = createPolicy(1L, true);
-        
-        when(policyRepository.findByEntityTypeAndEntityId(entityType, entityId))
-            .thenReturn(Optional.of(existingPolicy));
+
+        when(policyRepository.findByEntityTypeAndEntityId(entityType, entityId)).thenReturn(Optional.of(existingPolicy));
 
         // When
         policyService.deletePolicyIfExists(entityType, entityId);
@@ -153,9 +146,8 @@ class DiscountAssignmentPolicyServiceTest {
         // Given
         DiscountPolicyEntityType entityType = DiscountPolicyEntityType.SAVINGS_PRODUCT;
         Long entityId = 2L;
-        
-        when(policyRepository.findByEntityTypeAndEntityId(entityType, entityId))
-            .thenReturn(Optional.empty());
+
+        when(policyRepository.findByEntityTypeAndEntityId(entityType, entityId)).thenReturn(Optional.empty());
 
         // When
         policyService.deletePolicyIfExists(entityType, entityId);

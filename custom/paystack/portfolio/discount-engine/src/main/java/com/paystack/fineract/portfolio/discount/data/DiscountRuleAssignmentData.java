@@ -27,8 +27,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Discount Rule Assignment Data Transfer Object
- * Represents a discount rule assignment with its priority and policy information
+ * Discount Rule Assignment Data Transfer Object Represents a discount rule assignment with its priority and policy
+ * information
  */
 @Data
 @Builder

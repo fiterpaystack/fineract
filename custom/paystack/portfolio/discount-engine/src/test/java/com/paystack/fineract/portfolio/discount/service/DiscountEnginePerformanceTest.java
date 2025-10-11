@@ -1,22 +1,21 @@
 package com.paystack.fineract.portfolio.discount.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.paystack.fineract.portfolio.discount.domain.policy.DiscountAssignmentPolicy;
 import com.paystack.fineract.portfolio.discount.domain.policy.DiscountCombinationStrategy;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Disabled;
-
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 /**
- * Performance validation tests for the discount engine.
- * These tests validate that the system can handle large numbers of rules efficiently.
- * 
- * Note: These tests are disabled by default as they are performance-focused.
- * Enable them when you want to run performance validation.
+ * Performance validation tests for the discount engine. These tests validate that the system can handle large numbers
+ * of rules efficiently.
+ *
+ * Note: These tests are disabled by default as they are performance-focused. Enable them when you want to run
+ * performance validation.
  */
 @Disabled("Performance tests - enable when needed")
 class DiscountEnginePerformanceTest {
@@ -27,12 +26,12 @@ class DiscountEnginePerformanceTest {
         int numberOfRules = 1000;
         List<BigDecimal> ruleDiscounts = generateRuleDiscounts(numberOfRules);
         BigDecimal originalAmount = new BigDecimal("1000.00");
-        
+
         // When: Apply SUM_CAP strategy with many rules
         long startTime = System.currentTimeMillis();
         BigDecimal result = applySumCapStrategyWithManyRules(originalAmount, ruleDiscounts);
         long endTime = System.currentTimeMillis();
-        
+
         // Then: Should complete within reasonable time (e.g., 100ms for 1000 rules)
         long executionTime = endTime - startTime;
         assertThat(executionTime).isLessThan(100); // 100ms threshold
@@ -47,12 +46,12 @@ class DiscountEnginePerformanceTest {
         DiscountAssignmentPolicy policy = new DiscountAssignmentPolicy();
         policy.setAllRulesRequired(true);
         policy.setCombinationStrategy(DiscountCombinationStrategy.SUM_CAP);
-        
+
         // When: Check AND logic with many rules
         long startTime = System.currentTimeMillis();
         boolean allRulesApplicable = checkAndLogicWithManyRules(ruleApplicability);
         long endTime = System.currentTimeMillis();
-        
+
         // Then: Should complete efficiently
         long executionTime = endTime - startTime;
         assertThat(executionTime).isLessThan(50); // 50ms threshold
@@ -67,12 +66,12 @@ class DiscountEnginePerformanceTest {
         DiscountAssignmentPolicy policy = new DiscountAssignmentPolicy();
         policy.setAllRulesRequired(true);
         policy.setCombinationStrategy(DiscountCombinationStrategy.SUM_CAP);
-        
+
         // When: Check AND logic with many rules (should short-circuit)
         long startTime = System.currentTimeMillis();
         boolean allRulesApplicable = checkAndLogicWithManyRules(ruleApplicability);
         long endTime = System.currentTimeMillis();
-        
+
         // Then: Should complete very quickly due to short-circuiting
         long executionTime = endTime - startTime;
         assertThat(executionTime).isLessThan(10); // 10ms threshold for short-circuit
@@ -83,17 +82,17 @@ class DiscountEnginePerformanceTest {
     void testPerformance_IndexUsage_OrderedQueriesAreEfficient() {
         // Given: Simulate ordered query performance
         int numberOfRules = 1000;
-        
+
         // When: Simulate ordered query (assignment_priority DESC, rule_priority DESC, rule_id ASC)
         long startTime = System.currentTimeMillis();
         List<Long> orderedRuleIds = simulateOrderedQuery(numberOfRules);
         long endTime = System.currentTimeMillis();
-        
+
         // Then: Should complete efficiently with proper indexing
         long executionTime = endTime - startTime;
         assertThat(executionTime).isLessThan(50); // 50ms threshold
         assertThat(orderedRuleIds).hasSize(numberOfRules);
-        
+
         // Verify ordering is correct (descending by priority)
         for (int i = 0; i < orderedRuleIds.size() - 1; i++) {
             assertThat(orderedRuleIds.get(i)).isGreaterThanOrEqualTo(orderedRuleIds.get(i + 1));
@@ -124,9 +123,8 @@ class DiscountEnginePerformanceTest {
     }
 
     private BigDecimal applySumCapStrategyWithManyRules(BigDecimal originalAmount, List<BigDecimal> ruleDiscounts) {
-        BigDecimal totalDiscount = ruleDiscounts.stream()
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-        
+        BigDecimal totalDiscount = ruleDiscounts.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+
         BigDecimal result = originalAmount.subtract(totalDiscount);
         return result.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : result;
     }

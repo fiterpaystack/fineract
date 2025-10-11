@@ -9,5 +9,3 @@ public enum DiscountCombinationStrategy {
      */
     SUM_CAP
 }
-
-

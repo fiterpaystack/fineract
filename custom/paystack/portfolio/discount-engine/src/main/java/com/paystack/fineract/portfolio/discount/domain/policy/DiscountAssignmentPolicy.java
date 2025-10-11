@@ -5,7 +5,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
-import java.time.OffsetDateTime;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.fineract.infrastructure.core.domain.AbstractAuditableWithUTCDateTimeCustom;
@@ -39,5 +38,3 @@ public class DiscountAssignmentPolicy extends AbstractAuditableWithUTCDateTimeCu
         // defaults via field initializers
     }
 }
-
-
