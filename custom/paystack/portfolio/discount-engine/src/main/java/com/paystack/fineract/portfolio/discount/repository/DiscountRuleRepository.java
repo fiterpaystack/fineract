@@ -54,45 +54,45 @@ public interface DiscountRuleRepository extends JpaRepository<DiscountRule, Long
      * Find active rules assigned to a charge ordered by assignment priority then rule priority.
      */
     @Query(value = "SELECT dr.* FROM m_discount_rule dr " + "JOIN m_discount_rule_charge rc ON rc.discount_rule_id = dr.id "
-            + "WHERE rc.charge_id = :chargeId AND dr.is_active = true "
+            + "WHERE rc.charge_id = ?1 AND dr.is_active = true "
             + "ORDER BY rc.assignment_priority DESC, dr.priority DESC, dr.id ASC", nativeQuery = true)
-    List<DiscountRule> findActiveByChargeOrdered(@Param("chargeId") Long chargeId);
+    List<DiscountRule> findActiveByChargeOrdered(Long chargeId);
 
     /**
      * Find active rules assigned to a product ordered by assignment priority then rule priority.
      */
     @Query(value = "SELECT dr.* FROM m_discount_rule dr " + "JOIN m_discount_rule_product rp ON rp.discount_rule_id = dr.id "
-            + "WHERE rp.product_id = :productId AND dr.is_active = true "
+            + "WHERE rp.product_id = ?1 AND dr.is_active = true "
             + "ORDER BY rp.assignment_priority DESC, dr.priority DESC, dr.id ASC", nativeQuery = true)
-    List<DiscountRule> findActiveByProductOrdered(@Param("productId") Long productId);
+    List<DiscountRule> findActiveByProductOrdered(Long productId);
 
     /**
      * Bulk delete assignments by charge ID.
      */
     @Modifying
-    @Query(value = "DELETE FROM m_discount_rule_charge WHERE charge_id = :chargeId", nativeQuery = true)
-    int deleteAssignmentsByCharge(@Param("chargeId") Long chargeId);
+    @Query(value = "DELETE FROM m_discount_rule_charge WHERE charge_id = ?1", nativeQuery = true)
+    int deleteAssignmentsByCharge(Long chargeId);
 
     /**
      * Bulk delete assignments by product ID.
      */
     @Modifying
-    @Query(value = "DELETE FROM m_discount_rule_product WHERE product_id = :productId", nativeQuery = true)
-    int deleteAssignmentsByProduct(@Param("productId") Long productId);
+    @Query(value = "DELETE FROM m_discount_rule_product WHERE product_id = ?1", nativeQuery = true)
+    int deleteAssignmentsByProduct(Long productId);
 
     /**
      * Update assignment priority for a specific charge-rule association.
      */
     @Modifying
-    @Query(value = "UPDATE m_discount_rule_charge SET assignment_priority = :priority WHERE charge_id = :chargeId AND discount_rule_id = :ruleId", nativeQuery = true)
-    int updateChargeAssignmentPriority(@Param("chargeId") Long chargeId, @Param("ruleId") Long ruleId, @Param("priority") int priority);
+    @Query(value = "UPDATE m_discount_rule_charge SET assignment_priority = ?3 WHERE charge_id = ?1 AND discount_rule_id = ?2", nativeQuery = true)
+    int updateChargeAssignmentPriority(Long chargeId, Long ruleId, int priority);
 
     /**
      * Update assignment priority for a specific product-rule association.
      */
     @Modifying
-    @Query(value = "UPDATE m_discount_rule_product SET assignment_priority = :priority WHERE product_id = :productId AND discount_rule_id = :ruleId", nativeQuery = true)
-    int updateProductAssignmentPriority(@Param("productId") Long productId, @Param("ruleId") Long ruleId, @Param("priority") int priority);
+    @Query(value = "UPDATE m_discount_rule_product SET assignment_priority = ?3 WHERE product_id = ?1 AND discount_rule_id = ?2", nativeQuery = true)
+    int updateProductAssignmentPriority(Long productId, Long ruleId, int priority);
 
     /**
      * Get assignment data for charge with priority information.
@@ -105,10 +105,10 @@ public interface DiscountRuleRepository extends JpaRepository<DiscountRule, Long
                    dr.last_modified_by as lastModifiedBy, rp.assignment_priority as assignmentPriority
             FROM m_discount_rule dr
             JOIN m_discount_rule_charge rp ON rp.discount_rule_id = dr.id
-            WHERE rp.charge_id = :chargeId AND dr.is_active = true
+            WHERE rp.charge_id = ?1 AND dr.is_active = true
             ORDER BY rp.assignment_priority DESC, dr.priority DESC, dr.id ASC
             """, nativeQuery = true)
-    List<Object[]> findAssignmentDataByCharge(@Param("chargeId") Long chargeId);
+    List<Object[]> findAssignmentDataByCharge(Long chargeId);
 
     /**
      * Get assignment data for product with priority information.
@@ -121,8 +121,8 @@ public interface DiscountRuleRepository extends JpaRepository<DiscountRule, Long
                    dr.last_modified_by as lastModifiedBy, rp.assignment_priority as assignmentPriority
             FROM m_discount_rule dr
             JOIN m_discount_rule_product rp ON rp.discount_rule_id = dr.id
-            WHERE rp.product_id = :productId AND dr.is_active = true
+            WHERE rp.product_id = ?1 AND dr.is_active = true
             ORDER BY rp.assignment_priority DESC, dr.priority DESC, dr.id ASC
             """, nativeQuery = true)
-    List<Object[]> findAssignmentDataByProduct(@Param("productId") Long productId);
+    List<Object[]> findAssignmentDataByProduct(Long productId);
 }
