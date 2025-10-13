@@ -258,9 +258,14 @@ public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformS
             List<Long> ruleIds = new ArrayList<>();
             List<Map.Entry<Long, Integer>> priorities = new ArrayList<>();
 
-            if (discountRulesArray != null && discountRulesArray.size() > 0) {
+            if (discountRulesArray != null && !discountRulesArray.isEmpty()) {
                 for (int i = 0; i < discountRulesArray.size(); i++) {
                     var obj = discountRulesArray.get(i).getAsJsonObject();
+                    // Skip objects without id field
+                    if (!obj.has("id") || obj.get("id").isJsonNull()) {
+                        log.warn("Skipping discount rule object without valid id at index {}", i);
+                        continue;
+                    }
                     long ruleId = obj.get("id").getAsLong();
                     ruleIds.add(ruleId);
                     if (obj.has("assignmentPriority")) {

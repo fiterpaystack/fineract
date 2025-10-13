@@ -52,10 +52,10 @@
             <column name="combination_strategy" type="varchar(50)" defaultValue="SUM_CAP">
                 <constraints nullable="false"/>
             </column>
-            <column name="created_date_utc" type="timestamp">
+            <column name="created_on_utc" type="timestamp">
                 <constraints nullable="false"/>
             </column>
-            <column name="last_modified_date_utc" type="timestamp"/>
+            <column name="last_modified_on_utc" type="timestamp"/>
             <column name="created_by" type="bigint"/>
             <column name="last_modified_by" type="bigint"/>
         </createTable>

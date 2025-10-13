@@ -96,33 +96,37 @@ public interface DiscountRuleRepository extends JpaRepository<DiscountRule, Long
 
     /**
      * Get assignment data for charge with priority information.
+     * Note: This query works both with and without assignment_priority column.
      */
     @Query(value = """
             SELECT dr.id as ruleId, dr.name as ruleName, dr.description as ruleDescription,
                    dr.is_active as active, dr.priority as rulePriority, dr.rule_type as ruleType,
-                   dr.rule_parameters as ruleParametersJson, dr.created_date as createdOnUtc,
-                   dr.last_modified_date as lastModifiedOnUtc, dr.created_by as createdBy,
-                   dr.last_modified_by as lastModifiedBy, rp.assignment_priority as assignmentPriority
+                   dr.rule_parameters as ruleParametersJson, dr.created_on_utc as createdOnUtc,
+                   dr.last_modified_on_utc as lastModifiedOnUtc, dr.created_by as createdBy,
+                   dr.last_modified_by as lastModifiedBy, 
+                   COALESCE(rp.assignment_priority, 0) as assignmentPriority
             FROM m_discount_rule dr
             JOIN m_discount_rule_charge rp ON rp.discount_rule_id = dr.id
             WHERE rp.charge_id = ?1 AND dr.is_active = true
-            ORDER BY rp.assignment_priority DESC, dr.priority DESC, dr.id ASC
+            ORDER BY COALESCE(rp.assignment_priority, 0) DESC, dr.priority DESC, dr.id ASC
             """, nativeQuery = true)
     List<Object[]> findAssignmentDataByCharge(Long chargeId);
 
     /**
      * Get assignment data for product with priority information.
+     * Note: This query works both with and without assignment_priority column.
      */
     @Query(value = """
             SELECT dr.id as ruleId, dr.name as ruleName, dr.description as ruleDescription,
                    dr.is_active as active, dr.priority as rulePriority, dr.rule_type as ruleType,
-                   dr.rule_parameters as ruleParametersJson, dr.created_date as createdOnUtc,
-                   dr.last_modified_date as lastModifiedOnUtc, dr.created_by as createdBy,
-                   dr.last_modified_by as lastModifiedBy, rp.assignment_priority as assignmentPriority
+                   dr.rule_parameters as ruleParametersJson, dr.created_on_utc as createdOnUtc,
+                   dr.last_modified_on_utc as lastModifiedOnUtc, dr.created_by as createdBy,
+                   dr.last_modified_by as lastModifiedBy, 
+                   COALESCE(rp.assignment_priority, 0) as assignmentPriority
             FROM m_discount_rule dr
             JOIN m_discount_rule_product rp ON rp.discount_rule_id = dr.id
             WHERE rp.product_id = ?1 AND dr.is_active = true
-            ORDER BY rp.assignment_priority DESC, dr.priority DESC, dr.id ASC
+            ORDER BY COALESCE(rp.assignment_priority, 0) DESC, dr.priority DESC, dr.id ASC
             """, nativeQuery = true)
     List<Object[]> findAssignmentDataByProduct(Long productId);
 }
