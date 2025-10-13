@@ -109,7 +109,8 @@ public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformS
                     discountRuleService.assignDiscountRulesToCharge(result.getResourceId(), ruleIds);
                     // Apply assignment priorities if provided
                     for (var p : priorities) {
-                        this.jdbcTemplate.update("UPDATE m_discount_rule_charge SET assignment_priority = ? WHERE charge_id = ? AND discount_rule_id = ?",
+                        this.jdbcTemplate.update(
+                                "UPDATE m_discount_rule_charge SET assignment_priority = ? WHERE charge_id = ? AND discount_rule_id = ?",
                                 p.getValue(), result.getResourceId(), p.getKey());
                     }
                     // Optional policy toggles
@@ -279,7 +280,8 @@ public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformS
             if (!ruleIds.isEmpty()) {
                 discountRuleService.assignDiscountRulesToCharge(chargeId, ruleIds);
                 for (var p : priorities) {
-                    this.jdbcTemplate.update("UPDATE m_discount_rule_charge SET assignment_priority = ? WHERE charge_id = ? AND discount_rule_id = ?",
+                    this.jdbcTemplate.update(
+                            "UPDATE m_discount_rule_charge SET assignment_priority = ? WHERE charge_id = ? AND discount_rule_id = ?",
                             p.getValue(), chargeId, p.getKey());
                 }
             }

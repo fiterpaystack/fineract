@@ -111,7 +111,8 @@ public class PaystackChargeReadPlatformServiceImpl extends ChargeReadPlatformSer
 
             // Get policy data for this charge
             com.paystack.fineract.portfolio.discount.data.DiscountAssignmentPolicyData policyData = discountRuleService
-                    .getPolicyDataForEntity(com.paystack.fineract.portfolio.discount.domain.policy.DiscountPolicyEntityType.CHARGE, chargeId);
+                    .getPolicyDataForEntity(com.paystack.fineract.portfolio.discount.domain.policy.DiscountPolicyEntityType.CHARGE,
+                            chargeId);
 
             // Set enableDiscountEngine flag based on whether rules exist
             attributes.put("enableDiscountEngine", !assignmentData.isEmpty());
