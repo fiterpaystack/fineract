@@ -57,6 +57,8 @@ class PaystackChargeWritePlatformServiceImplTest {
     private ChargeSlabRepository chargeSlabRepository;
     @Mock
     private com.paystack.fineract.portfolio.discount.service.DiscountRuleService discountRuleService;
+    @Mock
+    private com.paystack.fineract.portfolio.discount.service.DiscountAssignmentPolicyService discountAssignmentPolicyService;
 
     private PaystackChargeWritePlatformServiceImpl service;
 
@@ -64,7 +66,7 @@ class PaystackChargeWritePlatformServiceImplTest {
     void setUp() {
         service = new PaystackChargeWritePlatformServiceImpl(context, deserializer, chargeRepository, loanProductRepository, jdbcTemplate,
                 fineractEntityAccessUtil, glAccountRepository, taxGroupRepository, paymentTypeRepository, chargeSlabRepository,
-                discountRuleService);
+                discountRuleService, discountAssignmentPolicyService);
     }
 
     @Test
