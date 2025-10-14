@@ -101,7 +101,7 @@ public class SavingsAccountTransactionCountDiscountCalculator implements Discoun
         descriptions.put(PARAM_PERIOD_TYPE, "Counting window: [DAILY, MONTHLY, QUARTERLY]");
         descriptions.put(PARAM_DIRECTION_TYPE, "Direction of transactions to count: [INFLOW, OUTFLOW, ALL]");
         descriptions.put(PARAM_DISCOUNT_PERCENTAGE, "Percentage discount to apply when threshold met (0 < p <= 100)");
-        descriptions.put(PARAM_INCLUDE_REVERSED, "Whether to include reversed transactions in the count (default false)");
+        descriptions.put(PARAM_INCLUDE_REVERSED, "Whether to include reversed transactions in the count [TRUE, FALSE] (default FALSE)");
         return descriptions;
     }
 
@@ -225,7 +225,16 @@ public class SavingsAccountTransactionCountDiscountCalculator implements Discoun
         Object value = parameters.get(PARAM_INCLUDE_REVERSED);
         return switch (value) {
             case Boolean b -> b;
-            case String s -> "true".equalsIgnoreCase(s);
+            case String s -> {
+                if ("true".equalsIgnoreCase(s)) {
+                    yield Boolean.TRUE;
+                } else if ("false".equalsIgnoreCase(s)) {
+                    yield Boolean.FALSE;
+                } else {
+                    log.warn("COUNT CALCULATOR: includeReversed must be 'TRUE' or 'FALSE' but was '{}'. Defaulting to FALSE.", s);
+                    yield Boolean.FALSE;
+                }
+            }
             case null -> Boolean.FALSE;
             default -> {
                 log.warn("COUNT CALCULATOR: Unexpected includeReversed type: {}. Defaulting to false.", value.getClass().getSimpleName());
