@@ -4,8 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
-import com.paystack.fineract.portfolio.discount.data.DiscountRuleData;
-import com.paystack.fineract.portfolio.discount.domain.DiscountRule;
 import com.paystack.fineract.portfolio.discount.service.DiscountRuleService;
 import java.util.List;
 import java.util.Map;
@@ -61,22 +59,10 @@ class PaystackChargeReadPlatformServiceImplTest {
     void shouldIncludeDiscountRulesInAdditionalAttributes() {
         // Given
         Long chargeId = 1L;
-        DiscountRule mockRule = new DiscountRule();
-        mockRule.setId(1L);
-        mockRule.setName("Test Rule");
-        mockRule.setRuleType("TIME_BASED");
-        mockRule.setActive(true);
-        mockRule.setRulePriority(1);
-
-        DiscountRuleData mockRuleData = new DiscountRuleData();
-        mockRuleData.setId(1L);
-        mockRuleData.setName("Test Rule");
-        mockRuleData.setRuleType("TIME_BASED");
-        mockRuleData.setActive(true);
-        mockRuleData.setRulePriority(1);
-
-        when(discountRuleService.getAssignedDiscountRules(eq("CHARGE"), eq(chargeId))).thenReturn(List.of(mockRule));
-        when(discountRuleService.mapToData(mockRule)).thenReturn(mockRuleData);
+        com.paystack.fineract.portfolio.discount.data.DiscountRuleAssignmentData assignment = com.paystack.fineract.portfolio.discount.data.DiscountRuleAssignmentData
+                .builder().ruleId(1L).ruleName("Test Rule").ruleType("TIME_BASED").active(true).rulePriority(1).assignmentPriority(1)
+                .build();
+        when(discountRuleService.getAssignmentDataForCharge(eq(chargeId))).thenReturn(List.of(assignment));
 
         // When
         Map<String, Object> additionalAttributes = service.getAdditionalAttributes(chargeId);
@@ -87,16 +73,17 @@ class PaystackChargeReadPlatformServiceImplTest {
         assertThat(additionalAttributes.get("discountRules")).isInstanceOf(List.class);
 
         @SuppressWarnings("unchecked")
-        List<DiscountRuleData> discountRules = (List<DiscountRuleData>) additionalAttributes.get("discountRules");
+        List<com.paystack.fineract.portfolio.discount.data.DiscountRuleAssignmentData> discountRules = (List<com.paystack.fineract.portfolio.discount.data.DiscountRuleAssignmentData>) additionalAttributes
+                .get("discountRules");
         assertThat(discountRules).hasSize(1);
-        assertThat(discountRules.get(0).getName()).isEqualTo("Test Rule");
+        assertThat(discountRules.get(0).getRuleName()).isEqualTo("Test Rule");
     }
 
     @Test
     void shouldHandleEmptyDiscountRules() {
         // Given
         Long chargeId = 1L;
-        when(discountRuleService.getAssignedDiscountRules(eq("CHARGE"), eq(chargeId))).thenReturn(List.of());
+        when(discountRuleService.getAssignmentDataForCharge(eq(chargeId))).thenReturn(List.of());
 
         // When
         Map<String, Object> additionalAttributes = service.getAdditionalAttributes(chargeId);
@@ -107,7 +94,8 @@ class PaystackChargeReadPlatformServiceImplTest {
         assertThat(additionalAttributes.get("discountRules")).isInstanceOf(List.class);
 
         @SuppressWarnings("unchecked")
-        List<DiscountRuleData> discountRules = (List<DiscountRuleData>) additionalAttributes.get("discountRules");
+        List<com.paystack.fineract.portfolio.discount.data.DiscountRuleAssignmentData> discountRules = (List<com.paystack.fineract.portfolio.discount.data.DiscountRuleAssignmentData>) additionalAttributes
+                .get("discountRules");
         assertThat(discountRules).isEmpty();
     }
 
@@ -115,8 +103,7 @@ class PaystackChargeReadPlatformServiceImplTest {
     void shouldHandleDiscountServiceException() {
         // Given
         Long chargeId = 1L;
-        when(discountRuleService.getAssignedDiscountRules(eq("CHARGE"), eq(chargeId)))
-                .thenThrow(new RuntimeException("Service unavailable"));
+        when(discountRuleService.getAssignmentDataForCharge(eq(chargeId))).thenThrow(new RuntimeException("Service unavailable"));
 
         // When
         Map<String, Object> additionalAttributes = service.getAdditionalAttributes(chargeId);
@@ -127,7 +114,8 @@ class PaystackChargeReadPlatformServiceImplTest {
         assertThat(additionalAttributes.get("discountRules")).isInstanceOf(List.class);
 
         @SuppressWarnings("unchecked")
-        List<DiscountRuleData> discountRules = (List<DiscountRuleData>) additionalAttributes.get("discountRules");
+        List<com.paystack.fineract.portfolio.discount.data.DiscountRuleAssignmentData> discountRules = (List<com.paystack.fineract.portfolio.discount.data.DiscountRuleAssignmentData>) additionalAttributes
+                .get("discountRules");
         assertThat(discountRules).isEmpty();
     }
 }

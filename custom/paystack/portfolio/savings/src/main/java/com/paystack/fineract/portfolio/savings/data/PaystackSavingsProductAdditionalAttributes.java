@@ -15,4 +15,5 @@ public final class PaystackSavingsProductAdditionalAttributes {
     // Discount Engine Attributes
     public static final String ENABLE_DISCOUNT_ENGINE = "enableDiscountEngine";
     public static final String DISCOUNT_RULES = "discountRules";
+    public static final String DISCOUNT_POLICY = "discountPolicy";
 }
