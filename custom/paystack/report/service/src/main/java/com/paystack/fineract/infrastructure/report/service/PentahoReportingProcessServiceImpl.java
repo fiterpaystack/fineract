@@ -123,7 +123,7 @@ public class PentahoReportingProcessServiceImpl implements ReportingProcessServi
         // final var reportPath = mifosBaseDir + File.separator + "pentahoReports" + File.separator + reportName +
         // ".prpt";
         String reportPath;
-        if (!"en".equals(locale.toString().toLowerCase()) && locale != null) {
+        if (!language.equals(locale.toString().toLowerCase()) && locale != null) {
             reportPath = getReportPath() + reportName + "_" + locale.toString().toLowerCase() + ".prpt";
         } else {
             reportPath = getReportPath() + reportName + ".prpt";
@@ -202,8 +202,8 @@ public class PentahoReportingProcessServiceImpl implements ReportingProcessServi
 
             Driver e = DriverManager.getDriver(getTenantUrl());
             // Printing the driver
-            logger.info("Driver: {} ", e.getClass().getName().toString());
-            connectionProvider.setDriver(e.getClass().getName().toString());
+            logger.info("Driver: {} ", e.getClass().getName());
+            connectionProvider.setDriver(e.getClass().getName());
             connectionProvider.setUrl(getTenantUrl());
             connectionProvider.setProperty("user", tenantConnection.getSchemaUsername());
             logger.info("Schema Username: {}", tenantConnection.getSchemaUsername());
@@ -259,6 +259,16 @@ public class PentahoReportingProcessServiceImpl implements ReportingProcessServi
             final var rptParamValues = report.getParameterValues();
             final var paramsDefinition = report.getParameterDefinition();
 
+            // Tenant database name and current user's office hierarchy
+            // passed as parameters to allow multitenant Pentaho reporting
+            // and data scoping
+            final var tenant = ThreadLocalContextUtil.getTenant();
+            final var tenantConnection = tenant.getConnection();
+            String protocol = toProtocol(this.tenantDataSource);
+            Environment environment = applicationContext.getEnvironment();
+            String tenantUrl = toJdbcUrl(protocol, tenantConnection.getSchemaServer(), tenantConnection.getSchemaServerPort(),
+                    tenantConnection.getSchemaName(), tenantConnection.getSchemaConnectionParameters());
+
             // only allow integer, long, date and string parameter types and assume all mandatory - could go more
             // detailed like Pawel did in Mifos later and could match incoming and Pentaho parameters better...
             // currently assuming they come in ok... and if not an error
@@ -286,8 +296,8 @@ public class PentahoReportingProcessServiceImpl implements ReportingProcessServi
                         rptParamValues.put(paramName, Long.parseLong(pValue));
                     } else if (clazz.getCanonicalName().equalsIgnoreCase("java.sql.Date")) {
                         logger.debug("ParamName: {}", paramName);
-                        logger.debug("ParamValue: {}", pValue.toString());
-                        String myDate = pValue.toString();
+                        logger.debug("ParamValue: {}", pValue);
+                        String myDate = pValue;
                         SimpleDateFormat sdf = new SimpleDateFormat("dd MMMM yyyy", Locale.ENGLISH);
                         java.util.Date date = sdf.parse(myDate);
                         long millis = date.getTime();
@@ -295,25 +305,15 @@ public class PentahoReportingProcessServiceImpl implements ReportingProcessServi
                         rptParamValues.put(paramName, mySQLDate);
                     } else {
                         logger.debug("ParamName Unknown: {}", paramName);
-                        logger.debug("ParamValue Unknown: {}", pValue.toString());
+                        logger.debug("ParamValue Unknown: {}", pValue);
                         rptParamValues.put(paramName, pValue);
                     }
                 }
             }
 
-            // Tenant database name and current user's office hierarchy
-            // passed as parameters to allow multitenant Pentaho reporting
-            // and data scoping
-            final var tenant = ThreadLocalContextUtil.getTenant();
-            final var tenantConnection = tenant.getConnection();
-            String protocol = toProtocol(this.tenantDataSource);
-            Environment environment = applicationContext.getEnvironment();
-            String tenantUrl = toJdbcUrl(protocol, tenantConnection.getSchemaServer(), tenantConnection.getSchemaServerPort(),
-                    tenantConnection.getSchemaName(), tenantConnection.getSchemaConnectionParameters());
-
             final var userhierarchy = currentUser.getOffice().getHierarchy();
             logger.debug("userHierarchy: {} ", userhierarchy);
-            logger.debug("db URL: {} userhierarchy {}", tenantUrl, userhierarchy);
+            logger.info("db URL: {} userhierarchy {}", tenantUrl, userhierarchy);
 
             rptParamValues.put("userhierarchy", userhierarchy);
 
