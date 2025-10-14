@@ -97,7 +97,7 @@ class SavingsAccountTransactionCountDiscountCalculatorTest {
             assertThat(descriptions.get("directionType")).isEqualTo("Direction of transactions to count: [INFLOW, OUTFLOW, ALL]");
             assertThat(descriptions.get("discountPercentage")).isEqualTo("Percentage discount to apply when threshold met (0 < p <= 100)");
             assertThat(descriptions.get("includeReversed"))
-                    .isEqualTo("Whether to include reversed transactions in the count (default false)");
+                    .isEqualTo("Whether to include reversed transactions in the count [TRUE, FALSE] (default FALSE)");
         }
     }
 
