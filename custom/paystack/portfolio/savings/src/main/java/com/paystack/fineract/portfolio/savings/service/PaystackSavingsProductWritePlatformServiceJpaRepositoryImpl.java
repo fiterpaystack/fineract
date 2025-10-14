@@ -486,12 +486,6 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
             }
         }
 
-        // If disabled charge is added back, re-enable it
-        if (accountCharge.isNotActive()) {
-            accountCharge.reactivateCharge();
-            hasChanges = true;
-        }
-
         return hasChanges;
     }
 
