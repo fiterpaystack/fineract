@@ -26,7 +26,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -95,15 +94,15 @@ public interface DiscountRuleRepository extends JpaRepository<DiscountRule, Long
     int updateProductAssignmentPriority(Long productId, Long ruleId, int priority);
 
     /**
-     * Get assignment data for charge with priority information.
-     * Note: This query works both with and without assignment_priority column.
+     * Get assignment data for charge with priority information. Note: This query works both with and without
+     * assignment_priority column.
      */
     @Query(value = """
             SELECT dr.id as ruleId, dr.name as ruleName, dr.description as ruleDescription,
                    dr.is_active as active, dr.priority as rulePriority, dr.rule_type as ruleType,
                    dr.rule_parameters as ruleParametersJson, dr.created_on_utc as createdOnUtc,
                    dr.last_modified_on_utc as lastModifiedOnUtc, dr.created_by as createdBy,
-                   dr.last_modified_by as lastModifiedBy, 
+                   dr.last_modified_by as lastModifiedBy,
                    COALESCE(rp.assignment_priority, 0) as assignmentPriority
             FROM m_discount_rule dr
             JOIN m_discount_rule_charge rp ON rp.discount_rule_id = dr.id
@@ -113,15 +112,15 @@ public interface DiscountRuleRepository extends JpaRepository<DiscountRule, Long
     List<Object[]> findAssignmentDataByCharge(Long chargeId);
 
     /**
-     * Get assignment data for product with priority information.
-     * Note: This query works both with and without assignment_priority column.
+     * Get assignment data for product with priority information. Note: This query works both with and without
+     * assignment_priority column.
      */
     @Query(value = """
             SELECT dr.id as ruleId, dr.name as ruleName, dr.description as ruleDescription,
                    dr.is_active as active, dr.priority as rulePriority, dr.rule_type as ruleType,
                    dr.rule_parameters as ruleParametersJson, dr.created_on_utc as createdOnUtc,
                    dr.last_modified_on_utc as lastModifiedOnUtc, dr.created_by as createdBy,
-                   dr.last_modified_by as lastModifiedBy, 
+                   dr.last_modified_by as lastModifiedBy,
                    COALESCE(rp.assignment_priority, 0) as assignmentPriority
             FROM m_discount_rule dr
             JOIN m_discount_rule_product rp ON rp.discount_rule_id = dr.id

@@ -23,6 +23,7 @@ import com.paystack.fineract.client.charge.domain.ClientChargeOverride;
 import com.paystack.fineract.client.charge.service.ClientChargeOverrideReadService;
 import com.paystack.fineract.portfolio.account.data.ChargePaymentResult;
 import com.paystack.fineract.portfolio.account.data.SavingsAccountTransactionLimitValidator;
+import com.paystack.fineract.portfolio.discount.domain.ChargeDiscountContext;
 import com.paystack.fineract.portfolio.discount.service.ProductDiscountService;
 import com.paystack.fineract.portfolio.savings.domain.PaystackSavingsProductAttributesRepository;
 import io.micrometer.common.util.StringUtils;
@@ -274,83 +275,104 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
 
     private void payWithdrawalFee(final BigDecimal transactionAmount, final LocalDate transactionDate, final PaymentDetail paymentDetail,
             final boolean backdatedTxnsAllowedTill, final String refNo, final SavingsAccount account, final String noteText) {
+        processWithdrawalFees(account, transactionAmount, transactionDate, paymentDetail, backdatedTxnsAllowedTill, refNo, noteText);
+    }
+
+    private void processWithdrawalFees(final SavingsAccount account, final BigDecimal transactionAmount, final LocalDate transactionDate,
+            final PaymentDetail paymentDetail, final boolean backdatedTxnsAllowedTill, final String refNo, final String noteText) {
         for (SavingsAccountCharge charge : account.charges()) {
+            processSingleWithdrawalCharge(account, charge, transactionAmount, transactionDate, paymentDetail, backdatedTxnsAllowedTill,
+                    refNo, noteText);
+        }
+    }
 
-            if (!charge.isWithdrawalFee() || !charge.isActive()) {
-                continue;
-            }
+    private boolean processSingleWithdrawalCharge(final SavingsAccount account, final SavingsAccountCharge charge,
+            final BigDecimal transactionAmount, final LocalDate transactionDate, final PaymentDetail paymentDetail,
+            final boolean backdatedTxnsAllowedTill, final String refNo, final String noteText) {
+        boolean skip = shouldSkipWithdrawalCharge(charge);
 
+        if (!skip) {
             if (charge.getFreeWithdrawalCount() == null) {
                 charge.setFreeWithdrawalCount(0);
             }
 
-            // Respect free-withdrawal/paymentType rules
-            if (charge.isEnablePaymentType() && charge.isEnableFreeWithdrawal()) {
-                if (paymentDetail.getPaymentType().getName().equals(charge.getCharge().getPaymentType().getName())) {
-                    account.resetFreeChargeDaysCount(charge, transactionAmount, transactionDate, refNo);
-                }
-                continue;
+            if (handlePaymentTypeAndFreeWithdrawal(account, charge, paymentDetail, transactionAmount, transactionDate, refNo)) {
+                skip = true;
             }
-            if (charge.isEnablePaymentType()) {
-                if (!paymentDetail.getPaymentType().getName().equals(charge.getCharge().getPaymentType().getName())) {
-                    continue;
-                }
-            } else if (!charge.isEnablePaymentType() && charge.isEnableFreeWithdrawal()) {
-                account.resetFreeChargeDaysCount(charge, transactionAmount, transactionDate, refNo);
-                continue;
-            }
-
-            // Determine calculation type from the underlying Charge
-            Integer calc = charge.getCharge().getChargeCalculation();
-            BigDecimal amountToPay = BigDecimal.ZERO;
-
-            if (calc != null && ChargeCalculationType.fromInt(calc).isPercentageOfAmount()) {
-                BigDecimal pctResolved = resolveChargePrimaryValue(account.clientId(), charge.getCharge(), transactionAmount, true);
-                charge.update(pctResolved, charge.getDueDate(), null, null);
-
-                // 2) Compute outstanding using the just-updated percentage
-                charge.updateWithdralFeeAmount(transactionAmount);
-                BigDecimal computed = charge.getAmountOutstanding(account.getCurrency()).getAmount();
-
-                // 3) Apply caps from client override (fallback to product)
-                BigDecimal minCap = clientChargeOverrideReadService.resolveMinCap(account.clientId(), charge.getCharge());
-                BigDecimal maxCap = clientChargeOverrideReadService.resolveMaxCap(account.clientId(), charge.getCharge());
-                BigDecimal desired = computed;
-                if (minCap != null && desired.compareTo(minCap) < 0) {
-                    desired = minCap;
-                }
-                if (maxCap != null && desired.compareTo(maxCap) > 0) {
-                    desired = maxCap;
-                }
-
-                // 4) If caps changed the value, adjust percentage so amountOutstanding matches desired
-                if (transactionAmount != null && transactionAmount.compareTo(BigDecimal.ZERO) > 0 && desired.compareTo(computed) != 0) {
-                    BigDecimal pctNeeded = desired.multiply(BigDecimal.valueOf(100L)).divide(transactionAmount,
-                            org.apache.fineract.organisation.monetary.domain.MoneyHelper.getRoundingMode());
-                    charge.update(pctNeeded, charge.getDueDate(), null, null);
-                    charge.updateWithdralFeeAmount(transactionAmount);
-                }
-
-                amountToPay = charge.getAmountOutstanding(account.getCurrency()).getAmount();
-            } else {
-                // FLAT: resolve primary amount and set it before computing outstanding
-                BigDecimal flatResolved = resolveChargePrimaryValue(account.clientId(), charge.getCharge(), transactionAmount, false);
-                charge.update(flatResolved, charge.getDueDate(), null, null);
-                charge.updateWithdralFeeAmount(transactionAmount);
-                amountToPay = charge.getAmountOutstanding(account.getCurrency()).getAmount();
-            }
-
-            if (amountToPay.compareTo(BigDecimal.ZERO) <= 0) {
-                continue; // nothing to pay
-            }
-
-            // Apply discount to the charge amount before processing
-            BigDecimal discountedAmount = applyDiscountToChargeAmount(account, charge, amountToPay);
-
-            Money moneyToPay = org.apache.fineract.organisation.monetary.domain.Money.of(account.getCurrency(), discountedAmount);
-            // Persist fee then VAT explicitly (mirrors deposit path) to guarantee ordering
-            payChargeWithVatAndSave(account, charge, moneyToPay, transactionDate, refNo, backdatedTxnsAllowedTill, noteText);
         }
+
+        BigDecimal amountToPay = BigDecimal.ZERO;
+        if (!skip) {
+            amountToPay = resolveAmountToPayForWithdrawal(account, charge, transactionAmount);
+            if (amountToPay.compareTo(BigDecimal.ZERO) <= 0) {
+                skip = true;
+            }
+        }
+
+        if (skip) {
+            return false;
+        }
+
+        BigDecimal discountedAmount = applyDiscountToChargeAmount(ChargeDiscountContext.of(account, charge, amountToPay, transactionDate));
+        Money moneyToPay = org.apache.fineract.organisation.monetary.domain.Money.of(account.getCurrency(), discountedAmount);
+        payChargeWithVatAndSave(account, charge, moneyToPay, transactionDate, refNo, backdatedTxnsAllowedTill, noteText);
+        return true;
+    }
+
+    private boolean shouldSkipWithdrawalCharge(SavingsAccountCharge charge) {
+        return !charge.isWithdrawalFee() || !charge.isActive();
+    }
+
+    private boolean handlePaymentTypeAndFreeWithdrawal(SavingsAccount account, SavingsAccountCharge charge, PaymentDetail paymentDetail,
+            BigDecimal transactionAmount, LocalDate transactionDate, String refNo) {
+        boolean paymentTypeMatches = charge.isEnablePaymentType()
+                && paymentDetail.getPaymentType().getName().equals(charge.getCharge().getPaymentType().getName());
+
+        if (charge.isEnablePaymentType() && charge.isEnableFreeWithdrawal()) {
+            if (paymentTypeMatches) {
+                account.resetFreeChargeDaysCount(charge, transactionAmount, transactionDate, refNo);
+            }
+            return true;
+        }
+        if (charge.isEnablePaymentType() && !paymentTypeMatches) {
+            return true;
+        }
+        if (!charge.isEnablePaymentType() && charge.isEnableFreeWithdrawal()) {
+            account.resetFreeChargeDaysCount(charge, transactionAmount, transactionDate, refNo);
+            return true;
+        }
+        return false;
+    }
+
+    private BigDecimal resolveAmountToPayForWithdrawal(SavingsAccount account, SavingsAccountCharge charge, BigDecimal transactionAmount) {
+        Integer calc = charge.getCharge().getChargeCalculation();
+        if (calc != null && ChargeCalculationType.fromInt(calc).isPercentageOfAmount()) {
+            BigDecimal pctResolved = resolveChargePrimaryValue(account.clientId(), charge.getCharge(), transactionAmount, true);
+            charge.update(pctResolved, charge.getDueDate(), null, null);
+            charge.updateWithdralFeeAmount(transactionAmount);
+            BigDecimal computed = charge.getAmountOutstanding(account.getCurrency()).getAmount();
+
+            BigDecimal minCap = clientChargeOverrideReadService.resolveMinCap(account.clientId(), charge.getCharge());
+            BigDecimal maxCap = clientChargeOverrideReadService.resolveMaxCap(account.clientId(), charge.getCharge());
+            BigDecimal desired = computed;
+            if (minCap != null && desired.compareTo(minCap) < 0) {
+                desired = minCap;
+            }
+            if (maxCap != null && desired.compareTo(maxCap) > 0) {
+                desired = maxCap;
+            }
+            if (transactionAmount != null && transactionAmount.compareTo(BigDecimal.ZERO) > 0 && desired.compareTo(computed) != 0) {
+                BigDecimal pctNeeded = desired.multiply(BigDecimal.valueOf(100L)).divide(transactionAmount,
+                        org.apache.fineract.organisation.monetary.domain.MoneyHelper.getRoundingMode());
+                charge.update(pctNeeded, charge.getDueDate(), null, null);
+                charge.updateWithdralFeeAmount(transactionAmount);
+            }
+            return charge.getAmountOutstanding(account.getCurrency()).getAmount();
+        }
+        BigDecimal flatResolved = resolveChargePrimaryValue(account.clientId(), charge.getCharge(), transactionAmount, false);
+        charge.update(flatResolved, charge.getDueDate(), null, null);
+        charge.updateWithdralFeeAmount(transactionAmount);
+        return charge.getAmountOutstanding(account.getCurrency()).getAmount();
     }
 
     /**
@@ -435,64 +457,74 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
     private void payDepositFee(final BigDecimal transactionAmount, final LocalDate transactionDate, final PaymentDetail paymentDetail,
             final boolean backdatedTxnsAllowedTill, final String refNo, final SavingsAccount account, final String noteText) {
         for (SavingsAccountCharge charge : account.charges()) {
+            boolean skip = false;
+
             if (!charge.getCharge().getChargeTimeType().equals(ChargeTimeType.DEPOSIT_FEE.getValue()) || !charge.isActive()) {
-                continue;
+                skip = true;
             }
 
-            // Respect payment type rules if enabled
-            if (charge.isEnablePaymentType()) {
-                if (!paymentDetail.getPaymentType().getName().equals(charge.getCharge().getPaymentType().getName())) {
-                    continue;
+            if (!skip && charge.isEnablePaymentType()) {
+                boolean paymentTypeMatches = paymentDetail.getPaymentType().getName().equals(charge.getCharge().getPaymentType().getName());
+                if (!paymentTypeMatches) {
+                    skip = true;
                 }
             }
 
-            // Determine calculation type from the underlying Charge
-            Integer calc = charge.getCharge().getChargeCalculation();
             BigDecimal amountToPay = BigDecimal.ZERO;
+            if (!skip) {
+                // Determine calculation type from the underlying Charge
+                Integer calc = charge.getCharge().getChargeCalculation();
 
-            if (calc != null && ChargeCalculationType.fromInt(calc).isPercentageOfAmount()) {
-                // 1) Resolve percentage using precedence: client override -> tiered -> product
-                BigDecimal pctResolved = resolveChargePrimaryValue(account.clientId(), charge.getCharge(), transactionAmount, true);
-                charge.update(pctResolved, charge.getDueDate(), null, null);
+                if (calc != null && ChargeCalculationType.fromInt(calc).isPercentageOfAmount()) {
+                    // 1) Resolve percentage using precedence: client override -> tiered -> product
+                    BigDecimal pctResolved = resolveChargePrimaryValue(account.clientId(), charge.getCharge(), transactionAmount, true);
+                    charge.update(pctResolved, charge.getDueDate(), null, null);
 
-                // 2) Compute outstanding using the just-updated percentage
-                charge.updateDepositFeeAmount(transactionAmount);
-                BigDecimal computed = charge.getAmountOutstanding(account.getCurrency()).getAmount();
-
-                // 3) Apply caps from client override (fallback to product)
-                BigDecimal minCap = clientChargeOverrideReadService.resolveMinCap(account.clientId(), charge.getCharge());
-                BigDecimal maxCap = clientChargeOverrideReadService.resolveMaxCap(account.clientId(), charge.getCharge());
-                BigDecimal desired = computed;
-                if (minCap != null && desired.compareTo(minCap) < 0) {
-                    desired = minCap;
-                }
-                if (maxCap != null && desired.compareTo(maxCap) > 0) {
-                    desired = maxCap;
-                }
-
-                // 4) If caps changed the value, adjust percentage so amountOutstanding matches desired
-                if (transactionAmount != null && transactionAmount.compareTo(BigDecimal.ZERO) > 0 && desired.compareTo(computed) != 0) {
-                    BigDecimal pctNeeded = desired.multiply(BigDecimal.valueOf(100L)).divide(transactionAmount,
-                            org.apache.fineract.organisation.monetary.domain.MoneyHelper.getRoundingMode());
-                    charge.update(pctNeeded, charge.getDueDate(), null, null);
+                    // 2) Compute outstanding using the just-updated percentage
                     charge.updateDepositFeeAmount(transactionAmount);
+                    BigDecimal computed = charge.getAmountOutstanding(account.getCurrency()).getAmount();
+
+                    // 3) Apply caps from client override (fallback to product)
+                    BigDecimal minCap = clientChargeOverrideReadService.resolveMinCap(account.clientId(), charge.getCharge());
+                    BigDecimal maxCap = clientChargeOverrideReadService.resolveMaxCap(account.clientId(), charge.getCharge());
+                    BigDecimal desired = computed;
+                    if (minCap != null && desired.compareTo(minCap) < 0) {
+                        desired = minCap;
+                    }
+                    if (maxCap != null && desired.compareTo(maxCap) > 0) {
+                        desired = maxCap;
+                    }
+
+                    // 4) If caps changed the value, adjust percentage so amountOutstanding matches desired
+                    if (transactionAmount != null && transactionAmount.compareTo(BigDecimal.ZERO) > 0 && desired.compareTo(computed) != 0) {
+                        BigDecimal pctNeeded = desired.multiply(BigDecimal.valueOf(100L)).divide(transactionAmount,
+                                org.apache.fineract.organisation.monetary.domain.MoneyHelper.getRoundingMode());
+                        charge.update(pctNeeded, charge.getDueDate(), null, null);
+                        charge.updateDepositFeeAmount(transactionAmount);
+                    }
+
+                    amountToPay = charge.getAmountOutstanding(account.getCurrency()).getAmount();
+                } else {
+                    // FLAT: resolve primary amount and set it before computing outstanding (override -> tiered ->
+                    // product)
+                    BigDecimal flatResolved = resolveChargePrimaryValue(account.clientId(), charge.getCharge(), transactionAmount, false);
+                    charge.update(flatResolved, charge.getDueDate(), null, null);
+                    charge.updateDepositFeeAmount(transactionAmount);
+                    amountToPay = charge.getAmountOutstanding(account.getCurrency()).getAmount();
                 }
 
-                amountToPay = charge.getAmountOutstanding(account.getCurrency()).getAmount();
-            } else {
-                // FLAT: resolve primary amount and set it before computing outstanding (override -> tiered -> product)
-                BigDecimal flatResolved = resolveChargePrimaryValue(account.clientId(), charge.getCharge(), transactionAmount, false);
-                charge.update(flatResolved, charge.getDueDate(), null, null);
-                charge.updateDepositFeeAmount(transactionAmount);
-                amountToPay = charge.getAmountOutstanding(account.getCurrency()).getAmount();
+                if (amountToPay.compareTo(BigDecimal.ZERO) <= 0) {
+                    skip = true;
+                }
             }
 
-            if (amountToPay.compareTo(BigDecimal.ZERO) <= 0) {
+            if (skip) {
                 continue;
             }
 
             // Apply discount to the charge amount before processing
-            BigDecimal discountedAmount = applyDiscountToChargeAmount(account, charge, amountToPay);
+            BigDecimal discountedAmount = applyDiscountToChargeAmount(
+                    ChargeDiscountContext.of(account, charge, amountToPay, transactionDate));
 
             Money moneyToPay = org.apache.fineract.organisation.monetary.domain.Money.of(account.getCurrency(), discountedAmount);
             payChargeWithVatAndSave(account, charge, moneyToPay, transactionDate, refNo, backdatedTxnsAllowedTill, noteText);
@@ -561,25 +593,26 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
     /**
      * Apply discount rules to a charge amount during calculation
      */
-    private BigDecimal applyDiscountToChargeAmount(SavingsAccount account, SavingsAccountCharge charge, BigDecimal originalAmount) {
+    private BigDecimal applyDiscountToChargeAmount(ChargeDiscountContext chargeDiscountContext) {
 
         try {
-            // Get the product ID from the savings account
-            Long productId = account.productId();
-
             // Apply discount using the product discount service
-            BigDecimal discountedAmount = productDiscountService.applyDiscount(productId, originalAmount, charge.getCharge().getId(),
-                    account.getId() // Pass the account ID for balance-based calculations
-            );
+            BigDecimal discountedAmount = productDiscountService.applyDiscount(chargeDiscountContext);
 
             return discountedAmount;
 
         } catch (Exception e) {
-            log.error("WITHDRAWAL DISCOUNT: Error applying discount to charge {} for account {} - Stack trace: {}",
-                    charge.getCharge().getId(), account.getId(), e.getStackTrace()[0], e);
+            Long chargeId = chargeDiscountContext != null && chargeDiscountContext.charge() != null
+                    ? chargeDiscountContext.charge().getCharge().getId()
+                    : null;
+            Long accountId = chargeDiscountContext != null && chargeDiscountContext.account() != null
+                    ? chargeDiscountContext.account().getId()
+                    : null;
+            log.error("WITHDRAWAL DISCOUNT: Error applying discount to charge {} for account {} - Stack trace: {}", chargeId, accountId,
+                    e.getStackTrace()[0], e);
 
             // Return original amount if discount application fails - graceful degradation
-            return originalAmount;
+            return chargeDiscountContext != null ? chargeDiscountContext.originalAmount() : BigDecimal.ZERO;
         }
     }
 

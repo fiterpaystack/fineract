@@ -73,16 +73,18 @@ public class PaystackSavingsProductReadPlatformServiceImpl extends SavingsProduc
                     rs.getBoolean("emtOverrideGlobalLevy"));
             additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.EMT_LEVY_THRESHOLD, rs.getBigDecimal("emtLevyThreshold"));
 
-            // Discount attributes - retrieve assigned discount rules with assignment priority and policy for this product
+            // Discount attributes - retrieve assigned discount rules with assignment priority and policy for this
+            // product
             try {
                 Long productId = base.getId();
                 List<com.paystack.fineract.portfolio.discount.data.DiscountRuleAssignmentData> assignmentData = discountRuleService
                         .getAssignmentDataForProduct(productId);
-                
+
                 // Get policy data for this product
                 com.paystack.fineract.portfolio.discount.data.DiscountAssignmentPolicyData policyData = discountRuleService
-                        .getPolicyDataForEntity(com.paystack.fineract.portfolio.discount.domain.policy.DiscountPolicyEntityType.SAVINGS_PRODUCT, productId);
-                
+                        .getPolicyDataForEntity(
+                                com.paystack.fineract.portfolio.discount.domain.policy.DiscountPolicyEntityType.SAVINGS_PRODUCT, productId);
+
                 additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.ENABLE_DISCOUNT_ENGINE, !assignmentData.isEmpty());
                 additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES, assignmentData);
                 additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.DISCOUNT_POLICY, policyData);

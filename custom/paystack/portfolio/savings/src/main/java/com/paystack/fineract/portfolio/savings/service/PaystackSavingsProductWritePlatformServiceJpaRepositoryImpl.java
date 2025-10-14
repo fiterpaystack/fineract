@@ -2,11 +2,11 @@ package com.paystack.fineract.portfolio.savings.service;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.paystack.fineract.portfolio.discount.service.DiscountRuleService;
-import com.paystack.fineract.portfolio.savings.data.PaystackSavingsProductAdditionalAttributes;
 import com.paystack.fineract.portfolio.discount.domain.policy.DiscountCombinationStrategy;
 import com.paystack.fineract.portfolio.discount.domain.policy.DiscountPolicyEntityType;
 import com.paystack.fineract.portfolio.discount.service.DiscountAssignmentPolicyService;
+import com.paystack.fineract.portfolio.discount.service.DiscountRuleService;
+import com.paystack.fineract.portfolio.savings.data.PaystackSavingsProductAdditionalAttributes;
 import com.paystack.fineract.portfolio.savings.domain.ExtendedSavingsAccountRepository;
 import com.paystack.fineract.portfolio.savings.domain.PaystackSavingsProductAttributes;
 import com.paystack.fineract.portfolio.savings.domain.PaystackSavingsProductAttributesRepository;
