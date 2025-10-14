@@ -205,9 +205,8 @@ public class DiscountRuleService {
      */
     @Transactional
     public void removeAllDiscountRulesFromProduct(Long productId) {
-
-        // Validate product exists
-        SavingsProduct product = savingsProductRepository.findById(productId)
+        // Validate product exists (no need to keep reference)
+        savingsProductRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
 
         int removedCount = discountRuleRepository.deleteAssignmentsByProduct(productId);
