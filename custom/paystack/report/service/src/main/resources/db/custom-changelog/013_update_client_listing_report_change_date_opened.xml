@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="paystack" id="1">
+        <update tableName="stretchy_report">
+            <column name="report_sql" value="select mc.account_no as &quot;CustomerID&quot;, TO_CHAR(coalesce(mc.activation_date, mc.submittedon_date), 'YYYY-MM-DD') as &quot;Date Opened&quot;,
+            mc.display_name as &quot;Customer Name&quot;, mcv.code_value as &quot;Account Tier&quot;,
+            case
+                when mc.legal_form_enum = 1 then 'Individual'
+                else 'Entity'
+            end as &quot;Customer Type&quot;, rev.enum_value as &quot;Customer Status&quot;, concat(ma.firstname, ' ', ma.lastname) as &quot;Account Opened By&quot;,
+            ii.&quot;ID Number&quot; as &quot;BVN&quot;, mc.mobile_no as &quot;Mobile&quot;, mc.email_address as &quot;Email&quot;,
+            TO_CHAR(mc.date_of_birth, 'YYYY-MM-DD') as &quot;Date of Birth or Incorporation&quot;, gmcv.code_value as &quot;Gender&quot;,
+            concat(mad.address_line_1, ' ', mad.address_line_2, ' ', mad.city) as &quot;Address&quot;, ms.display_name as &quot;Account Officer&quot;,
+            mcnp.incorp_no as &quot;Incorporation No&quot;, ti.&quot;Tax ID&quot;
+            from m_client mc
+            left join r_enum_value rev on rev.enum_id = mc.status_enum and rev.enum_name = 'client_status_enum'
+            left join m_appuser ma on ma.id = mc.created_by
+            left join m_code_value mcv on mc.client_classification_cv_id = mcv.id
+            left join m_code_value gmcv on mc.gender_cv_id = gmcv.id
+            left join m_client_address mca on mc.id = mca.client_id and mca.address_type_id = 18
+            left join m_address mad on mad.id = mca.address_id
+            left join m_staff ms on mc.staff_id = ms.id
+            left join &quot;Identity Information&quot; ii on ii.client_id = mc.id  and ii.&quot;Identity Types_cd_Identity Type&quot; = (select id from m_code_value mcvb where mcvb.code_id = (select id from m_code where code_name = 'Identity Types') and mcvb.code_value = 'BVN')
+            left join m_client_non_person mcnp on mc.id = mcnp.client_id
+            left join &quot;TAX ID&quot; ti on ti.client_id = mc.id
+            where (mc.submittedon_date >= '${startDate}' or '${startDate}' is null)
+            and (mc.submittedon_date &lt;= '${endDate}' or '${endDate}' is null) order by mc.display_name"/>
+            <where>report_name = 'Client Listing'</where>
+        </update>
+    </changeSet>
+
+    <changeSet author="paystack" id="2">
+        <delete tableName="stretchy_report_parameter">
+            <where>report_id = 1 and parameter_id = 1005</where>
+        </delete>
+    </changeSet>
+
+</databaseChangeLog>
