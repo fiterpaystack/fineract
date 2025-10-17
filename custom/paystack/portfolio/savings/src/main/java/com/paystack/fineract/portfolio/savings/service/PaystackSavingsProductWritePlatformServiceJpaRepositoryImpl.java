@@ -443,8 +443,8 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
                     currentCharge.inactiavateCharge(DateUtils.getBusinessLocalDate());
                     hasChanges = true;
                 }
-                // Otherwise, remove the charge
-                else {
+                // Otherwise, remove the charge (only active charges)
+                else if (currentCharge.isActive()) {
                     chargesToRemove.add(currentCharge);
                     hasChanges = true;
                 }
