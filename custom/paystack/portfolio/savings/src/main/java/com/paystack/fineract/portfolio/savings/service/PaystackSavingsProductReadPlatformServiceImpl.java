@@ -2,6 +2,9 @@ package com.paystack.fineract.portfolio.savings.service;
 
 import com.paystack.fineract.portfolio.discount.service.DiscountRuleService;
 import com.paystack.fineract.portfolio.savings.data.PaystackSavingsProductAdditionalAttributes;
+import com.paystack.fineract.portfolio.savings.data.WithdrawalFrequencySettingData;
+import com.paystack.fineract.portfolio.savings.domain.SavingsProductWithdrawalFrequencySetting;
+import com.paystack.fineract.portfolio.savings.repository.SavingsProductWithdrawalFrequencySettingRepository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -27,6 +30,9 @@ public class PaystackSavingsProductReadPlatformServiceImpl extends SavingsProduc
 
     @Autowired
     private DiscountRuleService discountRuleService;
+
+    @Autowired
+    private SavingsProductWithdrawalFrequencySettingRepository savingsProductSettingRepository;
 
     public PaystackSavingsProductReadPlatformServiceImpl(PlatformSecurityContext context, JdbcTemplate jdbcTemplate,
             FineractEntityAccessUtil fineractEntityAccessUtil) {
@@ -93,6 +99,19 @@ public class PaystackSavingsProductReadPlatformServiceImpl extends SavingsProduc
                 additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.ENABLE_DISCOUNT_ENGINE, false);
                 additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES, List.of());
                 additionalAttributes.put(PaystackSavingsProductAdditionalAttributes.DISCOUNT_POLICY, null);
+            }
+
+            // Withdrawal frequency settings (product-level)
+            try {
+                Long productId = base.getId();
+                List<SavingsProductWithdrawalFrequencySetting> settings = savingsProductSettingRepository
+                        .findBySavingsProductIdAndIsActive(productId, true);
+                List<WithdrawalFrequencySettingData> dto = settings.stream()
+                        .map(s -> new WithdrawalFrequencySettingData(s.getMaxWithdrawals(), s.getTimePeriod(), s.isActive()))
+                        .toList();
+                additionalAttributes.put("withdrawalFrequencySettings", dto);
+            } catch (Exception e) {
+                additionalAttributes.put("withdrawalFrequencySettings", List.of());
             }
 
             base.setAdditionalAttributes(additionalAttributes);

@@ -136,6 +136,9 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImplUndoTran
     @Mock
     private FeeSplitService feeSplitService;
 
+    @Mock
+    private com.paystack.fineract.portfolio.savings.service.WithdrawalFrequencyService withdrawalFrequencyService;
+
     private PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl service;
 
     private MockedStatic<DateUtils> dateUtilsMock;
@@ -158,7 +161,7 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImplUndoTran
                 workingDaysRepository, configurationDomainService, depositAccountOnHoldTransactionRepository,
                 entityDatatableChecksWritePlatformService, appUserRepository, standingInstructionRepository, businessEventNotifierService,
                 gsimRepository, savingsAccountInterestPostingService, errorHandler, savingsAccountChargePaymentWrapperService,
-                clientChargeOverrideReadService, feeSplitService));
+                clientChargeOverrideReadService, feeSplitService, withdrawalFrequencyService));
 
         when(configurationDomainService.isSavingsInterestPostingAtCurrentPeriodEnd()).thenReturn(false);
         when(configurationDomainService.retrieveFinancialYearBeginningMonth()).thenReturn(1);

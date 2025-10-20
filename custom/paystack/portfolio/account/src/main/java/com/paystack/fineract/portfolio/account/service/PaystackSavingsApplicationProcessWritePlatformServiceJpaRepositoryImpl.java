@@ -45,7 +45,7 @@ public class PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryI
         implements SavingsApplicationProcessWritePlatformService {
 
     private final @Qualifier("savingsApplicationProcessWritePlatformServiceJpaRepositoryImpl") SavingsApplicationProcessWritePlatformService delegate;
-    private final WithdrawalFrequencyService withdrawalFrequencyService;
+    private final AccountWithdrawalFrequencyService accountWithdrawalFrequencyService;
 
     @Transactional
     @Override
@@ -56,7 +56,7 @@ public class PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryI
         try {
             List<WithdrawalFrequencySettingData> settings = extractSettings(command);
             if (!settings.isEmpty()) {
-                withdrawalFrequencyService.createAccountSettings(accountId, settings);
+                accountWithdrawalFrequencyService.createAccountSettings(accountId, settings);
             }
         } catch (Exception e) {
             log.error("Failed to apply withdrawal frequency settings on submit for account {}", accountId, e);
@@ -75,9 +75,9 @@ public class PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryI
             List<WithdrawalFrequencySettingData> settings = extractSettings(command);
             // If array provided, upsert; if explicitly empty array provided, clear all
             if (settings.isEmpty() && hasSettingsArray(command)) {
-                withdrawalFrequencyService.removeAllAccountSettings(accountId);
+                accountWithdrawalFrequencyService.removeAllAccountSettings(accountId);
             } else if (!settings.isEmpty()) {
-                withdrawalFrequencyService.createAccountSettings(accountId, settings);
+                accountWithdrawalFrequencyService.createAccountSettings(accountId, settings);
             }
         } catch (Exception e) {
             log.error("Failed to apply withdrawal frequency settings on modify for account {}", accountId, e);
@@ -90,7 +90,7 @@ public class PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryI
     @Override
     public CommandProcessingResult deleteApplication(Long savingsId) {
         try {
-            withdrawalFrequencyService.removeAllAccountSettings(savingsId);
+            accountWithdrawalFrequencyService.removeAllAccountSettings(savingsId);
         } catch (Exception e) {
             log.warn("Failed to cleanup withdrawal frequency settings for account {} during delete", savingsId, e);
         }
