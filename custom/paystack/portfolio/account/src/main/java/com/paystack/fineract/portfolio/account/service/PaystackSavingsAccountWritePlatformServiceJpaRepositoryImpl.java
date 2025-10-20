@@ -21,11 +21,9 @@ package com.paystack.fineract.portfolio.account.service;
 
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.SAVINGS_ACCOUNT_CHARGE_RESOURCE_NAME;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
+
 import com.paystack.fineract.client.charge.service.ClientChargeOverrideReadService;
 import com.paystack.fineract.portfolio.account.data.ChargePaymentResult;
-import com.paystack.fineract.portfolio.savings.data.WithdrawalFrequencySettingData;
 import com.paystack.fineract.portfolio.savings.service.WithdrawalFrequencyService;
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -39,7 +37,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
-import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
