@@ -21,8 +21,12 @@ package com.paystack.fineract.portfolio.account.service;
 
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.SAVINGS_ACCOUNT_CHARGE_RESOURCE_NAME;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.paystack.fineract.client.charge.service.ClientChargeOverrideReadService;
 import com.paystack.fineract.portfolio.account.data.ChargePaymentResult;
+import com.paystack.fineract.portfolio.savings.data.WithdrawalFrequencySettingData;
+import com.paystack.fineract.portfolio.savings.service.WithdrawalFrequencyService;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.time.LocalDate;
@@ -35,6 +39,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
+import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
@@ -96,6 +101,7 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
     private final ChargeRepositoryWrapper chargeRepositoryWrapper;
     private final SavingsAccountChargeRepositoryWrapper savingsAccountChargeRepositoryWrapper;
     private final FeeSplitService feeSplitService;
+    private final WithdrawalFrequencyService withdrawalFrequencyService;
 
     public PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl(PlatformSecurityContext context,
             SavingsAccountDataValidator fromApiJsonDeserializer, SavingsAccountRepositoryWrapper savingAccountRepositoryWrapper,
@@ -113,7 +119,8 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
             StandingInstructionRepository standingInstructionRepository, BusinessEventNotifierService businessEventNotifierService,
             GSIMRepositoy gsimRepository, SavingsAccountInterestPostingService savingsAccountInterestPostingService,
             ErrorHandler errorHandler, SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService,
-            ClientChargeOverrideReadService clientChargeOverrideReadService, FeeSplitService feeSplitService) {
+            ClientChargeOverrideReadService clientChargeOverrideReadService, FeeSplitService feeSplitService,
+            WithdrawalFrequencyService withdrawalFrequencyService) {
         super(context, fromApiJsonDeserializer, savingAccountRepositoryWrapper, staffRepository, savingsAccountTransactionRepository,
                 savingAccountAssembler, savingsAccountTransactionDataValidator, savingsAccountChargeDataValidator,
                 paymentDetailWritePlatformService, journalEntryWritePlatformService, savingsAccountDomainService, noteRepository,
@@ -128,6 +135,7 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
         this.chargeRepositoryWrapper = chargeRepository;
         this.savingsAccountChargeRepositoryWrapper = savingsAccountChargeRepository;
         this.feeSplitService = feeSplitService;
+        this.withdrawalFrequencyService = withdrawalFrequencyService;
     }
 
     @Override
@@ -381,5 +389,87 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
                 .withGroupId(savingsAccountCharge.savingsAccount().groupId()) //
                 .withSavingsId(savingsAccountCharge.savingsAccount().getId()) //
                 .build();
+    }
+
+    /**
+     * Handle withdrawal frequency settings for account updates
+     */
+    @Transactional
+    public CommandProcessingResult updateWithdrawalFrequencySettings(Long accountId, JsonCommand command) {
+        try {
+            if (command.parameterExists("withdrawalFrequencySettings")) {
+                JsonArray settingsArray = command.arrayOfParameterNamed("withdrawalFrequencySettings");
+                
+                List<WithdrawalFrequencySettingData> settingsData = new ArrayList<>();
+                
+                if (settingsArray != null && !settingsArray.isEmpty()) {
+                    for (int i = 0; i < settingsArray.size(); i++) {
+                        JsonObject settingObject = settingsArray.get(i).getAsJsonObject();
+                        WithdrawalFrequencySettingData settingData = WithdrawalFrequencySettingData.fromJson(settingObject);
+                        
+                        if (settingData != null && settingData.isValid()) {
+                            settingsData.add(settingData);
+                        }
+                    }
+                }
+                
+                withdrawalFrequencyService.createAccountSettings(accountId, settingsData);
+                
+                return new CommandProcessingResultBuilder()
+                    .withEntityId(accountId)
+                    .withSavingsId(accountId)
+                    .build();
+            }
+        } catch (Exception e) {
+            log.error("Failed to update withdrawal frequency settings for account {}", accountId, e);
+            throw new PlatformApiDataValidationException("error.msg.withdrawal.frequency.settings.update.failed", 
+                "Failed to update withdrawal frequency settings", "withdrawalFrequencySettings");
+        }
+        
+        return new CommandProcessingResultBuilder()
+            .withEntityId(accountId)
+            .withSavingsId(accountId)
+            .build();
+    }
+
+    /**
+     * Remove withdrawal frequency setting for a specific time period
+     */
+    @Transactional
+    public CommandProcessingResult removeWithdrawalFrequencySetting(Long accountId, String timePeriod) {
+        try {
+            com.paystack.fineract.portfolio.savings.domain.TimePeriod period = 
+                com.paystack.fineract.portfolio.savings.domain.TimePeriod.fromString(timePeriod);
+            
+            withdrawalFrequencyService.removeAccountSetting(accountId, period);
+            
+            return new CommandProcessingResultBuilder()
+                .withEntityId(accountId)
+                .withSavingsId(accountId)
+                .build();
+        } catch (Exception e) {
+            log.error("Failed to remove withdrawal frequency setting for account {} and period {}", accountId, timePeriod, e);
+            throw new PlatformApiDataValidationException("error.msg.withdrawal.frequency.setting.remove.failed", 
+                "Failed to remove withdrawal frequency setting", "timePeriod");
+        }
+    }
+
+    /**
+     * Remove all withdrawal frequency settings for an account
+     */
+    @Transactional
+    public CommandProcessingResult removeAllWithdrawalFrequencySettings(Long accountId) {
+        try {
+            withdrawalFrequencyService.removeAllAccountSettings(accountId);
+            
+            return new CommandProcessingResultBuilder()
+                .withEntityId(accountId)
+                .withSavingsId(accountId)
+                .build();
+        } catch (Exception e) {
+            log.error("Failed to remove all withdrawal frequency settings for account {}", accountId, e);
+            throw new PlatformApiDataValidationException("error.msg.withdrawal.frequency.settings.remove.failed", 
+                "Failed to remove withdrawal frequency settings", "withdrawalFrequencySettings");
+        }
     }
 }

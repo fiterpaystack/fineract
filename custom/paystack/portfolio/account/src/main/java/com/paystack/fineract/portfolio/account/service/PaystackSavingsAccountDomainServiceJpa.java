@@ -26,6 +26,8 @@ import com.paystack.fineract.portfolio.account.data.SavingsAccountTransactionLim
 import com.paystack.fineract.portfolio.discount.domain.ChargeDiscountContext;
 import com.paystack.fineract.portfolio.discount.service.ProductDiscountService;
 import com.paystack.fineract.portfolio.savings.domain.PaystackSavingsProductAttributesRepository;
+import com.paystack.fineract.portfolio.savings.exception.WithdrawalFrequencyExceededException;
+import com.paystack.fineract.portfolio.savings.service.WithdrawalFrequencyService;
 import io.micrometer.common.util.StringUtils;
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -86,6 +88,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
     private final PaystackSavingsProductAttributesRepository savingsProductAttributesRepository;
     private final ProductDiscountService productDiscountService;
     private final NoteRepository noteRepository;
+    private final WithdrawalFrequencyService withdrawalFrequencyService;
 
     public PaystackSavingsAccountDomainServiceJpa(SavingsAccountRepositoryWrapper savingsAccountRepository,
             SavingsAccountTransactionRepository savingsAccountTransactionRepository,
@@ -98,7 +101,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService,
             ClientChargeOverrideReadService clientChargeOverrideReadService,
             PaystackSavingsProductAttributesRepository savingsProductAttributesRepository, FeeSplitService feeSplitService,
-            ProductDiscountService productDiscountService) {
+            ProductDiscountService productDiscountService, WithdrawalFrequencyService withdrawalFrequencyService) {
         super(savingsAccountRepository, savingsAccountTransactionRepository, applicationCurrencyRepositoryWrapper,
                 journalEntryWritePlatformService, configurationDomainService, context, depositAccountOnHoldTransactionRepository,
                 businessEventNotifierService);
@@ -110,6 +113,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         this.savingsProductAttributesRepository = savingsProductAttributesRepository;
         this.productDiscountService = productDiscountService;
         this.noteRepository = noteRepository;
+        this.withdrawalFrequencyService = withdrawalFrequencyService;
     }
 
     @Transactional
@@ -127,6 +131,25 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         final Integer financialYearBeginningMonth = this.configurationDomainService.retrieveFinancialYearBeginningMonth();
         if (transactionBooleanValues.isRegularTransaction() && !account.allowWithdrawal()) {
             throw new DepositAccountTransactionNotAllowedException(account.getId(), "withdraw", account.depositAccountType());
+        }
+        
+        // Validate withdrawal frequency limits
+        if (transactionBooleanValues.isRegularTransaction()) {
+            if (!withdrawalFrequencyService.isWithdrawalAllowed(account, transactionDate)) {
+                // Get detailed status for error message
+                var status = withdrawalFrequencyService.getWithdrawalStatus(account, transactionDate);
+                var mostRestrictive = status.getMostRestrictivePeriod();
+                
+                if (mostRestrictive != null) {
+                    throw WithdrawalFrequencyExceededException.forPeriod(
+                        mostRestrictive.getTimePeriod().getDisplayName(),
+                        mostRestrictive.getCurrentCount(),
+                        mostRestrictive.getMaxWithdrawals()
+                    );
+                } else {
+                    throw new WithdrawalFrequencyExceededException("Withdrawal limit exceeded for the current period");
+                }
+            }
         }
         final Set<Long> existingTransactionIds = new HashSet<>();
         final LocalDate postInterestOnDate = null;
