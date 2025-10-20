@@ -165,6 +165,28 @@ public class WithdrawalFrequencyService {
         }
     }
     
+    // Account-level operations (placeholder methods - to be implemented in account module)
+    @Transactional
+    public void createAccountSettings(Long accountId, List<WithdrawalFrequencySettingData> settingsData) {
+        // This method should be implemented in the account module
+        // For now, we'll just log that this is not implemented
+        log.warn("Account-level withdrawal frequency settings not implemented yet for account: {}", accountId);
+    }
+
+    @Transactional
+    public void removeAccountSetting(Long accountId, TimePeriod timePeriod) {
+        // This method should be implemented in the account module
+        // For now, we'll just log that this is not implemented
+        log.warn("Remove account-level withdrawal frequency setting not implemented yet for account: {}, period: {}", accountId, timePeriod);
+    }
+
+    @Transactional
+    public void removeAllAccountSettings(Long accountId) {
+        // This method should be implemented in the account module
+        // For now, we'll just log that this is not implemented
+        log.warn("Remove all account-level withdrawal frequency settings not implemented yet for account: {}", accountId);
+    }
+
     // Helper methods
     private WithdrawalFrequencySettingData convertToSettingData(SavingsProductWithdrawalFrequencySetting setting) {
         return new WithdrawalFrequencySettingData(
