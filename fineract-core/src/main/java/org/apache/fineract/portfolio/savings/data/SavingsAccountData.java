@@ -41,6 +41,8 @@ import org.apache.fineract.portfolio.client.data.ClientData;
 import org.apache.fineract.portfolio.group.data.GroupGeneralData;
 import org.apache.fineract.portfolio.savings.DepositAccountType;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransactionDataSummaryWrapper;
+import java.util.Map;
+import lombok.Setter;
 import org.apache.fineract.portfolio.savings.domain.SavingsHelper;
 import org.apache.fineract.portfolio.tax.data.TaxGroupData;
 
@@ -88,6 +90,9 @@ public final class SavingsAccountData implements Serializable {
     private final boolean withHoldTax;
     private final TaxGroupData taxGroup;
     private final LocalDate lastActiveTransactionDate;
+
+    @Setter
+    private Map<String, Object> additionalAttributes;
     private final boolean isDormancyTrackingActive;
     private final Integer daysToInactive;
     private final Integer daysToDormancy;

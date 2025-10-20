@@ -22,15 +22,12 @@ package com.paystack.fineract.portfolio.account.service;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.paystack.fineract.portfolio.savings.data.WithdrawalFrequencySettingData;
-import com.paystack.fineract.portfolio.savings.domain.TimePeriod;
-import com.paystack.fineract.portfolio.savings.service.WithdrawalFrequencyService;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
-import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.portfolio.savings.service.SavingsApplicationProcessWritePlatformService;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Primary;
@@ -41,14 +38,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Primary
 @RequiredArgsConstructor
 @Slf4j
-public class PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryImpl
-        implements SavingsApplicationProcessWritePlatformService {
+public class PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryImpl {
 
-    private final @Qualifier("savingsApplicationProcessWritePlatformServiceJpaRepositoryImpl") SavingsApplicationProcessWritePlatformService delegate;
+    private final @Qualifier("savingsApplicationProcessWritePlatformService") SavingsApplicationProcessWritePlatformService delegate;
     private final AccountWithdrawalFrequencyService accountWithdrawalFrequencyService;
 
     @Transactional
-    @Override
     public CommandProcessingResult submitApplication(JsonCommand command) {
         CommandProcessingResult result = delegate.submitApplication(command);
         Long accountId = safeSavingsId(result);
@@ -66,7 +61,6 @@ public class PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryI
     }
 
     @Transactional
-    @Override
     public CommandProcessingResult modifyApplication(Long savingsId, JsonCommand command) {
         CommandProcessingResult result = delegate.modifyApplication(savingsId, command);
         Long accountId = safeSavingsId(result);
@@ -87,7 +81,6 @@ public class PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryI
     }
 
     @Transactional
-    @Override
     public CommandProcessingResult deleteApplication(Long savingsId) {
         try {
             accountWithdrawalFrequencyService.removeAllAccountSettings(savingsId);
@@ -99,52 +92,42 @@ public class PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryI
     }
 
     // Other methods delegate without customization
-    @Override
     public CommandProcessingResult approveApplication(Long savingsId, JsonCommand command) {
         return delegate.approveApplication(savingsId, command);
     }
 
-    @Override
     public CommandProcessingResult undoApplicationApproval(Long savingsId, JsonCommand command) {
         return delegate.undoApplicationApproval(savingsId, command);
     }
 
-    @Override
     public CommandProcessingResult rejectApplication(Long savingsId, JsonCommand command) {
         return delegate.rejectApplication(savingsId, command);
     }
 
-    @Override
     public CommandProcessingResult applicantWithdrawsFromApplication(Long savingsId, JsonCommand command) {
         return delegate.applicantWithdrawsFromApplication(savingsId, command);
     }
 
-    @Override
     public CommandProcessingResult createActiveApplication(org.apache.fineract.portfolio.savings.data.SavingsAccountDataDTO savingsAccountDataDTO, String noteText) {
         return delegate.createActiveApplication(savingsAccountDataDTO, noteText);
     }
 
-    @Override
     public CommandProcessingResult submitGSIMApplication(JsonCommand command) {
         return delegate.submitGSIMApplication(command);
     }
 
-    @Override
     public CommandProcessingResult approveGSIMApplication(Long gsimId, JsonCommand command) {
         return delegate.approveGSIMApplication(gsimId, command);
     }
 
-    @Override
     public CommandProcessingResult rejectGSIMApplication(Long gsimId, JsonCommand command) {
         return delegate.rejectGSIMApplication(gsimId, command);
     }
 
-    @Override
     public CommandProcessingResult undoGSIMApplicationApproval(Long gsimId, JsonCommand command) {
         return delegate.undoGSIMApplicationApproval(gsimId, command);
     }
 
-    @Override
     public CommandProcessingResult modifyGSIMApplication(Long gsimId, JsonCommand command) {
         return delegate.modifyGSIMApplication(gsimId, command);
     }
