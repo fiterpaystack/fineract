@@ -11,7 +11,6 @@ import com.paystack.fineract.portfolio.savings.data.WithdrawalFrequencySettingDa
 import com.paystack.fineract.portfolio.savings.domain.ExtendedSavingsAccountRepository;
 import com.paystack.fineract.portfolio.savings.domain.PaystackSavingsProductAttributes;
 import com.paystack.fineract.portfolio.savings.domain.PaystackSavingsProductAttributesRepository;
-import com.paystack.fineract.portfolio.savings.domain.TimePeriod;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.MonthDay;
