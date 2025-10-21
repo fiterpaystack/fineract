@@ -132,10 +132,10 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         if (transactionBooleanValues.isRegularTransaction() && !account.allowWithdrawal()) {
             throw new DepositAccountTransactionNotAllowedException(account.getId(), "withdraw", account.depositAccountType());
         }
-        
-        // Validate withdrawal frequency limits
-        if (transactionBooleanValues.isRegularTransaction()) {
-            if (!withdrawalFrequencyService.isWithdrawalAllowed(account, transactionDate)) {
+
+    // Validate withdrawal frequency limits
+    if (transactionBooleanValues.isRegularTransaction()
+        && !withdrawalFrequencyService.isWithdrawalAllowed(account, transactionDate)) {
                 // Get detailed status for error message
                 var status = withdrawalFrequencyService.getWithdrawalStatus(account, transactionDate);
                 var mostRestrictive = status.getMostRestrictivePeriod();
@@ -150,7 +150,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
                     throw new WithdrawalFrequencyExceededException("Withdrawal limit exceeded for the current period");
                 }
             }
-        }
+
         final Set<Long> existingTransactionIds = new HashSet<>();
         final LocalDate postInterestOnDate = null;
         final Set<Long> existingReversedTransactionIds = new HashSet<>();
