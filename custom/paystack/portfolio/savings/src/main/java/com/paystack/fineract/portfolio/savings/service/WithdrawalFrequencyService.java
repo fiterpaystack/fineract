@@ -28,7 +28,6 @@ import com.paystack.fineract.portfolio.savings.domain.TimePeriod;
 import com.paystack.fineract.portfolio.savings.repository.SavingsProductWithdrawalFrequencySettingRepository;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -139,30 +138,67 @@ public class WithdrawalFrequencyService {
     // Product-level operations
     @Transactional
     public void createProductSettings(Long productId, List<WithdrawalFrequencySettingData> settingsData) {
-        // Deactivate all existing settings
-        productSettingRepository.deactivateByProductId(productId);
-        
-        // Create new settings
+        // Load existing settings (active and inactive) for upsert/deactivate logic
+        List<SavingsProductWithdrawalFrequencySetting> existing = productSettingRepository.findBySavingsProductId(productId);
+
+        Map<TimePeriod, SavingsProductWithdrawalFrequencySetting> existingByPeriod = new HashMap<>();
+        for (SavingsProductWithdrawalFrequencySetting s : existing) {
+            existingByPeriod.putIfAbsent(s.getTimePeriod(), s); // prefer the first found
+        }
+
+        // Track incoming periods to deactivate missing ones
+        Map<TimePeriod, WithdrawalFrequencySettingData> incomingByPeriod = new HashMap<>();
         for (WithdrawalFrequencySettingData data : settingsData) {
-            if (data.isValid()) {
+            if (data != null && data.isValid()) {
+                incomingByPeriod.put(data.getTimePeriod(), data);
+            }
+        }
+
+        // Upsert incoming settings
+        for (Map.Entry<TimePeriod, WithdrawalFrequencySettingData> entry : incomingByPeriod.entrySet()) {
+            TimePeriod period = entry.getKey();
+            WithdrawalFrequencySettingData data = entry.getValue();
+
+            SavingsProductWithdrawalFrequencySetting existingSetting = existingByPeriod.get(period);
+            if (existingSetting != null) {
+                existingSetting.setMaxWithdrawals(data.getMaxWithdrawals());
+                existingSetting.setIsActive(Boolean.TRUE.equals(data.getIsActive()));
+                productSettingRepository.save(existingSetting);
+            } else {
                 SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(
                     productId, data.getMaxWithdrawals(), data.getTimePeriod());
                 productSettingRepository.save(setting);
+            }
+        }
+
+        // Deactivate settings that are not present in the incoming list
+        for (SavingsProductWithdrawalFrequencySetting s : existing) {
+            if (!incomingByPeriod.containsKey(s.getTimePeriod()) && Boolean.TRUE.equals(s.getIsActive())) {
+                s.setIsActive(false);
+                productSettingRepository.save(s);
             }
         }
     }
     
     @Transactional
     public void updateProductSetting(Long productId, TimePeriod timePeriod, WithdrawalFrequencySettingData data) {
-        // Deactivate existing setting for this time period
-        productSettingRepository.deactivateByProductIdAndTimePeriod(productId, timePeriod);
-        
-        // Create new setting if data is provided
-        if (data.isValid()) {
-            SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(
-                productId, data.getMaxWithdrawals(), data.getTimePeriod());
-            productSettingRepository.save(setting);
-        }
+        // Upsert the single period setting
+        productSettingRepository.findBySavingsProductIdAndTimePeriod(productId, timePeriod)
+            .ifPresentOrElse(existing -> {
+                if (data != null && data.isValid()) {
+                    existing.setMaxWithdrawals(data.getMaxWithdrawals());
+                    existing.setIsActive(Boolean.TRUE.equals(data.getIsActive()));
+                    productSettingRepository.save(existing);
+                } else {
+                    productSettingRepository.deactivateByProductIdAndTimePeriod(productId, timePeriod);
+                }
+            }, () -> {
+                if (data != null && data.isValid()) {
+                    SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(
+                        productId, data.getMaxWithdrawals(), data.getTimePeriod());
+                    productSettingRepository.save(setting);
+                }
+            });
     }
     
     // Account-level operations are implemented in the account module service

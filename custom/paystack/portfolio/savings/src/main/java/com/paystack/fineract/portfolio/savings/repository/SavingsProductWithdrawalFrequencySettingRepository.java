@@ -58,6 +58,11 @@ public interface SavingsProductWithdrawalFrequencySettingRepository extends JpaR
     boolean existsBySavingsProductIdAndTimePeriodAndIsActive(Long productId, TimePeriod timePeriod, Boolean isActive);
     
     /**
+     * Find a setting for a product and time period regardless of active flag
+     */
+    Optional<SavingsProductWithdrawalFrequencySetting> findBySavingsProductIdAndTimePeriod(Long productId, TimePeriod timePeriod);
+    
+    /**
      * Deactivate all settings for a product
      */
     @Modifying

@@ -34,6 +34,7 @@ import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
 import org.apache.fineract.portfolio.savings.domain.SavingsProduct;
 import org.junit.jupiter.api.BeforeEach;
@@ -185,16 +186,102 @@ class WithdrawalFrequencyServiceTest {
     }
 
     @Test
-    void testCreateProductSettings() {
+    void testCreateProductSettings_NewSettings() {
         List<WithdrawalFrequencySettingData> settingsData = Arrays.asList(
             new WithdrawalFrequencySettingData(5, TimePeriod.MONTHLY, true),
             new WithdrawalFrequencySettingData(2, TimePeriod.WEEKLY, true)
         );
 
+        // Mock existing settings (empty for new product)
+        when(productSettingRepository.findBySavingsProductId(1L))
+            .thenReturn(Collections.emptyList());
+
         service.createProductSettings(1L, settingsData);
 
-        verify(productSettingRepository).deactivateByProductId(1L);
+        // Should create 2 new settings
         verify(productSettingRepository, times(2)).save(any(SavingsProductWithdrawalFrequencySetting.class));
+    }
+
+    @Test
+    void testCreateProductSettings_UpdateExisting() {
+        List<WithdrawalFrequencySettingData> settingsData = Arrays.asList(
+            new WithdrawalFrequencySettingData(3, TimePeriod.MONTHLY, true),
+            new WithdrawalFrequencySettingData(1, TimePeriod.DAILY, true)
+        );
+
+        // Mock existing settings
+        SavingsProductWithdrawalFrequencySetting existingMonthly = createProductSetting(1L, 5, TimePeriod.MONTHLY);
+        SavingsProductWithdrawalFrequencySetting existingWeekly = createProductSetting(1L, 2, TimePeriod.WEEKLY);
+        when(productSettingRepository.findBySavingsProductId(1L))
+            .thenReturn(Arrays.asList(existingMonthly, existingWeekly));
+
+        service.createProductSettings(1L, settingsData);
+
+        // Should update existing MONTHLY setting
+        assertEquals(3, existingMonthly.getMaxWithdrawals());
+        assertTrue(existingMonthly.isActive());
+        
+        // Should create new DAILY setting
+        // Should deactivate existing WEEKLY setting
+        assertFalse(existingWeekly.isActive());
+        
+        verify(productSettingRepository, times(3)).save(any(SavingsProductWithdrawalFrequencySetting.class));
+    }
+
+    @Test
+    void testCreateProductSettings_EmptyList() {
+        // Mock existing settings
+        SavingsProductWithdrawalFrequencySetting existingMonthly = createProductSetting(1L, 5, TimePeriod.MONTHLY);
+        SavingsProductWithdrawalFrequencySetting existingWeekly = createProductSetting(1L, 2, TimePeriod.WEEKLY);
+        when(productSettingRepository.findBySavingsProductId(1L))
+            .thenReturn(Arrays.asList(existingMonthly, existingWeekly));
+
+        service.createProductSettings(1L, Collections.emptyList());
+
+        // Should deactivate all existing settings
+        assertFalse(existingMonthly.isActive());
+        assertFalse(existingWeekly.isActive());
+        
+        verify(productSettingRepository, times(2)).save(any(SavingsProductWithdrawalFrequencySetting.class));
+    }
+
+    @Test
+    void testUpdateProductSetting_ExistingSetting() {
+        SavingsProductWithdrawalFrequencySetting existingSetting = createProductSetting(1L, 5, TimePeriod.MONTHLY);
+        when(productSettingRepository.findBySavingsProductIdAndTimePeriod(1L, TimePeriod.MONTHLY))
+            .thenReturn(Optional.of(existingSetting));
+
+        WithdrawalFrequencySettingData newData = new WithdrawalFrequencySettingData(3, TimePeriod.MONTHLY, true);
+        service.updateProductSetting(1L, TimePeriod.MONTHLY, newData);
+
+        // Should update existing setting
+        assertEquals(3, existingSetting.getMaxWithdrawals());
+        assertTrue(existingSetting.isActive());
+        verify(productSettingRepository).save(existingSetting);
+    }
+
+    @Test
+    void testUpdateProductSetting_NewSetting() {
+        when(productSettingRepository.findBySavingsProductIdAndTimePeriod(1L, TimePeriod.MONTHLY))
+            .thenReturn(Optional.empty());
+
+        WithdrawalFrequencySettingData newData = new WithdrawalFrequencySettingData(3, TimePeriod.MONTHLY, true);
+        service.updateProductSetting(1L, TimePeriod.MONTHLY, newData);
+
+        // Should create new setting
+        verify(productSettingRepository).save(any(SavingsProductWithdrawalFrequencySetting.class));
+    }
+
+    @Test
+    void testUpdateProductSetting_DeactivateExisting() {
+        SavingsProductWithdrawalFrequencySetting existingSetting = createProductSetting(1L, 5, TimePeriod.MONTHLY);
+        when(productSettingRepository.findBySavingsProductIdAndTimePeriod(1L, TimePeriod.MONTHLY))
+            .thenReturn(Optional.of(existingSetting));
+
+        service.updateProductSetting(1L, TimePeriod.MONTHLY, null);
+
+        // Should deactivate existing setting
+        verify(productSettingRepository).deactivateByProductIdAndTimePeriod(1L, TimePeriod.MONTHLY);
     }
 
     private SavingsProductWithdrawalFrequencySetting createProductSetting(Long productId, Integer maxWithdrawals, TimePeriod timePeriod) {

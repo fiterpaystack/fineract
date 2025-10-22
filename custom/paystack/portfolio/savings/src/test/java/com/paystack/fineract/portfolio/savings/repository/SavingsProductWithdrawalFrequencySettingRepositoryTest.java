@@ -87,6 +87,21 @@ class SavingsProductWithdrawalFrequencySettingRepositoryTest {
     }
 
     @Test
+    void testFindBySavingsProductIdAndTimePeriod() {
+        SavingsProductWithdrawalFrequencySetting expectedSetting = createSetting(productId, 5, timePeriod);
+
+        when(repository.findBySavingsProductIdAndTimePeriod(productId, timePeriod))
+            .thenReturn(Optional.of(expectedSetting));
+
+        Optional<SavingsProductWithdrawalFrequencySetting> result = repository
+            .findBySavingsProductIdAndTimePeriod(productId, timePeriod);
+
+        assertTrue(result.isPresent());
+        assertEquals(expectedSetting, result.get());
+        verify(repository).findBySavingsProductIdAndTimePeriod(productId, timePeriod);
+    }
+
+    @Test
     void testFindBySavingsProductIdAndTimePeriodAndIsActive_NotFound() {
         when(repository.findBySavingsProductIdAndTimePeriodAndIsActive(productId, timePeriod, isActive))
             .thenReturn(Optional.empty());
