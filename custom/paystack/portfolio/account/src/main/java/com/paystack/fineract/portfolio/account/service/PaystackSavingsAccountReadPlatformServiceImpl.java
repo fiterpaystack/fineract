@@ -36,14 +36,10 @@ import org.apache.fineract.infrastructure.core.service.PaginationHelper;
 import org.apache.fineract.infrastructure.security.utils.ColumnValidator;
 import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.context.annotation.Primary;
-import org.springframework.stereotype.Service;
 import com.paystack.fineract.portfolio.savings.repository.SavingsProductWithdrawalFrequencySettingRepository;
 import com.paystack.fineract.portfolio.savings.domain.SavingsProductWithdrawalFrequencySetting;
 import com.paystack.fineract.portfolio.savings.domain.TimePeriod;
 
-@Service
-@Primary
 @Slf4j
 public class PaystackSavingsAccountReadPlatformServiceImpl extends SavingsAccountReadPlatformServiceImpl {
 
@@ -67,7 +63,7 @@ public class PaystackSavingsAccountReadPlatformServiceImpl extends SavingsAccoun
     public SavingsAccountData retrieveOne(Long savingsId) {
         SavingsAccountData account = super.retrieveOne(savingsId);
         try {
-            // Account-level settings
+           // Account-level settings
             List<SavingsAccountWithdrawalFrequencySetting> accountSettings = accountSettingRepository
                     .findBySavingsAccountIdAndIsActive(savingsId, true);
             List<WithdrawalFrequencySettingData> dtoAccount = accountSettings.stream()
@@ -100,8 +96,7 @@ public class PaystackSavingsAccountReadPlatformServiceImpl extends SavingsAccoun
             Map<String, Object> additional = new HashMap<>();
             additional.put("withdrawalFrequencySettings", wf);
             account.setAdditionalAttributes(additional);
-            log.debug("Loaded settings for account {} (account={}, product={}, effective={})", savingsId, dtoAccount.size(), dtoProduct.size(),
-                    dtoEffective.size());
+            log.info("Additional attributes set: {}", additional);
         } catch (Exception e) {
             log.warn("Failed to load withdrawal settings for account {}", savingsId, e);
         }
