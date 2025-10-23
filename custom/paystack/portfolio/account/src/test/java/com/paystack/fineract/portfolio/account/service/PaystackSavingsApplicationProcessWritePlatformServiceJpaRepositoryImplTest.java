@@ -19,14 +19,6 @@
 
 package com.paystack.fineract.portfolio.account.service;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.paystack.fineract.portfolio.savings.domain.TimePeriod;
 import org.apache.fineract.commands.service.CommandProcessingService;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormatRepositoryWrapper;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
@@ -52,7 +44,6 @@ import org.apache.fineract.portfolio.savings.service.SavingsAccountApplicationTr
 import org.apache.fineract.portfolio.savings.service.SavingsAccountDomainService;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountWritePlatformService;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
