@@ -26,12 +26,12 @@ import java.time.LocalDate;
 import org.springframework.stereotype.Service;
 
 /**
- * Service for calculating time period boundaries
- * Handles date calculations for different time periods (daily, weekly, monthly, yearly)
+ * Service for calculating time period boundaries Handles date calculations for different time periods (daily, weekly,
+ * monthly, yearly)
  */
 @Service
 public class PeriodCalculationService {
-    
+
     /**
      * Calculate period boundaries for a given date and time period
      */
@@ -42,7 +42,7 @@ public class PeriodCalculationService {
         if (timePeriod == null) {
             throw new IllegalArgumentException("Time period cannot be null");
         }
-        
+
         return switch (timePeriod) {
             case DAILY -> calculateDailyPeriod(date);
             case WEEKLY -> calculateWeeklyPeriod(date);
@@ -50,14 +50,14 @@ public class PeriodCalculationService {
             case YEARLY -> calculateYearlyPeriod(date);
         };
     }
-    
+
     /**
      * Calculate daily period (same day)
      */
     private PeriodBoundaries calculateDailyPeriod(LocalDate date) {
         return new PeriodBoundaries(date, date);
     }
-    
+
     /**
      * Calculate weekly period (Monday to Sunday)
      */
@@ -67,7 +67,7 @@ public class PeriodCalculationService {
         LocalDate endOfWeek = startOfWeek.plusDays(6);
         return new PeriodBoundaries(startOfWeek, endOfWeek);
     }
-    
+
     /**
      * Calculate monthly period (first day to last day of month)
      */
@@ -76,7 +76,7 @@ public class PeriodCalculationService {
         LocalDate endOfMonth = date.withDayOfMonth(date.lengthOfMonth());
         return new PeriodBoundaries(startOfMonth, endOfMonth);
     }
-    
+
     /**
      * Calculate yearly period (January 1st to December 31st)
      */
@@ -85,7 +85,7 @@ public class PeriodCalculationService {
         LocalDate endOfYear = date.withDayOfYear(date.lengthOfYear());
         return new PeriodBoundaries(startOfYear, endOfYear);
     }
-    
+
     /**
      * Check if two dates are in the same period
      */
@@ -93,11 +93,11 @@ public class PeriodCalculationService {
         if (date1 == null || date2 == null || timePeriod == null) {
             return false;
         }
-        
+
         PeriodBoundaries period1 = calculatePeriod(date1, timePeriod);
         return period1.contains(date2);
     }
-    
+
     /**
      * Get the number of days in a period
      */
@@ -105,7 +105,7 @@ public class PeriodCalculationService {
         PeriodBoundaries period = calculatePeriod(date, timePeriod);
         return period.getDaysInPeriod();
     }
-    
+
     /**
      * Get the start date of the period containing the given date
      */
@@ -113,7 +113,7 @@ public class PeriodCalculationService {
         PeriodBoundaries period = calculatePeriod(date, timePeriod);
         return period.getStartDate();
     }
-    
+
     /**
      * Get the end date of the period containing the given date
      */

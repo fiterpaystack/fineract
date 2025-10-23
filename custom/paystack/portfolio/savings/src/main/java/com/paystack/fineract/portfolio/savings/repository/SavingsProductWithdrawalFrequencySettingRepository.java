@@ -30,57 +30,57 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 /**
- * Repository for SavingsProductWithdrawalFrequencySetting
- * Handles database operations for product-level withdrawal frequency settings
+ * Repository for SavingsProductWithdrawalFrequencySetting Handles database operations for product-level withdrawal
+ * frequency settings
  */
 @Repository
 public interface SavingsProductWithdrawalFrequencySettingRepository extends JpaRepository<SavingsProductWithdrawalFrequencySetting, Long> {
-    
+
     /**
      * Find all active settings for a savings product
      */
     List<SavingsProductWithdrawalFrequencySetting> findBySavingsProductIdAndIsActive(Long productId, Boolean isActive);
-    
+
     /**
      * Find a specific setting for a product and time period
      */
-    Optional<SavingsProductWithdrawalFrequencySetting> findBySavingsProductIdAndTimePeriodAndIsActive(
-        Long productId, TimePeriod timePeriod, Boolean isActive);
-    
+    Optional<SavingsProductWithdrawalFrequencySetting> findBySavingsProductIdAndTimePeriodAndIsActive(Long productId, TimePeriod timePeriod,
+            Boolean isActive);
+
     /**
      * Find all settings for a product (active and inactive)
      */
     List<SavingsProductWithdrawalFrequencySetting> findBySavingsProductId(Long productId);
-    
+
     /**
      * Check if a setting exists for a product and time period
      */
     boolean existsBySavingsProductIdAndTimePeriodAndIsActive(Long productId, TimePeriod timePeriod, Boolean isActive);
-    
+
     /**
      * Find a setting for a product and time period regardless of active flag
      */
     Optional<SavingsProductWithdrawalFrequencySetting> findBySavingsProductIdAndTimePeriod(Long productId, TimePeriod timePeriod);
-    
+
     /**
      * Deactivate all settings for a product
      */
     @Modifying
     @Query("UPDATE SavingsProductWithdrawalFrequencySetting s SET s.isActive = false WHERE s.savingsProductId = :productId")
     void deactivateByProductId(@Param("productId") Long productId);
-    
+
     /**
      * Deactivate a specific setting for a product and time period
      */
     @Modifying
     @Query("UPDATE SavingsProductWithdrawalFrequencySetting s SET s.isActive = false WHERE s.savingsProductId = :productId AND s.timePeriod = :timePeriod")
     void deactivateByProductIdAndTimePeriod(@Param("productId") Long productId, @Param("timePeriod") TimePeriod timePeriod);
-    
+
     /**
      * Count active settings for a product
      */
     long countBySavingsProductIdAndIsActive(Long productId, Boolean isActive);
-    
+
     /**
      * Find settings by time period across all products
      */

@@ -38,103 +38,91 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service for managing withdrawal frequency controls
- * Handles product-level withdrawal frequency settings
+ * Service for managing withdrawal frequency controls Handles product-level withdrawal frequency settings
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class WithdrawalFrequencyService {
-    
+
     private final PaystackSavingsAccountTransactionRepository transactionRepository;
     private final SavingsProductWithdrawalFrequencySettingRepository productSettingRepository;
     private final PeriodCalculationService periodCalculationService;
-    
+
     /**
-     * Get all effective withdrawal frequency settings for an account
-     * Based on product-level settings only
+     * Get all effective withdrawal frequency settings for an account Based on product-level settings only
      */
     public List<WithdrawalFrequencySettingData> getEffectiveSettings(SavingsAccount account) {
         Map<TimePeriod, WithdrawalFrequencySettingData> effectiveSettings = new HashMap<>();
-        
+
         // Get product-level settings only
-        List<SavingsProductWithdrawalFrequencySetting> productSettings = 
-            productSettingRepository.findBySavingsProductIdAndIsActive(account.savingsProduct().getId(), true);
-        
+        List<SavingsProductWithdrawalFrequencySetting> productSettings = productSettingRepository
+                .findBySavingsProductIdAndIsActive(account.savingsProduct().getId(), true);
+
         for (SavingsProductWithdrawalFrequencySetting productSetting : productSettings) {
             effectiveSettings.put(productSetting.getTimePeriod(), convertToSettingData(productSetting));
         }
-        
+
         return new ArrayList<>(effectiveSettings.values());
     }
-    
+
     /**
-     * Check if withdrawal is allowed based on ALL applicable rules
-     * Withdrawal is blocked if ANY rule is violated
+     * Check if withdrawal is allowed based on ALL applicable rules Withdrawal is blocked if ANY rule is violated
      */
     public boolean isWithdrawalAllowed(SavingsAccount account, LocalDate withdrawalDate) {
         List<WithdrawalFrequencySettingData> settings = getEffectiveSettings(account);
-        
+
         if (settings.isEmpty()) {
             return true; // No restrictions
         }
-        
+
         // Check each time period rule
         for (WithdrawalFrequencySettingData setting : settings) {
             if (setting.isValid()) {
                 int currentCount = getWithdrawalCountForPeriod(account, withdrawalDate, setting.getTimePeriod());
                 if (currentCount >= setting.getMaxWithdrawals()) {
-                    log.info("Withdrawal blocked for account {} - {} limit exceeded: {}/{}", 
-                        account.getId(), setting.getTimePeriod(), currentCount, setting.getMaxWithdrawals());
+                    log.info("Withdrawal blocked for account {} - {} limit exceeded: {}/{}", account.getId(), setting.getTimePeriod(),
+                            currentCount, setting.getMaxWithdrawals());
                     return false;
                 }
             }
         }
-        
+
         return true;
     }
-    
+
     /**
      * Get withdrawal status for all time periods
      */
     public WithdrawalFrequencyStatus getWithdrawalStatus(SavingsAccount account, LocalDate checkDate) {
         List<WithdrawalFrequencySettingData> settings = getEffectiveSettings(account);
         List<WithdrawalFrequencyStatus.PeriodStatus> periodStatuses = new ArrayList<>();
-        
+
         for (WithdrawalFrequencySettingData setting : settings) {
             if (setting.isValid()) {
                 int currentCount = getWithdrawalCountForPeriod(account, checkDate, setting.getTimePeriod());
                 boolean allowed = currentCount < setting.getMaxWithdrawals();
                 int remaining = Math.max(0, setting.getMaxWithdrawals() - currentCount);
-                
-                periodStatuses.add(new WithdrawalFrequencyStatus.PeriodStatus(
-                    setting.getTimePeriod(),
-                    setting.getMaxWithdrawals(),
-                    currentCount,
-                    remaining,
-                    allowed
-                ));
+
+                periodStatuses.add(new WithdrawalFrequencyStatus.PeriodStatus(setting.getTimePeriod(), setting.getMaxWithdrawals(),
+                        currentCount, remaining, allowed));
             }
         }
-        
+
         boolean withdrawalAllowed = periodStatuses.stream().allMatch(WithdrawalFrequencyStatus.PeriodStatus::isAllowed);
         return new WithdrawalFrequencyStatus(withdrawalAllowed, periodStatuses);
     }
-    
+
     private int getWithdrawalCountForPeriod(SavingsAccount account, LocalDate withdrawalDate, TimePeriod timePeriod) {
         PeriodBoundaries period = periodCalculationService.calculatePeriod(withdrawalDate, timePeriod);
-        
+
         // Use existing repository method
         List<Integer> withdrawalTypes = List.of(2); // WITHDRAWAL transaction type
-        return (int) transactionRepository.countTransactionsForPeriod(
-            account.getId(), 
-            period.getStartDate(), 
-            period.getEndDate(), 
-            false, // exclude reversed
-            withdrawalTypes
-        );
+        return (int) transactionRepository.countTransactionsForPeriod(account.getId(), period.getStartDate(), period.getEndDate(), false, // exclude
+                                                                                                                                          // reversed
+                withdrawalTypes);
     }
-    
+
     // Product-level operations
     @Transactional
     public void createProductSettings(Long productId, List<WithdrawalFrequencySettingData> settingsData) {
@@ -165,8 +153,8 @@ public class WithdrawalFrequencyService {
                 existingSetting.setIsActive(Boolean.TRUE.equals(data.getIsActive()));
                 productSettingRepository.save(existingSetting);
             } else {
-                SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(
-                    productId, data.getMaxWithdrawals(), data.getTimePeriod());
+                SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(productId,
+                        data.getMaxWithdrawals(), data.getTimePeriod());
                 productSettingRepository.save(setting);
             }
         }
@@ -179,37 +167,32 @@ public class WithdrawalFrequencyService {
             }
         }
     }
-    
+
     @Transactional
     public void updateProductSetting(Long productId, TimePeriod timePeriod, WithdrawalFrequencySettingData data) {
         // Upsert the single period setting
-        productSettingRepository.findBySavingsProductIdAndTimePeriod(productId, timePeriod)
-            .ifPresentOrElse(existing -> {
-                if (data != null && data.isValid()) {
-                    existing.setMaxWithdrawals(data.getMaxWithdrawals());
-                    existing.setIsActive(Boolean.TRUE.equals(data.getIsActive()));
-                    productSettingRepository.save(existing);
-                } else {
-                    productSettingRepository.deactivateByProductIdAndTimePeriod(productId, timePeriod);
-                }
-            }, () -> {
-                if (data != null && data.isValid()) {
-                    SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(
-                        productId, data.getMaxWithdrawals(), data.getTimePeriod());
-                    productSettingRepository.save(setting);
-                }
-            });
+        productSettingRepository.findBySavingsProductIdAndTimePeriod(productId, timePeriod).ifPresentOrElse(existing -> {
+            if (data != null && data.isValid()) {
+                existing.setMaxWithdrawals(data.getMaxWithdrawals());
+                existing.setIsActive(Boolean.TRUE.equals(data.getIsActive()));
+                productSettingRepository.save(existing);
+            } else {
+                productSettingRepository.deactivateByProductIdAndTimePeriod(productId, timePeriod);
+            }
+        }, () -> {
+            if (data != null && data.isValid()) {
+                SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(productId,
+                        data.getMaxWithdrawals(), data.getTimePeriod());
+                productSettingRepository.save(setting);
+            }
+        });
     }
-    
+
     // Account-level operations are implemented in the account module service
 
     // Helper methods
     private WithdrawalFrequencySettingData convertToSettingData(SavingsProductWithdrawalFrequencySetting setting) {
-        return new WithdrawalFrequencySettingData(
-            setting.getMaxWithdrawals(),
-            setting.getTimePeriod(),
-            setting.isActive()
-        );
+        return new WithdrawalFrequencySettingData(setting.getMaxWithdrawals(), setting.getTimePeriod(), setting.isActive());
     }
-    
+
 }

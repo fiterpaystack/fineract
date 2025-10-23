@@ -30,10 +30,10 @@ import com.paystack.fineract.portfolio.savings.domain.TimePeriod;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(MockitoExtension.class)
 class AccountWithdrawalFrequencyServiceTest {
@@ -74,5 +74,3 @@ class AccountWithdrawalFrequencyServiceTest {
         verify(repository, times(1)).deactivateByAccountId(eq(accountId));
     }
 }
-
-

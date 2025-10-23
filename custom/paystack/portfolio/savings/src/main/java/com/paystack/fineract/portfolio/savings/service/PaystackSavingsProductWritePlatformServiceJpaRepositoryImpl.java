@@ -528,19 +528,19 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
             // Check if withdrawal frequency settings are provided
             if (command.parameterExists("withdrawalFrequencySettings")) {
                 JsonArray settingsArray = command.arrayOfParameterNamed("withdrawalFrequencySettings");
-                
+
                 if (settingsArray != null && !settingsArray.isEmpty()) {
                     List<WithdrawalFrequencySettingData> settingsData = new ArrayList<>();
-                    
+
                     for (int i = 0; i < settingsArray.size(); i++) {
                         JsonObject settingObject = settingsArray.get(i).getAsJsonObject();
                         WithdrawalFrequencySettingData settingData = WithdrawalFrequencySettingData.fromJson(settingObject);
-                        
+
                         if (settingData != null && settingData.isValid()) {
                             settingsData.add(settingData);
                         }
                     }
-                    
+
                     if (!settingsData.isEmpty()) {
                         withdrawalFrequencyService.createProductSettings(productId, settingsData);
                         return true;

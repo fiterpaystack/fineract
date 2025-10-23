@@ -45,20 +45,20 @@
 
         <!-- Database-agnostic unique constraints using SQL -->
         <sql dbms="postgresql">
-            ALTER TABLE m_savings_product_withdrawal_frequency_setting 
-            ADD CONSTRAINT uq_spwfs_product_period 
+            ALTER TABLE m_savings_product_withdrawal_frequency_setting
+            ADD CONSTRAINT uq_spwfs_product_period
             UNIQUE (savings_product_id, time_period);
         </sql>
-        
+
         <sql dbms="mysql">
-            ALTER TABLE m_savings_product_withdrawal_frequency_setting 
-            ADD CONSTRAINT uq_spwfs_product_period 
+            ALTER TABLE m_savings_product_withdrawal_frequency_setting
+            ADD CONSTRAINT uq_spwfs_product_period
             UNIQUE (savings_product_id, time_period);
         </sql>
-        
+
         <sql dbms="h2">
-            ALTER TABLE m_savings_product_withdrawal_frequency_setting 
-            ADD CONSTRAINT uq_spwfs_product_period 
+            ALTER TABLE m_savings_product_withdrawal_frequency_setting
+            ADD CONSTRAINT uq_spwfs_product_period
             UNIQUE (savings_product_id, time_period);
         </sql>
 
@@ -111,19 +111,19 @@
         <rollback>
             <dropForeignKeyConstraint baseTableName="m_savings_product_withdrawal_frequency_setting"
                                      constraintName="fk_spwfs_modified_by"/>
-            
+
             <dropForeignKeyConstraint baseTableName="m_savings_product_withdrawal_frequency_setting"
                                      constraintName="fk_spwfs_created_by"/>
-            
+
             <dropForeignKeyConstraint baseTableName="m_savings_product_withdrawal_frequency_setting"
                                      constraintName="fk_spwfs_product_id"/>
-            
+
             <dropTable tableName="m_savings_product_withdrawal_frequency_setting"/>
-            
+
             <sql>
                 DELETE FROM m_permission WHERE code IN (
                     'READ_WITHDRAWALFREQUENCY',
-                    'CREATE_WITHDRAWALFREQUENCY', 
+                    'CREATE_WITHDRAWALFREQUENCY',
                     'UPDATE_WITHDRAWALFREQUENCY',
                     'DELETE_WITHDRAWALFREQUENCY'
                 );

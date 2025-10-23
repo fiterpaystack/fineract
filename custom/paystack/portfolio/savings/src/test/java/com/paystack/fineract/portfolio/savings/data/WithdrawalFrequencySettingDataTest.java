@@ -33,7 +33,7 @@ class WithdrawalFrequencySettingDataTest {
     @Test
     void testConstructor_ValidParameters() {
         WithdrawalFrequencySettingData data = new WithdrawalFrequencySettingData(5, TimePeriod.MONTHLY, true);
-        
+
         assertEquals(5, data.getMaxWithdrawals());
         assertEquals(TimePeriod.MONTHLY, data.getTimePeriod());
         assertTrue(data.getIsActive());
@@ -137,53 +137,53 @@ class WithdrawalFrequencySettingDataTest {
     @Test
     void testIsValid_ValidData() {
         WithdrawalFrequencySettingData data = new WithdrawalFrequencySettingData(5, TimePeriod.MONTHLY, true);
-        
+
         assertTrue(data.isValid());
     }
 
     @Test
     void testIsValid_NullMaxWithdrawals() {
         WithdrawalFrequencySettingData data = new WithdrawalFrequencySettingData(null, TimePeriod.MONTHLY, true);
-        
+
         assertFalse(data.isValid());
     }
 
     @Test
     void testIsValid_ZeroMaxWithdrawals() {
         WithdrawalFrequencySettingData data = new WithdrawalFrequencySettingData(0, TimePeriod.MONTHLY, true);
-        
+
         assertFalse(data.isValid());
     }
 
     @Test
     void testIsValid_NegativeMaxWithdrawals() {
         WithdrawalFrequencySettingData data = new WithdrawalFrequencySettingData(-1, TimePeriod.MONTHLY, true);
-        
+
         assertFalse(data.isValid());
     }
 
     @Test
     void testIsValid_NullTimePeriod() {
         WithdrawalFrequencySettingData data = new WithdrawalFrequencySettingData(5, null, true);
-        
+
         assertFalse(data.isValid());
     }
 
     @Test
     void testIsValid_NullActive() {
         WithdrawalFrequencySettingData data = new WithdrawalFrequencySettingData(5, TimePeriod.MONTHLY, null);
-        
+
         assertFalse(data.isValid());
     }
 
     @Test
     void testGettersAndSetters() {
         WithdrawalFrequencySettingData data = new WithdrawalFrequencySettingData();
-        
+
         data.setMaxWithdrawals(10);
         data.setTimePeriod(TimePeriod.DAILY);
         data.setIsActive(false);
-        
+
         assertEquals(10, data.getMaxWithdrawals());
         assertEquals(TimePeriod.DAILY, data.getTimePeriod());
         assertFalse(data.getIsActive());
@@ -192,9 +192,9 @@ class WithdrawalFrequencySettingDataTest {
     @Test
     void testToString() {
         WithdrawalFrequencySettingData data = new WithdrawalFrequencySettingData(5, TimePeriod.MONTHLY, true);
-        
+
         String toString = data.toString();
-        
+
         assertTrue(toString.contains("WithdrawalFrequencySettingData"));
         assertTrue(toString.contains("maxWithdrawals=5"));
         assertTrue(toString.contains("timePeriod=MONTHLY"));
@@ -205,7 +205,7 @@ class WithdrawalFrequencySettingDataTest {
     void testEquals_SameData() {
         WithdrawalFrequencySettingData data1 = new WithdrawalFrequencySettingData(5, TimePeriod.MONTHLY, true);
         WithdrawalFrequencySettingData data2 = new WithdrawalFrequencySettingData(5, TimePeriod.MONTHLY, true);
-        
+
         assertEquals(data1, data2);
         assertEquals(data1.hashCode(), data2.hashCode());
     }
@@ -214,21 +214,21 @@ class WithdrawalFrequencySettingDataTest {
     void testEquals_DifferentData() {
         WithdrawalFrequencySettingData data1 = new WithdrawalFrequencySettingData(5, TimePeriod.MONTHLY, true);
         WithdrawalFrequencySettingData data2 = new WithdrawalFrequencySettingData(3, TimePeriod.WEEKLY, false);
-        
+
         assertNotEquals(data1, data2);
     }
 
     @Test
     void testEquals_Null() {
         WithdrawalFrequencySettingData data = new WithdrawalFrequencySettingData(5, TimePeriod.MONTHLY, true);
-        
+
         assertNotEquals(data, null);
     }
 
     @Test
     void testEquals_DifferentType() {
         WithdrawalFrequencySettingData data = new WithdrawalFrequencySettingData(5, TimePeriod.MONTHLY, true);
-        
+
         assertNotEquals(data, "not a data object");
     }
 }

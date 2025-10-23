@@ -44,8 +44,8 @@ public class AccountWithdrawalFrequencyService {
         // Insert new active settings
         for (WithdrawalFrequencySettingData data : settingsData) {
             if (data != null && data.isValid()) {
-                SavingsAccountWithdrawalFrequencySetting setting = SavingsAccountWithdrawalFrequencySetting.create(
-                        accountId, data.getMaxWithdrawals(), data.getTimePeriod());
+                SavingsAccountWithdrawalFrequencySetting setting = SavingsAccountWithdrawalFrequencySetting.create(accountId,
+                        data.getMaxWithdrawals(), data.getTimePeriod());
                 accountSettingRepository.save(setting);
             }
         }
@@ -64,5 +64,3 @@ public class AccountWithdrawalFrequencyService {
         log.info("Deactivated all withdrawal frequency settings for account {}", accountId);
     }
 }
-
-

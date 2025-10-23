@@ -21,7 +21,6 @@ package com.paystack.fineract.portfolio.account.service;
 
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.SAVINGS_ACCOUNT_CHARGE_RESOURCE_NAME;
 
-
 import com.paystack.fineract.client.charge.service.ClientChargeOverrideReadService;
 import com.paystack.fineract.portfolio.account.data.ChargePaymentResult;
 import com.paystack.fineract.portfolio.savings.service.WithdrawalFrequencyService;

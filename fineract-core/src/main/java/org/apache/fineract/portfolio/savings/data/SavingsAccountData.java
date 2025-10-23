@@ -27,8 +27,10 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import lombok.Getter;
+import lombok.Setter;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.fineract.infrastructure.core.data.EnumOptionData;
@@ -41,8 +43,6 @@ import org.apache.fineract.portfolio.client.data.ClientData;
 import org.apache.fineract.portfolio.group.data.GroupGeneralData;
 import org.apache.fineract.portfolio.savings.DepositAccountType;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransactionDataSummaryWrapper;
-import java.util.Map;
-import lombok.Setter;
 import org.apache.fineract.portfolio.savings.domain.SavingsHelper;
 import org.apache.fineract.portfolio.tax.data.TaxGroupData;
 
@@ -700,27 +700,28 @@ public final class SavingsAccountData implements Serializable {
                     lockinPeriodFrequencyTypeOptions, withdrawalFeeTypeOptions, transactions, charges, chargeOptions);
         }
 
-        SavingsAccountData newAccount = new SavingsAccountData(account.id, account.accountNo, account.depositType, account.externalId, account.groupId,
-                account.groupName, account.clientId, account.clientName, account.savingsProductId, account.savingsProductName,
-                account.fieldOfficerId, account.fieldOfficerName, account.status, account.subStatus, account.reasonForBlock,
-                account.timeline, account.currency, account.nominalAnnualInterestRate, account.interestCompoundingPeriodType,
-                account.interestPostingPeriodType, account.interestCalculationType, account.interestCalculationDaysInYearType,
-                account.minRequiredOpeningBalance, account.lockinPeriodFrequency, account.lockinPeriodFrequencyType,
-                account.withdrawalFeeForTransfers, account.summary, transactions, template.productOptions, template.fieldOfficerOptions,
-                template.interestCompoundingPeriodTypeOptions, template.interestPostingPeriodTypeOptions,
-                template.interestCalculationTypeOptions, template.interestCalculationDaysInYearTypeOptions,
-                template.lockinPeriodFrequencyTypeOptions, template.withdrawalFeeTypeOptions, charges, template.chargeOptions,
-                account.allowOverdraft, account.overdraftLimit, account.minRequiredBalance, account.enforceMinRequiredBalance,
-                account.maxAllowedLienLimit, account.lienAllowed, account.minBalanceForInterestCalculation, account.onHoldFunds,
-                account.nominalAnnualInterestRateOverdraft, account.minOverdraftForInterestCalculation, account.withHoldTax,
-                account.taxGroup, account.lastActiveTransactionDate, account.isDormancyTrackingActive, account.daysToInactive,
-                account.daysToDormancy, account.daysToEscheat, account.savingsAmountOnHold);
-        
+        SavingsAccountData newAccount = new SavingsAccountData(account.id, account.accountNo, account.depositType, account.externalId,
+                account.groupId, account.groupName, account.clientId, account.clientName, account.savingsProductId,
+                account.savingsProductName, account.fieldOfficerId, account.fieldOfficerName, account.status, account.subStatus,
+                account.reasonForBlock, account.timeline, account.currency, account.nominalAnnualInterestRate,
+                account.interestCompoundingPeriodType, account.interestPostingPeriodType, account.interestCalculationType,
+                account.interestCalculationDaysInYearType, account.minRequiredOpeningBalance, account.lockinPeriodFrequency,
+                account.lockinPeriodFrequencyType, account.withdrawalFeeForTransfers, account.summary, transactions,
+                template.productOptions, template.fieldOfficerOptions, template.interestCompoundingPeriodTypeOptions,
+                template.interestPostingPeriodTypeOptions, template.interestCalculationTypeOptions,
+                template.interestCalculationDaysInYearTypeOptions, template.lockinPeriodFrequencyTypeOptions,
+                template.withdrawalFeeTypeOptions, charges, template.chargeOptions, account.allowOverdraft, account.overdraftLimit,
+                account.minRequiredBalance, account.enforceMinRequiredBalance, account.maxAllowedLienLimit, account.lienAllowed,
+                account.minBalanceForInterestCalculation, account.onHoldFunds, account.nominalAnnualInterestRateOverdraft,
+                account.minOverdraftForInterestCalculation, account.withHoldTax, account.taxGroup, account.lastActiveTransactionDate,
+                account.isDormancyTrackingActive, account.daysToInactive, account.daysToDormancy, account.daysToEscheat,
+                account.savingsAmountOnHold);
+
         // Preserve additionalAttributes from the original account
         if (account.additionalAttributes != null) {
             newAccount.setAdditionalAttributes(account.additionalAttributes);
         }
-        
+
         return newAccount;
     }
 
@@ -734,14 +735,14 @@ public final class SavingsAccountData implements Serializable {
             final Collection<SavingsAccountTransactionData> transactions, final Collection<SavingsAccountChargeData> charges,
             final Collection<ChargeData> chargeOptions) {
 
-        SavingsAccountData newAccount = new SavingsAccountData(account.id, account.accountNo, account.depositType, account.externalId, account.groupId,
-                account.groupName, account.clientId, account.clientName, account.savingsProductId, account.savingsProductName,
-                account.fieldOfficerId, account.fieldOfficerName, account.status, account.subStatus, account.reasonForBlock,
-                account.timeline, account.currency, account.nominalAnnualInterestRate, account.interestCompoundingPeriodType,
-                account.interestPostingPeriodType, account.interestCalculationType, account.interestCalculationDaysInYearType,
-                account.minRequiredOpeningBalance, account.lockinPeriodFrequency, account.lockinPeriodFrequencyType,
-                account.withdrawalFeeForTransfers, account.summary, transactions, productOptions, fieldOfficerOptions,
-                interestCompoundingPeriodTypeOptions, interestPostingPeriodTypeOptions, interestCalculationTypeOptions,
+        SavingsAccountData newAccount = new SavingsAccountData(account.id, account.accountNo, account.depositType, account.externalId,
+                account.groupId, account.groupName, account.clientId, account.clientName, account.savingsProductId,
+                account.savingsProductName, account.fieldOfficerId, account.fieldOfficerName, account.status, account.subStatus,
+                account.reasonForBlock, account.timeline, account.currency, account.nominalAnnualInterestRate,
+                account.interestCompoundingPeriodType, account.interestPostingPeriodType, account.interestCalculationType,
+                account.interestCalculationDaysInYearType, account.minRequiredOpeningBalance, account.lockinPeriodFrequency,
+                account.lockinPeriodFrequencyType, account.withdrawalFeeForTransfers, account.summary, transactions, productOptions,
+                fieldOfficerOptions, interestCompoundingPeriodTypeOptions, interestPostingPeriodTypeOptions, interestCalculationTypeOptions,
                 interestCalculationDaysInYearTypeOptions, lockinPeriodFrequencyTypeOptions, withdrawalFeeTypeOptions, charges,
                 chargeOptions, account.allowOverdraft, account.overdraftLimit, account.minRequiredBalance,
                 account.enforceMinRequiredBalance, account.maxAllowedLienLimit, account.lienAllowed,
@@ -749,12 +750,12 @@ public final class SavingsAccountData implements Serializable {
                 account.minOverdraftForInterestCalculation, account.withHoldTax, account.taxGroup, account.lastActiveTransactionDate,
                 account.isDormancyTrackingActive, account.daysToInactive, account.daysToDormancy, account.daysToEscheat,
                 account.savingsAmountOnHold);
-        
+
         // Preserve additionalAttributes from the original account
         if (account.additionalAttributes != null) {
             newAccount.setAdditionalAttributes(account.additionalAttributes);
-      } 
-        
+        }
+
         return newAccount;
     }
 

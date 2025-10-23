@@ -33,15 +33,15 @@ class TimePeriodTest {
         assertEquals(TimePeriod.DAILY, TimePeriod.fromString("DAILY"));
         assertEquals(TimePeriod.DAILY, TimePeriod.fromString("daily"));
         assertEquals(TimePeriod.DAILY, TimePeriod.fromString("Daily"));
-        
+
         assertEquals(TimePeriod.WEEKLY, TimePeriod.fromString("WEEKLY"));
         assertEquals(TimePeriod.WEEKLY, TimePeriod.fromString("weekly"));
         assertEquals(TimePeriod.WEEKLY, TimePeriod.fromString("Weekly"));
-        
+
         assertEquals(TimePeriod.MONTHLY, TimePeriod.fromString("MONTHLY"));
         assertEquals(TimePeriod.MONTHLY, TimePeriod.fromString("monthly"));
         assertEquals(TimePeriod.MONTHLY, TimePeriod.fromString("Monthly"));
-        
+
         assertEquals(TimePeriod.YEARLY, TimePeriod.fromString("YEARLY"));
         assertEquals(TimePeriod.YEARLY, TimePeriod.fromString("yearly"));
         assertEquals(TimePeriod.YEARLY, TimePeriod.fromString("Yearly"));
@@ -54,9 +54,8 @@ class TimePeriodTest {
 
     @Test
     void testFromString_InvalidValue() {
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, 
-            () -> TimePeriod.fromString("INVALID"));
-        
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> TimePeriod.fromString("INVALID"));
+
         assertTrue(exception.getMessage().contains("Invalid time period: INVALID"));
         assertTrue(exception.getMessage().contains("DAILY, WEEKLY, MONTHLY, YEARLY"));
     }

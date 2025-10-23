@@ -133,23 +133,19 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             throw new DepositAccountTransactionNotAllowedException(account.getId(), "withdraw", account.depositAccountType());
         }
 
-    // Validate withdrawal frequency limits
-    if (transactionBooleanValues.isRegularTransaction()
-        && !withdrawalFrequencyService.isWithdrawalAllowed(account, transactionDate)) {
-                // Get detailed status for error message
-                var status = withdrawalFrequencyService.getWithdrawalStatus(account, transactionDate);
-                var mostRestrictive = status.getMostRestrictivePeriod();
-                
-                if (mostRestrictive != null) {
-                    throw WithdrawalFrequencyExceededException.forPeriod(
-                        mostRestrictive.getTimePeriod().getDisplayName(),
-                        mostRestrictive.getCurrentCount(),
-                        mostRestrictive.getMaxWithdrawals()
-                    );
-                } else {
-                    throw new WithdrawalFrequencyExceededException("Withdrawal limit exceeded for the current period");
-                }
+        // Validate withdrawal frequency limits
+        if (transactionBooleanValues.isRegularTransaction() && !withdrawalFrequencyService.isWithdrawalAllowed(account, transactionDate)) {
+            // Get detailed status for error message
+            var status = withdrawalFrequencyService.getWithdrawalStatus(account, transactionDate);
+            var mostRestrictive = status.getMostRestrictivePeriod();
+
+            if (mostRestrictive != null) {
+                throw WithdrawalFrequencyExceededException.forPeriod(mostRestrictive.getTimePeriod().getDisplayName(),
+                        mostRestrictive.getCurrentCount(), mostRestrictive.getMaxWithdrawals());
+            } else {
+                throw new WithdrawalFrequencyExceededException("Withdrawal limit exceeded for the current period");
             }
+        }
 
         final Set<Long> existingTransactionIds = new HashSet<>();
         final LocalDate postInterestOnDate = null;

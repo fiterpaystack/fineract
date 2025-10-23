@@ -107,8 +107,7 @@ public class PaystackSavingsProductReadPlatformServiceImpl extends SavingsProduc
                 List<SavingsProductWithdrawalFrequencySetting> settings = savingsProductSettingRepository
                         .findBySavingsProductIdAndIsActive(productId, true);
                 List<WithdrawalFrequencySettingData> dto = settings.stream()
-                        .map(s -> new WithdrawalFrequencySettingData(s.getMaxWithdrawals(), s.getTimePeriod(), s.isActive()))
-                        .toList();
+                        .map(s -> new WithdrawalFrequencySettingData(s.getMaxWithdrawals(), s.getTimePeriod(), s.isActive())).toList();
                 additionalAttributes.put("withdrawalFrequencySettings", dto);
             } catch (Exception e) {
                 additionalAttributes.put("withdrawalFrequencySettings", List.of());

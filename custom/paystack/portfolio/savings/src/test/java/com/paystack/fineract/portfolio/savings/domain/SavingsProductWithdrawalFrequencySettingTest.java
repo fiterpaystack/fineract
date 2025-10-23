@@ -34,9 +34,9 @@ class SavingsProductWithdrawalFrequencySettingTest {
 
     @Test
     void testCreate_ValidParameters() {
-        SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(
-            productId, maxWithdrawals, timePeriod);
-        
+        SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(productId, maxWithdrawals,
+                timePeriod);
+
         assertEquals(productId, setting.getSavingsProductId());
         assertEquals(maxWithdrawals, setting.getMaxWithdrawals());
         assertEquals(timePeriod, setting.getTimePeriod());
@@ -46,58 +46,58 @@ class SavingsProductWithdrawalFrequencySettingTest {
     @Test
     void testCreate_NullProductId() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-            () -> SavingsProductWithdrawalFrequencySetting.create(null, maxWithdrawals, timePeriod));
+                () -> SavingsProductWithdrawalFrequencySetting.create(null, maxWithdrawals, timePeriod));
         assertEquals("Product ID cannot be null", exception.getMessage());
     }
 
     @Test
     void testCreate_NullMaxWithdrawals() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-            () -> SavingsProductWithdrawalFrequencySetting.create(productId, null, timePeriod));
+                () -> SavingsProductWithdrawalFrequencySetting.create(productId, null, timePeriod));
         assertEquals("Max withdrawals must be a positive integer", exception.getMessage());
     }
 
     @Test
     void testCreate_ZeroMaxWithdrawals() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-            () -> SavingsProductWithdrawalFrequencySetting.create(productId, 0, timePeriod));
+                () -> SavingsProductWithdrawalFrequencySetting.create(productId, 0, timePeriod));
         assertEquals("Max withdrawals must be a positive integer", exception.getMessage());
     }
 
     @Test
     void testCreate_NegativeMaxWithdrawals() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-            () -> SavingsProductWithdrawalFrequencySetting.create(productId, -1, timePeriod));
+                () -> SavingsProductWithdrawalFrequencySetting.create(productId, -1, timePeriod));
         assertEquals("Max withdrawals must be a positive integer", exception.getMessage());
     }
 
     @Test
     void testCreate_NullTimePeriod() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-            () -> SavingsProductWithdrawalFrequencySetting.create(productId, maxWithdrawals, null));
+                () -> SavingsProductWithdrawalFrequencySetting.create(productId, maxWithdrawals, null));
         assertEquals("Time period cannot be null", exception.getMessage());
     }
 
     @Test
     void testIsActive_DefaultTrue() {
-        SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(
-            productId, maxWithdrawals, timePeriod);
+        SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(productId, maxWithdrawals,
+                timePeriod);
         assertTrue(setting.isActive());
     }
 
     @Test
     void testIsActive_ExplicitlySet() {
-        SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(
-            productId, maxWithdrawals, timePeriod);
+        SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(productId, maxWithdrawals,
+                timePeriod);
         setting.setIsActive(false);
         assertFalse(setting.isActive());
     }
 
     @Test
     void testDeactivate() {
-        SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(
-            productId, maxWithdrawals, timePeriod);
-        
+        SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(productId, maxWithdrawals,
+                timePeriod);
+
         assertTrue(setting.isActive());
         setting.deactivate();
         assertFalse(setting.isActive());
@@ -105,9 +105,9 @@ class SavingsProductWithdrawalFrequencySettingTest {
 
     @Test
     void testIsLimitExceeded_NotExceeded() {
-        SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(
-            productId, maxWithdrawals, timePeriod);
-        
+        SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(productId, maxWithdrawals,
+                timePeriod);
+
         assertFalse(setting.isLimitExceeded(0));
         assertFalse(setting.isLimitExceeded(1));
         assertFalse(setting.isLimitExceeded(4));
@@ -115,9 +115,9 @@ class SavingsProductWithdrawalFrequencySettingTest {
 
     @Test
     void testIsLimitExceeded_Exceeded() {
-        SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(
-            productId, maxWithdrawals, timePeriod);
-        
+        SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(productId, maxWithdrawals,
+                timePeriod);
+
         assertTrue(setting.isLimitExceeded(5));
         assertTrue(setting.isLimitExceeded(6));
         assertTrue(setting.isLimitExceeded(10));
@@ -125,9 +125,9 @@ class SavingsProductWithdrawalFrequencySettingTest {
 
     @Test
     void testGetRemainingWithdrawals_WithinLimit() {
-        SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(
-            productId, maxWithdrawals, timePeriod);
-        
+        SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(productId, maxWithdrawals,
+                timePeriod);
+
         assertEquals(5, setting.getRemainingWithdrawals(0));
         assertEquals(4, setting.getRemainingWithdrawals(1));
         assertEquals(1, setting.getRemainingWithdrawals(4));
@@ -135,29 +135,29 @@ class SavingsProductWithdrawalFrequencySettingTest {
 
     @Test
     void testGetRemainingWithdrawals_AtLimit() {
-        SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(
-            productId, maxWithdrawals, timePeriod);
-        
+        SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(productId, maxWithdrawals,
+                timePeriod);
+
         assertEquals(0, setting.getRemainingWithdrawals(5));
     }
 
     @Test
     void testGetRemainingWithdrawals_OverLimit() {
-        SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(
-            productId, maxWithdrawals, timePeriod);
-        
+        SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(productId, maxWithdrawals,
+                timePeriod);
+
         assertEquals(0, setting.getRemainingWithdrawals(6));
         assertEquals(0, setting.getRemainingWithdrawals(10));
     }
 
     @Test
     void testToString() {
-        SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(
-            productId, maxWithdrawals, timePeriod);
+        SavingsProductWithdrawalFrequencySetting setting = SavingsProductWithdrawalFrequencySetting.create(productId, maxWithdrawals,
+                timePeriod);
         setting.setId(123L);
-        
+
         String toString = setting.toString();
-        
+
         assertTrue(toString.contains("SavingsProductWithdrawalFrequencySetting"));
         assertTrue(toString.contains("id=123"));
         assertTrue(toString.contains("savingsProductId=1"));
@@ -169,12 +169,12 @@ class SavingsProductWithdrawalFrequencySettingTest {
     @Test
     void testGettersAndSetters() {
         SavingsProductWithdrawalFrequencySetting setting = new SavingsProductWithdrawalFrequencySetting();
-        
+
         setting.setSavingsProductId(productId);
         setting.setMaxWithdrawals(maxWithdrawals);
         setting.setTimePeriod(timePeriod);
         setting.setIsActive(false);
-        
+
         assertEquals(productId, setting.getSavingsProductId());
         assertEquals(maxWithdrawals, setting.getMaxWithdrawals());
         assertEquals(timePeriod, setting.getTimePeriod());

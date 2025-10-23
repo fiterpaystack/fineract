@@ -56,16 +56,12 @@ class SavingsProductWithdrawalFrequencySettingRepositoryTest {
 
     @Test
     void testFindBySavingsProductIdAndIsActive() {
-        List<SavingsProductWithdrawalFrequencySetting> expectedSettings = Arrays.asList(
-            createSetting(1L, 5, TimePeriod.MONTHLY),
-            createSetting(1L, 2, TimePeriod.WEEKLY)
-        );
+        List<SavingsProductWithdrawalFrequencySetting> expectedSettings = Arrays.asList(createSetting(1L, 5, TimePeriod.MONTHLY),
+                createSetting(1L, 2, TimePeriod.WEEKLY));
 
-        when(repository.findBySavingsProductIdAndIsActive(productId, isActive))
-            .thenReturn(expectedSettings);
+        when(repository.findBySavingsProductIdAndIsActive(productId, isActive)).thenReturn(expectedSettings);
 
-        List<SavingsProductWithdrawalFrequencySetting> result = repository
-            .findBySavingsProductIdAndIsActive(productId, isActive);
+        List<SavingsProductWithdrawalFrequencySetting> result = repository.findBySavingsProductIdAndIsActive(productId, isActive);
 
         assertEquals(2, result.size());
         verify(repository).findBySavingsProductIdAndIsActive(productId, isActive);
@@ -76,10 +72,10 @@ class SavingsProductWithdrawalFrequencySettingRepositoryTest {
         SavingsProductWithdrawalFrequencySetting expectedSetting = createSetting(productId, 5, timePeriod);
 
         when(repository.findBySavingsProductIdAndTimePeriodAndIsActive(productId, timePeriod, isActive))
-            .thenReturn(Optional.of(expectedSetting));
+                .thenReturn(Optional.of(expectedSetting));
 
-        Optional<SavingsProductWithdrawalFrequencySetting> result = repository
-            .findBySavingsProductIdAndTimePeriodAndIsActive(productId, timePeriod, isActive);
+        Optional<SavingsProductWithdrawalFrequencySetting> result = repository.findBySavingsProductIdAndTimePeriodAndIsActive(productId,
+                timePeriod, isActive);
 
         assertTrue(result.isPresent());
         assertEquals(expectedSetting, result.get());
@@ -90,11 +86,9 @@ class SavingsProductWithdrawalFrequencySettingRepositoryTest {
     void testFindBySavingsProductIdAndTimePeriod() {
         SavingsProductWithdrawalFrequencySetting expectedSetting = createSetting(productId, 5, timePeriod);
 
-        when(repository.findBySavingsProductIdAndTimePeriod(productId, timePeriod))
-            .thenReturn(Optional.of(expectedSetting));
+        when(repository.findBySavingsProductIdAndTimePeriod(productId, timePeriod)).thenReturn(Optional.of(expectedSetting));
 
-        Optional<SavingsProductWithdrawalFrequencySetting> result = repository
-            .findBySavingsProductIdAndTimePeriod(productId, timePeriod);
+        Optional<SavingsProductWithdrawalFrequencySetting> result = repository.findBySavingsProductIdAndTimePeriod(productId, timePeriod);
 
         assertTrue(result.isPresent());
         assertEquals(expectedSetting, result.get());
@@ -115,13 +109,10 @@ class SavingsProductWithdrawalFrequencySettingRepositoryTest {
 
     @Test
     void testFindBySavingsProductId() {
-        List<SavingsProductWithdrawalFrequencySetting> expectedSettings = Arrays.asList(
-            createSetting(productId, 5, TimePeriod.MONTHLY),
-            createSetting(productId, 2, TimePeriod.WEEKLY)
-        );
+        List<SavingsProductWithdrawalFrequencySetting> expectedSettings = Arrays.asList(createSetting(productId, 5, TimePeriod.MONTHLY),
+                createSetting(productId, 2, TimePeriod.WEEKLY));
 
-        when(repository.findBySavingsProductId(productId))
-            .thenReturn(expectedSettings);
+        when(repository.findBySavingsProductId(productId)).thenReturn(expectedSettings);
 
         List<SavingsProductWithdrawalFrequencySetting> result = repository.findBySavingsProductId(productId);
 
@@ -178,16 +169,12 @@ class SavingsProductWithdrawalFrequencySettingRepositoryTest {
 
     @Test
     void testFindByTimePeriodAndIsActive() {
-        List<SavingsProductWithdrawalFrequencySetting> expectedSettings = Arrays.asList(
-            createSetting(1L, 5, timePeriod),
-            createSetting(2L, 3, timePeriod)
-        );
+        List<SavingsProductWithdrawalFrequencySetting> expectedSettings = Arrays.asList(createSetting(1L, 5, timePeriod),
+                createSetting(2L, 3, timePeriod));
 
-        when(repository.findByTimePeriodAndIsActive(timePeriod, isActive))
-            .thenReturn(expectedSettings);
+        when(repository.findByTimePeriodAndIsActive(timePeriod, isActive)).thenReturn(expectedSettings);
 
-        List<SavingsProductWithdrawalFrequencySetting> result = repository
-            .findByTimePeriodAndIsActive(timePeriod, isActive);
+        List<SavingsProductWithdrawalFrequencySetting> result = repository.findByTimePeriodAndIsActive(timePeriod, isActive);
 
         assertEquals(2, result.size());
         verify(repository).findByTimePeriodAndIsActive(timePeriod, isActive);

@@ -27,7 +27,6 @@ import static org.mockito.Mockito.when;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.paystack.fineract.portfolio.savings.domain.TimePeriod;
-import java.util.Map;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
@@ -101,5 +100,3 @@ class PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryImplTest
         verify(delegate, times(1)).deleteApplication(any());
     }
 }
-
-

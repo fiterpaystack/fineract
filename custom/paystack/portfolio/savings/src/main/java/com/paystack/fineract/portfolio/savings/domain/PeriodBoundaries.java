@@ -23,14 +23,14 @@ import java.time.LocalDate;
 import java.util.Objects;
 
 /**
- * Period Boundaries Value Object
- * Represents the start and end dates of a time period for withdrawal frequency calculations
+ * Period Boundaries Value Object Represents the start and end dates of a time period for withdrawal frequency
+ * calculations
  */
 public final class PeriodBoundaries {
-    
+
     private final LocalDate startDate;
     private final LocalDate endDate;
-    
+
     public PeriodBoundaries(LocalDate startDate, LocalDate endDate) {
         if (startDate == null || endDate == null) {
             throw new IllegalArgumentException("Start date and end date cannot be null");
@@ -41,15 +41,15 @@ public final class PeriodBoundaries {
         this.startDate = startDate;
         this.endDate = endDate;
     }
-    
+
     public LocalDate getStartDate() {
         return startDate;
     }
-    
+
     public LocalDate getEndDate() {
         return endDate;
     }
-    
+
     /**
      * Check if a given date falls within this period
      */
@@ -59,14 +59,14 @@ public final class PeriodBoundaries {
         }
         return !date.isBefore(startDate) && !date.isAfter(endDate);
     }
-    
+
     /**
      * Get the number of days in this period (inclusive)
      */
     public long getDaysInPeriod() {
         return java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) + 1;
     }
-    
+
     /**
      * Check if this period overlaps with another period
      */
@@ -76,7 +76,7 @@ public final class PeriodBoundaries {
         }
         return !startDate.isAfter(other.endDate) && !endDate.isBefore(other.startDate);
     }
-    
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -84,17 +84,14 @@ public final class PeriodBoundaries {
         PeriodBoundaries that = (PeriodBoundaries) o;
         return Objects.equals(startDate, that.startDate) && Objects.equals(endDate, that.endDate);
     }
-    
+
     @Override
     public int hashCode() {
         return Objects.hash(startDate, endDate);
     }
-    
+
     @Override
     public String toString() {
-        return "PeriodBoundaries{" +
-                "startDate=" + startDate +
-                ", endDate=" + endDate +
-                '}';
+        return "PeriodBoundaries{" + "startDate=" + startDate + ", endDate=" + endDate + '}';
     }
 }

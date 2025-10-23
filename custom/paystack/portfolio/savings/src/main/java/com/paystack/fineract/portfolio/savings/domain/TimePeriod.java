@@ -20,26 +20,22 @@
 package com.paystack.fineract.portfolio.savings.domain;
 
 /**
- * Time Period Enumeration
- * Defines the time periods for withdrawal frequency controls
+ * Time Period Enumeration Defines the time periods for withdrawal frequency controls
  */
 public enum TimePeriod {
-    
-    DAILY("Daily"),
-    WEEKLY("Weekly"), 
-    MONTHLY("Monthly"),
-    YEARLY("Yearly");
-    
+
+    DAILY("Daily"), WEEKLY("Weekly"), MONTHLY("Monthly"), YEARLY("Yearly");
+
     private final String displayName;
-    
+
     TimePeriod(String displayName) {
         this.displayName = displayName;
     }
-    
+
     public String getDisplayName() {
         return displayName;
     }
-    
+
     /**
      * Get the TimePeriod from string value (case-insensitive)
      */
@@ -50,20 +46,18 @@ public enum TimePeriod {
         try {
             return TimePeriod.valueOf(value.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid time period: " + value + 
-                ". Valid values are: DAILY, WEEKLY, MONTHLY, YEARLY");
+            throw new IllegalArgumentException("Invalid time period: " + value + ". Valid values are: DAILY, WEEKLY, MONTHLY, YEARLY");
         }
     }
-    
+
     /**
-     * Check if this time period is more restrictive than another
-     * (shorter periods are more restrictive)
+     * Check if this time period is more restrictive than another (shorter periods are more restrictive)
      */
     public boolean isMoreRestrictiveThan(TimePeriod other) {
         if (other == null) {
             return true;
         }
-        
+
         return switch (this) {
             case DAILY -> other != DAILY;
             case WEEKLY -> other == MONTHLY || other == YEARLY;
@@ -71,7 +65,7 @@ public enum TimePeriod {
             case YEARLY -> false;
         };
     }
-    
+
     /**
      * Get the ordinal value for sorting purposes
      */

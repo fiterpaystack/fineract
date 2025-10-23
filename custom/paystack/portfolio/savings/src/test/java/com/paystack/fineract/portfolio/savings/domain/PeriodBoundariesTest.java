@@ -49,29 +49,26 @@ class PeriodBoundariesTest {
 
     @Test
     void testConstructor_NullStartDate() {
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-            () -> new PeriodBoundaries(null, endDate));
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> new PeriodBoundaries(null, endDate));
         assertEquals("Start date and end date cannot be null", exception.getMessage());
     }
 
     @Test
     void testConstructor_NullEndDate() {
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-            () -> new PeriodBoundaries(startDate, null));
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> new PeriodBoundaries(startDate, null));
         assertEquals("Start date and end date cannot be null", exception.getMessage());
     }
 
     @Test
     void testConstructor_StartDateAfterEndDate() {
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-            () -> new PeriodBoundaries(endDate, startDate));
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> new PeriodBoundaries(endDate, startDate));
         assertEquals("Start date cannot be after end date", exception.getMessage());
     }
 
     @Test
     void testContains_DateWithinPeriod() {
         PeriodBoundaries period = new PeriodBoundaries(startDate, endDate);
-        
+
         assertTrue(period.contains(startDate));
         assertTrue(period.contains(endDate));
         assertTrue(period.contains(midDate));
@@ -81,7 +78,7 @@ class PeriodBoundariesTest {
     void testContains_DateBeforePeriod() {
         PeriodBoundaries period = new PeriodBoundaries(startDate, endDate);
         LocalDate beforeStart = startDate.minusDays(1);
-        
+
         assertFalse(period.contains(beforeStart));
     }
 
@@ -89,7 +86,7 @@ class PeriodBoundariesTest {
     void testContains_DateAfterPeriod() {
         PeriodBoundaries period = new PeriodBoundaries(startDate, endDate);
         LocalDate afterEnd = endDate.plusDays(1);
-        
+
         assertFalse(period.contains(afterEnd));
     }
 
@@ -116,7 +113,7 @@ class PeriodBoundariesTest {
     void testOverlaps_OverlappingPeriods() {
         PeriodBoundaries period1 = new PeriodBoundaries(startDate, endDate);
         PeriodBoundaries period2 = new PeriodBoundaries(midDate, endDate.plusDays(10));
-        
+
         assertTrue(period1.overlaps(period2));
         assertTrue(period2.overlaps(period1));
     }
@@ -125,7 +122,7 @@ class PeriodBoundariesTest {
     void testOverlaps_AdjacentPeriods() {
         PeriodBoundaries period1 = new PeriodBoundaries(startDate, midDate);
         PeriodBoundaries period2 = new PeriodBoundaries(midDate.plusDays(1), endDate);
-        
+
         assertFalse(period1.overlaps(period2));
         assertFalse(period2.overlaps(period1));
     }
@@ -134,7 +131,7 @@ class PeriodBoundariesTest {
     void testOverlaps_NonOverlappingPeriods() {
         PeriodBoundaries period1 = new PeriodBoundaries(startDate, midDate);
         PeriodBoundaries period2 = new PeriodBoundaries(endDate.plusDays(1), endDate.plusDays(10));
-        
+
         assertFalse(period1.overlaps(period2));
         assertFalse(period2.overlaps(period1));
     }
@@ -149,7 +146,7 @@ class PeriodBoundariesTest {
     void testEquals_SamePeriod() {
         PeriodBoundaries period1 = new PeriodBoundaries(startDate, endDate);
         PeriodBoundaries period2 = new PeriodBoundaries(startDate, endDate);
-        
+
         assertEquals(period1, period2);
         assertEquals(period1.hashCode(), period2.hashCode());
     }
@@ -158,7 +155,7 @@ class PeriodBoundariesTest {
     void testEquals_DifferentPeriods() {
         PeriodBoundaries period1 = new PeriodBoundaries(startDate, endDate);
         PeriodBoundaries period2 = new PeriodBoundaries(startDate, midDate);
-        
+
         assertNotEquals(period1, period2);
     }
 
@@ -178,7 +175,7 @@ class PeriodBoundariesTest {
     void testToString() {
         PeriodBoundaries period = new PeriodBoundaries(startDate, endDate);
         String toString = period.toString();
-        
+
         assertTrue(toString.contains("PeriodBoundaries"));
         assertTrue(toString.contains(startDate.toString()));
         assertTrue(toString.contains(endDate.toString()));

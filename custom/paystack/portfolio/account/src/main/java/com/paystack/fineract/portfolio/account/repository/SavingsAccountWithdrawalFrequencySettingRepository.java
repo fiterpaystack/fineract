@@ -30,57 +30,57 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 /**
- * Repository for SavingsAccountWithdrawalFrequencySetting
- * Handles database operations for account-level withdrawal frequency settings
+ * Repository for SavingsAccountWithdrawalFrequencySetting Handles database operations for account-level withdrawal
+ * frequency settings
  */
 @Repository
 public interface SavingsAccountWithdrawalFrequencySettingRepository extends JpaRepository<SavingsAccountWithdrawalFrequencySetting, Long> {
-    
+
     /**
      * Find all active settings for a savings account
      */
     List<SavingsAccountWithdrawalFrequencySetting> findBySavingsAccountIdAndIsActive(Long accountId, Boolean isActive);
-    
+
     /**
      * Find a specific setting for an account and time period
      */
-    Optional<SavingsAccountWithdrawalFrequencySetting> findBySavingsAccountIdAndTimePeriodAndIsActive(
-        Long accountId, TimePeriod timePeriod, Boolean isActive);
-    
+    Optional<SavingsAccountWithdrawalFrequencySetting> findBySavingsAccountIdAndTimePeriodAndIsActive(Long accountId, TimePeriod timePeriod,
+            Boolean isActive);
+
     /**
      * Find all settings for an account (active and inactive)
      */
     List<SavingsAccountWithdrawalFrequencySetting> findBySavingsAccountId(Long accountId);
-    
+
     /**
      * Check if a setting exists for an account and time period
      */
     boolean existsBySavingsAccountIdAndTimePeriodAndIsActive(Long accountId, TimePeriod timePeriod, Boolean isActive);
-    
+
     /**
      * Deactivate all settings for an account
      */
     @Modifying
     @Query("UPDATE SavingsAccountWithdrawalFrequencySetting s SET s.isActive = false WHERE s.savingsAccountId = :accountId")
     void deactivateByAccountId(@Param("accountId") Long accountId);
-    
+
     /**
      * Deactivate a specific setting for an account and time period
      */
     @Modifying
     @Query("UPDATE SavingsAccountWithdrawalFrequencySetting s SET s.isActive = false WHERE s.savingsAccountId = :accountId AND s.timePeriod = :timePeriod")
     void deactivateByAccountIdAndTimePeriod(@Param("accountId") Long accountId, @Param("timePeriod") TimePeriod timePeriod);
-    
+
     /**
      * Count active settings for an account
      */
     long countBySavingsAccountIdAndIsActive(Long accountId, Boolean isActive);
-    
+
     /**
      * Find settings by time period across all accounts
      */
     List<SavingsAccountWithdrawalFrequencySetting> findByTimePeriodAndIsActive(TimePeriod timePeriod, Boolean isActive);
-    
+
     /**
      * Find settings for multiple accounts
      */

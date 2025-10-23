@@ -26,18 +26,17 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Data Transfer Object for Withdrawal Frequency Settings
- * Used for API requests and responses
+ * Data Transfer Object for Withdrawal Frequency Settings Used for API requests and responses
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class WithdrawalFrequencySettingData {
-    
+
     private Integer maxWithdrawals;
     private TimePeriod timePeriod;
     private Boolean isActive = true;
-    
+
     /**
      * Create from JSON object
      */
@@ -45,13 +44,13 @@ public class WithdrawalFrequencySettingData {
         if (json == null) {
             return null;
         }
-        
+
         WithdrawalFrequencySettingData data = new WithdrawalFrequencySettingData();
-        
+
         if (json.has("maxWithdrawals") && !json.get("maxWithdrawals").isJsonNull()) {
             data.setMaxWithdrawals(json.get("maxWithdrawals").getAsInt());
         }
-        
+
         if (json.has("timePeriod") && !json.get("timePeriod").isJsonNull()) {
             try {
                 data.setTimePeriod(TimePeriod.fromString(json.get("timePeriod").getAsString()));
@@ -60,19 +59,19 @@ public class WithdrawalFrequencySettingData {
                 return null;
             }
         }
-        
+
         if (json.has("isActive") && !json.get("isActive").isJsonNull()) {
             data.setIsActive(json.get("isActive").getAsBoolean());
         }
-        
+
         // Return null if the data is not valid
         if (!data.isValid()) {
             return null;
         }
-        
+
         return data;
     }
-    
+
     /**
      * Validate the data
      */
@@ -84,14 +83,14 @@ public class WithdrawalFrequencySettingData {
             throw new IllegalArgumentException("Time period is required when max withdrawals is specified");
         }
     }
-    
+
     /**
      * Check if this setting is valid (has both maxWithdrawals and timePeriod)
      */
     public boolean isValid() {
         return maxWithdrawals != null && timePeriod != null && maxWithdrawals > 0 && isActive != null;
     }
-    
+
     /**
      * Check if this setting should be removed (null maxWithdrawals)
      */

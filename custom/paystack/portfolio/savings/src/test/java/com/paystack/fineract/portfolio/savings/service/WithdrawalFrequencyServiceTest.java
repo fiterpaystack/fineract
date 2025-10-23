@@ -47,8 +47,8 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 /**
- * Unit tests for WithdrawalFrequencyService
- * Note: This test focuses on the core functionality and mocks cross-module dependencies
+ * Unit tests for WithdrawalFrequencyService Note: This test focuses on the core functionality and mocks cross-module
+ * dependencies
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -81,7 +81,7 @@ class WithdrawalFrequencyServiceTest {
         when(mockAccount.savingsProduct()).thenReturn(mockProduct);
 
         testDate = LocalDate.of(2024, 1, 15);
-        
+
         // Mock period boundaries - only set up when needed
         mockPeriodBoundaries = mock(PeriodBoundaries.class);
         when(mockPeriodBoundaries.getStartDate()).thenReturn(LocalDate.of(2024, 1, 1));
@@ -101,8 +101,7 @@ class WithdrawalFrequencyServiceTest {
     @Test
     void testGetEffectiveSettings_ProductSettingsOnly() {
         SavingsProductWithdrawalFrequencySetting productSetting = createProductSetting(1L, 5, TimePeriod.MONTHLY);
-        when(productSettingRepository.findBySavingsProductIdAndIsActive(1L, true))
-            .thenReturn(Arrays.asList(productSetting));
+        when(productSettingRepository.findBySavingsProductIdAndIsActive(1L, true)).thenReturn(Arrays.asList(productSetting));
 
         List<WithdrawalFrequencySettingData> settings = service.getEffectiveSettings(mockAccount);
 
@@ -124,12 +123,12 @@ class WithdrawalFrequencyServiceTest {
     @Test
     void testIsWithdrawalAllowed_WithinLimits() {
         SavingsProductWithdrawalFrequencySetting productSetting = createProductSetting(1L, 5, TimePeriod.MONTHLY);
-        when(productSettingRepository.findBySavingsProductIdAndIsActive(1L, true))
-            .thenReturn(Arrays.asList(productSetting));
-        when(periodCalculationService.calculatePeriod(any(LocalDate.class), any(TimePeriod.class)))
-            .thenReturn(mockPeriodBoundaries);
-        when(transactionRepository.countTransactionsForPeriod(anyLong(), any(), any(), anyBoolean(), anyList()))
-            .thenReturn(3L); // Within limit of 5
+        when(productSettingRepository.findBySavingsProductIdAndIsActive(1L, true)).thenReturn(Arrays.asList(productSetting));
+        when(periodCalculationService.calculatePeriod(any(LocalDate.class), any(TimePeriod.class))).thenReturn(mockPeriodBoundaries);
+        when(transactionRepository.countTransactionsForPeriod(anyLong(), any(), any(), anyBoolean(), anyList())).thenReturn(3L); // Within
+                                                                                                                                 // limit
+                                                                                                                                 // of
+                                                                                                                                 // 5
 
         boolean allowed = service.isWithdrawalAllowed(mockAccount, testDate);
 
@@ -139,12 +138,12 @@ class WithdrawalFrequencyServiceTest {
     @Test
     void testIsWithdrawalAllowed_ExceedsLimit() {
         SavingsProductWithdrawalFrequencySetting productSetting = createProductSetting(1L, 5, TimePeriod.MONTHLY);
-        when(productSettingRepository.findBySavingsProductIdAndIsActive(1L, true))
-            .thenReturn(Arrays.asList(productSetting));
-        when(periodCalculationService.calculatePeriod(any(LocalDate.class), any(TimePeriod.class)))
-            .thenReturn(mockPeriodBoundaries);
-        when(transactionRepository.countTransactionsForPeriod(anyLong(), any(), any(), anyBoolean(), anyList()))
-            .thenReturn(5L); // At limit of 5
+        when(productSettingRepository.findBySavingsProductIdAndIsActive(1L, true)).thenReturn(Arrays.asList(productSetting));
+        when(periodCalculationService.calculatePeriod(any(LocalDate.class), any(TimePeriod.class))).thenReturn(mockPeriodBoundaries);
+        when(transactionRepository.countTransactionsForPeriod(anyLong(), any(), any(), anyBoolean(), anyList())).thenReturn(5L); // At
+                                                                                                                                 // limit
+                                                                                                                                 // of
+                                                                                                                                 // 5
 
         boolean allowed = service.isWithdrawalAllowed(mockAccount, testDate);
 
@@ -165,18 +164,15 @@ class WithdrawalFrequencyServiceTest {
     @Test
     void testGetWithdrawalStatus_WithSettings() {
         SavingsProductWithdrawalFrequencySetting productSetting = createProductSetting(1L, 5, TimePeriod.MONTHLY);
-        when(productSettingRepository.findBySavingsProductIdAndIsActive(1L, true))
-            .thenReturn(Arrays.asList(productSetting));
-        when(periodCalculationService.calculatePeriod(any(LocalDate.class), any(TimePeriod.class)))
-            .thenReturn(mockPeriodBoundaries);
-        when(transactionRepository.countTransactionsForPeriod(anyLong(), any(), any(), anyBoolean(), anyList()))
-            .thenReturn(3L);
+        when(productSettingRepository.findBySavingsProductIdAndIsActive(1L, true)).thenReturn(Arrays.asList(productSetting));
+        when(periodCalculationService.calculatePeriod(any(LocalDate.class), any(TimePeriod.class))).thenReturn(mockPeriodBoundaries);
+        when(transactionRepository.countTransactionsForPeriod(anyLong(), any(), any(), anyBoolean(), anyList())).thenReturn(3L);
 
         WithdrawalFrequencyStatus status = service.getWithdrawalStatus(mockAccount, testDate);
 
         assertTrue(status.isWithdrawalAllowed());
         assertEquals(1, status.getPeriodStatuses().size());
-        
+
         WithdrawalFrequencyStatus.PeriodStatus periodStatus = status.getPeriodStatuses().get(0);
         assertEquals(TimePeriod.MONTHLY, periodStatus.getTimePeriod());
         assertEquals(5, periodStatus.getMaxWithdrawals());
@@ -187,14 +183,11 @@ class WithdrawalFrequencyServiceTest {
 
     @Test
     void testCreateProductSettings_NewSettings() {
-        List<WithdrawalFrequencySettingData> settingsData = Arrays.asList(
-            new WithdrawalFrequencySettingData(5, TimePeriod.MONTHLY, true),
-            new WithdrawalFrequencySettingData(2, TimePeriod.WEEKLY, true)
-        );
+        List<WithdrawalFrequencySettingData> settingsData = Arrays.asList(new WithdrawalFrequencySettingData(5, TimePeriod.MONTHLY, true),
+                new WithdrawalFrequencySettingData(2, TimePeriod.WEEKLY, true));
 
         // Mock existing settings (empty for new product)
-        when(productSettingRepository.findBySavingsProductId(1L))
-            .thenReturn(Collections.emptyList());
+        when(productSettingRepository.findBySavingsProductId(1L)).thenReturn(Collections.emptyList());
 
         service.createProductSettings(1L, settingsData);
 
@@ -204,27 +197,24 @@ class WithdrawalFrequencyServiceTest {
 
     @Test
     void testCreateProductSettings_UpdateExisting() {
-        List<WithdrawalFrequencySettingData> settingsData = Arrays.asList(
-            new WithdrawalFrequencySettingData(3, TimePeriod.MONTHLY, true),
-            new WithdrawalFrequencySettingData(1, TimePeriod.DAILY, true)
-        );
+        List<WithdrawalFrequencySettingData> settingsData = Arrays.asList(new WithdrawalFrequencySettingData(3, TimePeriod.MONTHLY, true),
+                new WithdrawalFrequencySettingData(1, TimePeriod.DAILY, true));
 
         // Mock existing settings
         SavingsProductWithdrawalFrequencySetting existingMonthly = createProductSetting(1L, 5, TimePeriod.MONTHLY);
         SavingsProductWithdrawalFrequencySetting existingWeekly = createProductSetting(1L, 2, TimePeriod.WEEKLY);
-        when(productSettingRepository.findBySavingsProductId(1L))
-            .thenReturn(Arrays.asList(existingMonthly, existingWeekly));
+        when(productSettingRepository.findBySavingsProductId(1L)).thenReturn(Arrays.asList(existingMonthly, existingWeekly));
 
         service.createProductSettings(1L, settingsData);
 
         // Should update existing MONTHLY setting
         assertEquals(3, existingMonthly.getMaxWithdrawals());
         assertTrue(existingMonthly.isActive());
-        
+
         // Should create new DAILY setting
         // Should deactivate existing WEEKLY setting
         assertFalse(existingWeekly.isActive());
-        
+
         verify(productSettingRepository, times(3)).save(any(SavingsProductWithdrawalFrequencySetting.class));
     }
 
@@ -233,23 +223,21 @@ class WithdrawalFrequencyServiceTest {
         // Mock existing settings
         SavingsProductWithdrawalFrequencySetting existingMonthly = createProductSetting(1L, 5, TimePeriod.MONTHLY);
         SavingsProductWithdrawalFrequencySetting existingWeekly = createProductSetting(1L, 2, TimePeriod.WEEKLY);
-        when(productSettingRepository.findBySavingsProductId(1L))
-            .thenReturn(Arrays.asList(existingMonthly, existingWeekly));
+        when(productSettingRepository.findBySavingsProductId(1L)).thenReturn(Arrays.asList(existingMonthly, existingWeekly));
 
         service.createProductSettings(1L, Collections.emptyList());
 
         // Should deactivate all existing settings
         assertFalse(existingMonthly.isActive());
         assertFalse(existingWeekly.isActive());
-        
+
         verify(productSettingRepository, times(2)).save(any(SavingsProductWithdrawalFrequencySetting.class));
     }
 
     @Test
     void testUpdateProductSetting_ExistingSetting() {
         SavingsProductWithdrawalFrequencySetting existingSetting = createProductSetting(1L, 5, TimePeriod.MONTHLY);
-        when(productSettingRepository.findBySavingsProductIdAndTimePeriod(1L, TimePeriod.MONTHLY))
-            .thenReturn(Optional.of(existingSetting));
+        when(productSettingRepository.findBySavingsProductIdAndTimePeriod(1L, TimePeriod.MONTHLY)).thenReturn(Optional.of(existingSetting));
 
         WithdrawalFrequencySettingData newData = new WithdrawalFrequencySettingData(3, TimePeriod.MONTHLY, true);
         service.updateProductSetting(1L, TimePeriod.MONTHLY, newData);
@@ -275,8 +263,7 @@ class WithdrawalFrequencyServiceTest {
     @Test
     void testUpdateProductSetting_DeactivateExisting() {
         SavingsProductWithdrawalFrequencySetting existingSetting = createProductSetting(1L, 5, TimePeriod.MONTHLY);
-        when(productSettingRepository.findBySavingsProductIdAndTimePeriod(1L, TimePeriod.MONTHLY))
-            .thenReturn(Optional.of(existingSetting));
+        when(productSettingRepository.findBySavingsProductIdAndTimePeriod(1L, TimePeriod.MONTHLY)).thenReturn(Optional.of(existingSetting));
 
         service.updateProductSetting(1L, TimePeriod.MONTHLY, null);
 

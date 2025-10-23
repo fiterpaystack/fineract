@@ -34,29 +34,24 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Configuration class for Paystack savings account services. Overrides core savings account service beans with custom implementations.
+ * Configuration class for Paystack savings account services. Overrides core savings account service beans with custom
+ * implementations.
  */
 @Configuration
 public class PaystackSavingsAccountConfiguration {
 
     /**
-     * Override the core SavingsAccountReadPlatformService bean with Paystack implementation. This service handles all savings account
-     * reading operations including withdrawal frequency settings.
+     * Override the core SavingsAccountReadPlatformService bean with Paystack implementation. This service handles all
+     * savings account reading operations including withdrawal frequency settings.
      */
     @Bean
     @Primary
-    public SavingsAccountReadPlatformService savingsAccountReadPlatformService(
-            PlatformSecurityContext context,
-            JdbcTemplate jdbcTemplate,
-            SavingsAccountAssembler savingAccountAssembler,
-            PaginationHelper paginationHelper,
-            ColumnValidator columnValidator,
-            DatabaseSpecificSQLGenerator sqlGenerator,
-            SavingsAccountRepositoryWrapper savingsAccountRepositoryWrapper,
+    public SavingsAccountReadPlatformService savingsAccountReadPlatformService(PlatformSecurityContext context, JdbcTemplate jdbcTemplate,
+            SavingsAccountAssembler savingAccountAssembler, PaginationHelper paginationHelper, ColumnValidator columnValidator,
+            DatabaseSpecificSQLGenerator sqlGenerator, SavingsAccountRepositoryWrapper savingsAccountRepositoryWrapper,
             SavingsAccountWithdrawalFrequencySettingRepository accountSettingRepository,
             SavingsProductWithdrawalFrequencySettingRepository productSettingRepository) {
-        return new PaystackSavingsAccountReadPlatformServiceImpl(
-                context, jdbcTemplate, savingAccountAssembler, paginationHelper, columnValidator, sqlGenerator,
-                savingsAccountRepositoryWrapper, accountSettingRepository, productSettingRepository);
+        return new PaystackSavingsAccountReadPlatformServiceImpl(context, jdbcTemplate, savingAccountAssembler, paginationHelper,
+                columnValidator, sqlGenerator, savingsAccountRepositoryWrapper, accountSettingRepository, productSettingRepository);
     }
 }

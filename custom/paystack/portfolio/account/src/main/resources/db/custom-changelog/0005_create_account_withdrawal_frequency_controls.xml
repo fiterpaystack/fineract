@@ -45,20 +45,20 @@
 
         <!-- Database-agnostic unique constraints using SQL -->
         <sql dbms="postgresql">
-            ALTER TABLE m_savings_account_withdrawal_frequency_setting 
-            ADD CONSTRAINT uq_sawfs_account_period 
+            ALTER TABLE m_savings_account_withdrawal_frequency_setting
+            ADD CONSTRAINT uq_sawfs_account_period
             UNIQUE (savings_account_id, time_period);
         </sql>
-        
+
         <sql dbms="mysql">
-            ALTER TABLE m_savings_account_withdrawal_frequency_setting 
-            ADD CONSTRAINT uq_sawfs_account_period 
+            ALTER TABLE m_savings_account_withdrawal_frequency_setting
+            ADD CONSTRAINT uq_sawfs_account_period
             UNIQUE (savings_account_id, time_period);
         </sql>
-        
+
         <sql dbms="h2">
-            ALTER TABLE m_savings_account_withdrawal_frequency_setting 
-            ADD CONSTRAINT uq_sawfs_account_period 
+            ALTER TABLE m_savings_account_withdrawal_frequency_setting
+            ADD CONSTRAINT uq_sawfs_account_period
             UNIQUE (savings_account_id, time_period);
         </sql>
 
@@ -101,13 +101,13 @@
         <rollback>
             <dropForeignKeyConstraint baseTableName="m_savings_account_withdrawal_frequency_setting"
                                      constraintName="fk_sawfs_modified_by"/>
-            
+
             <dropForeignKeyConstraint baseTableName="m_savings_account_withdrawal_frequency_setting"
                                      constraintName="fk_sawfs_created_by"/>
-            
+
             <dropForeignKeyConstraint baseTableName="m_savings_account_withdrawal_frequency_setting"
                                      constraintName="fk_sawfs_account_id"/>
-            
+
             <dropTable tableName="m_savings_account_withdrawal_frequency_setting"/>
         </rollback>
     </changeSet>

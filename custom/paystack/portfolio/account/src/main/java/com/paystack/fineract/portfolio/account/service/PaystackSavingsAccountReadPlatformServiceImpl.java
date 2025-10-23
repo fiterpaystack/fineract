@@ -22,23 +22,23 @@ package com.paystack.fineract.portfolio.account.service;
 import com.paystack.fineract.portfolio.account.domain.SavingsAccountWithdrawalFrequencySetting;
 import com.paystack.fineract.portfolio.account.repository.SavingsAccountWithdrawalFrequencySettingRepository;
 import com.paystack.fineract.portfolio.savings.data.WithdrawalFrequencySettingData;
-import java.util.List;
-import java.util.HashMap;
-import java.util.Map;
+import com.paystack.fineract.portfolio.savings.domain.SavingsProductWithdrawalFrequencySetting;
+import com.paystack.fineract.portfolio.savings.domain.TimePeriod;
+import com.paystack.fineract.portfolio.savings.repository.SavingsProductWithdrawalFrequencySettingRepository;
 import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.fineract.infrastructure.core.service.PaginationHelper;
+import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
+import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
+import org.apache.fineract.infrastructure.security.utils.ColumnValidator;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountData;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountAssembler;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepositoryWrapper;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountReadPlatformServiceImpl;
-import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
-import org.apache.fineract.infrastructure.core.service.PaginationHelper;
-import org.apache.fineract.infrastructure.security.utils.ColumnValidator;
-import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
 import org.springframework.jdbc.core.JdbcTemplate;
-import com.paystack.fineract.portfolio.savings.repository.SavingsProductWithdrawalFrequencySettingRepository;
-import com.paystack.fineract.portfolio.savings.domain.SavingsProductWithdrawalFrequencySetting;
-import com.paystack.fineract.portfolio.savings.domain.TimePeriod;
 
 @Slf4j
 public class PaystackSavingsAccountReadPlatformServiceImpl extends SavingsAccountReadPlatformServiceImpl {
@@ -63,20 +63,18 @@ public class PaystackSavingsAccountReadPlatformServiceImpl extends SavingsAccoun
     public SavingsAccountData retrieveOne(Long savingsId) {
         SavingsAccountData account = super.retrieveOne(savingsId);
         try {
-           // Account-level settings
+            // Account-level settings
             List<SavingsAccountWithdrawalFrequencySetting> accountSettings = accountSettingRepository
                     .findBySavingsAccountIdAndIsActive(savingsId, true);
             List<WithdrawalFrequencySettingData> dtoAccount = accountSettings.stream()
-                    .map(s -> new WithdrawalFrequencySettingData(s.getMaxWithdrawals(), s.getTimePeriod(), s.getIsActive()))
-                    .toList();
+                    .map(s -> new WithdrawalFrequencySettingData(s.getMaxWithdrawals(), s.getTimePeriod(), s.getIsActive())).toList();
 
             // Product-level settings (fallback)
             Long productId = account.getSavingsProductId();
             List<SavingsProductWithdrawalFrequencySetting> productSettings = productSettingRepository
                     .findBySavingsProductIdAndIsActive(productId, true);
             List<WithdrawalFrequencySettingData> dtoProduct = productSettings.stream()
-                    .map(s -> new WithdrawalFrequencySettingData(s.getMaxWithdrawals(), s.getTimePeriod(), s.isActive()))
-                    .toList();
+                    .map(s -> new WithdrawalFrequencySettingData(s.getMaxWithdrawals(), s.getTimePeriod(), s.isActive())).toList();
 
             // Effective = account overrides win, else product
             Map<TimePeriod, WithdrawalFrequencySettingData> byPeriod = new EnumMap<>(TimePeriod.class);
@@ -105,5 +103,3 @@ public class PaystackSavingsAccountReadPlatformServiceImpl extends SavingsAccoun
 
     // All other methods use the core implementation via inheritance
 }
-
-

@@ -151,10 +151,8 @@ public class PaystackSavingsProductDataValidator extends SavingsProductDataValid
 
         // Validate withdrawalFrequencySettings parameter
         if (paystackFromJsonHelper.parameterExists("withdrawalFrequencySettings", element)) {
-            JsonArray withdrawalFrequencySettings = paystackFromJsonHelper
-                    .extractJsonArrayNamed("withdrawalFrequencySettings", element);
-            base.reset().parameter("withdrawalFrequencySettings").value(withdrawalFrequencySettings).notNull()
-                    .jsonArrayNotEmpty();
+            JsonArray withdrawalFrequencySettings = paystackFromJsonHelper.extractJsonArrayNamed("withdrawalFrequencySettings", element);
+            base.reset().parameter("withdrawalFrequencySettings").value(withdrawalFrequencySettings).notNull().jsonArrayNotEmpty();
 
             // Validate each setting in the array
             if (withdrawalFrequencySettings != null && !withdrawalFrequencySettings.isEmpty()) {
@@ -172,7 +170,8 @@ public class PaystackSavingsProductDataValidator extends SavingsProductDataValid
         }
     }
 
-    private void validateWithdrawalFrequencySetting(com.google.gson.JsonObject setting, int index, List<ApiParameterError> dataValidationErrors) {
+    private void validateWithdrawalFrequencySetting(com.google.gson.JsonObject setting, int index,
+            List<ApiParameterError> dataValidationErrors) {
         final DataValidatorBuilder base = new DataValidatorBuilder(dataValidationErrors)
                 .resource("savingsproduct.withdrawalfrequency.setting[" + index + "]");
 
@@ -185,8 +184,7 @@ public class PaystackSavingsProductDataValidator extends SavingsProductDataValid
         // Validate timePeriod
         if (setting.has("timePeriod")) {
             String timePeriod = paystackFromJsonHelper.extractStringNamed("timePeriod", setting);
-            base.reset().parameter("timePeriod").value(timePeriod).notNull()
-                    .isOneOfTheseValues("DAILY", "WEEKLY", "MONTHLY", "YEARLY");
+            base.reset().parameter("timePeriod").value(timePeriod).notNull().isOneOfTheseValues("DAILY", "WEEKLY", "MONTHLY", "YEARLY");
         }
 
         // Validate isActive (optional)

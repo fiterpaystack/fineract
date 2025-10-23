@@ -25,71 +25,61 @@ import com.paystack.fineract.portfolio.savings.data.WithdrawalFrequencySettingDa
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.fineract.commands.service.CommandProcessingService;
+import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormatRepositoryWrapper;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
+import org.apache.fineract.infrastructure.dataqueries.service.EntityDatatableChecksWritePlatformService;
+import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
+import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
+import org.apache.fineract.organisation.staff.domain.StaffRepositoryWrapper;
+import org.apache.fineract.portfolio.account.service.AccountNumberGenerator;
+import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
+import org.apache.fineract.portfolio.group.domain.GroupRepository;
+import org.apache.fineract.portfolio.group.domain.GroupRepositoryWrapper;
+import org.apache.fineract.portfolio.note.domain.NoteRepository;
+import org.apache.fineract.portfolio.savings.data.SavingsAccountDataValidator;
+import org.apache.fineract.portfolio.savings.domain.GSIMRepositoy;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountAssembler;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountChargeAssembler;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepositoryWrapper;
+import org.apache.fineract.portfolio.savings.domain.SavingsProductRepository;
+import org.apache.fineract.portfolio.savings.service.GroupSavingsIndividualMonitoringWritePlatformService;
+import org.apache.fineract.portfolio.savings.service.SavingsAccountApplicationTransitionApiJsonValidator;
+import org.apache.fineract.portfolio.savings.service.SavingsAccountDomainService;
+import org.apache.fineract.portfolio.savings.service.SavingsAccountWritePlatformService;
 import org.apache.fineract.portfolio.savings.service.SavingsApplicationProcessWritePlatformServiceJpaRepositoryImpl;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
-import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepositoryWrapper;
-import org.apache.fineract.portfolio.savings.domain.SavingsAccountAssembler;
-import org.apache.fineract.portfolio.savings.data.SavingsAccountDataValidator;
-import org.apache.fineract.portfolio.account.service.AccountNumberGenerator;
-import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
-import org.apache.fineract.portfolio.group.domain.GroupRepository;
-import org.apache.fineract.portfolio.savings.domain.SavingsProductRepository;
-import org.apache.fineract.portfolio.note.domain.NoteRepository;
-import org.apache.fineract.organisation.staff.domain.StaffRepositoryWrapper;
-import org.apache.fineract.portfolio.savings.service.SavingsAccountApplicationTransitionApiJsonValidator;
-import org.apache.fineract.portfolio.savings.domain.SavingsAccountChargeAssembler;
-import org.apache.fineract.commands.service.CommandProcessingService;
-import org.apache.fineract.portfolio.savings.service.SavingsAccountDomainService;
-import org.apache.fineract.portfolio.savings.service.SavingsAccountWritePlatformService;
-import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormatRepositoryWrapper;
-import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
-import org.apache.fineract.infrastructure.dataqueries.service.EntityDatatableChecksWritePlatformService;
-import org.apache.fineract.portfolio.savings.domain.GSIMRepositoy;
-import org.apache.fineract.portfolio.group.domain.GroupRepositoryWrapper;
-import org.apache.fineract.portfolio.savings.service.GroupSavingsIndividualMonitoringWritePlatformService;
 
 @Service
 @Primary
 @Slf4j
-public class PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryImpl extends SavingsApplicationProcessWritePlatformServiceJpaRepositoryImpl {
+public class PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryImpl
+        extends SavingsApplicationProcessWritePlatformServiceJpaRepositoryImpl {
 
     private final AccountWithdrawalFrequencyService accountWithdrawalFrequencyService;
 
     public PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryImpl(
             AccountWithdrawalFrequencyService accountWithdrawalFrequencyService,
             // Parent class dependencies
-            PlatformSecurityContext context,
-            SavingsAccountRepositoryWrapper savingAccountRepository,
-            SavingsAccountAssembler savingAccountAssembler,
-            SavingsAccountDataValidator savingsAccountDataValidator,
-            AccountNumberGenerator accountNumberGenerator,
-            ClientRepositoryWrapper clientRepository,
-            GroupRepository groupRepository,
-            SavingsProductRepository savingsProductRepository,
-            NoteRepository noteRepository,
-            StaffRepositoryWrapper staffRepository,
+            PlatformSecurityContext context, SavingsAccountRepositoryWrapper savingAccountRepository,
+            SavingsAccountAssembler savingAccountAssembler, SavingsAccountDataValidator savingsAccountDataValidator,
+            AccountNumberGenerator accountNumberGenerator, ClientRepositoryWrapper clientRepository, GroupRepository groupRepository,
+            SavingsProductRepository savingsProductRepository, NoteRepository noteRepository, StaffRepositoryWrapper staffRepository,
             SavingsAccountApplicationTransitionApiJsonValidator savingsAccountApplicationTransitionApiJsonValidator,
-            SavingsAccountChargeAssembler savingsAccountChargeAssembler,
-            CommandProcessingService commandProcessingService,
-            SavingsAccountDomainService savingsAccountDomainService,
-            SavingsAccountWritePlatformService savingsAccountWritePlatformService,
-            AccountNumberFormatRepositoryWrapper accountNumberFormatRepository,
-            BusinessEventNotifierService businessEventNotifierService,
-            EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService,
-            GSIMRepositoy gsimRepository,
-            GroupRepositoryWrapper groupRepositoryWrapper,
-            GroupSavingsIndividualMonitoringWritePlatformService gsimWritePlatformService) {
-        super(context, savingAccountRepository, savingAccountAssembler, savingsAccountDataValidator, 
-              accountNumberGenerator, clientRepository, groupRepository, savingsProductRepository, 
-              noteRepository, staffRepository, savingsAccountApplicationTransitionApiJsonValidator, 
-              savingsAccountChargeAssembler, commandProcessingService, savingsAccountDomainService, 
-              savingsAccountWritePlatformService, accountNumberFormatRepository, businessEventNotifierService,
-              entityDatatableChecksWritePlatformService, gsimRepository, groupRepositoryWrapper, gsimWritePlatformService);
+            SavingsAccountChargeAssembler savingsAccountChargeAssembler, CommandProcessingService commandProcessingService,
+            SavingsAccountDomainService savingsAccountDomainService, SavingsAccountWritePlatformService savingsAccountWritePlatformService,
+            AccountNumberFormatRepositoryWrapper accountNumberFormatRepository, BusinessEventNotifierService businessEventNotifierService,
+            EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService, GSIMRepositoy gsimRepository,
+            GroupRepositoryWrapper groupRepositoryWrapper, GroupSavingsIndividualMonitoringWritePlatformService gsimWritePlatformService) {
+        super(context, savingAccountRepository, savingAccountAssembler, savingsAccountDataValidator, accountNumberGenerator,
+                clientRepository, groupRepository, savingsProductRepository, noteRepository, staffRepository,
+                savingsAccountApplicationTransitionApiJsonValidator, savingsAccountChargeAssembler, commandProcessingService,
+                savingsAccountDomainService, savingsAccountWritePlatformService, accountNumberFormatRepository,
+                businessEventNotifierService, entityDatatableChecksWritePlatformService, gsimRepository, groupRepositoryWrapper,
+                gsimWritePlatformService);
         this.accountWithdrawalFrequencyService = accountWithdrawalFrequencyService;
     }
 
@@ -103,7 +93,7 @@ public class PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryI
             List<WithdrawalFrequencySettingData> settings = extractSettings(command);
             if (!settings.isEmpty()) {
                 accountWithdrawalFrequencyService.createAccountSettings(accountId, settings);
-            }else{
+            } else {
                 log.warn("No settings found for accountId {}", accountId);
             }
         } catch (Exception e) {
@@ -168,7 +158,8 @@ public class PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryI
     }
 
     @Override
-    public CommandProcessingResult createActiveApplication(org.apache.fineract.portfolio.savings.data.SavingsAccountDataDTO savingsAccountDataDTO, String noteText) {
+    public CommandProcessingResult createActiveApplication(
+            org.apache.fineract.portfolio.savings.data.SavingsAccountDataDTO savingsAccountDataDTO, String noteText) {
         return super.createActiveApplication(savingsAccountDataDTO, noteText);
     }
 
@@ -231,5 +222,3 @@ public class PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryI
         return settingsData;
     }
 }
-
-

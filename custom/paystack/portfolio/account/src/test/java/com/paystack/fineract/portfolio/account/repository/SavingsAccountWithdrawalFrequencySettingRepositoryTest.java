@@ -56,16 +56,12 @@ class SavingsAccountWithdrawalFrequencySettingRepositoryTest {
 
     @Test
     void testFindBySavingsAccountIdAndIsActive() {
-        List<SavingsAccountWithdrawalFrequencySetting> expectedSettings = Arrays.asList(
-            createSetting(1L, 3, TimePeriod.WEEKLY),
-            createSetting(1L, 1, TimePeriod.DAILY)
-        );
+        List<SavingsAccountWithdrawalFrequencySetting> expectedSettings = Arrays.asList(createSetting(1L, 3, TimePeriod.WEEKLY),
+                createSetting(1L, 1, TimePeriod.DAILY));
 
-        when(repository.findBySavingsAccountIdAndIsActive(accountId, isActive))
-            .thenReturn(expectedSettings);
+        when(repository.findBySavingsAccountIdAndIsActive(accountId, isActive)).thenReturn(expectedSettings);
 
-        List<SavingsAccountWithdrawalFrequencySetting> result = repository
-            .findBySavingsAccountIdAndIsActive(accountId, isActive);
+        List<SavingsAccountWithdrawalFrequencySetting> result = repository.findBySavingsAccountIdAndIsActive(accountId, isActive);
 
         assertEquals(2, result.size());
         verify(repository).findBySavingsAccountIdAndIsActive(accountId, isActive);
@@ -76,10 +72,10 @@ class SavingsAccountWithdrawalFrequencySettingRepositoryTest {
         SavingsAccountWithdrawalFrequencySetting expectedSetting = createSetting(accountId, 3, timePeriod);
 
         when(repository.findBySavingsAccountIdAndTimePeriodAndIsActive(accountId, timePeriod, isActive))
-            .thenReturn(Optional.of(expectedSetting));
+                .thenReturn(Optional.of(expectedSetting));
 
-        Optional<SavingsAccountWithdrawalFrequencySetting> result = repository
-            .findBySavingsAccountIdAndTimePeriodAndIsActive(accountId, timePeriod, isActive);
+        Optional<SavingsAccountWithdrawalFrequencySetting> result = repository.findBySavingsAccountIdAndTimePeriodAndIsActive(accountId,
+                timePeriod, isActive);
 
         assertTrue(result.isPresent());
         assertEquals(expectedSetting, result.get());
@@ -100,13 +96,10 @@ class SavingsAccountWithdrawalFrequencySettingRepositoryTest {
 
     @Test
     void testFindBySavingsAccountId() {
-        List<SavingsAccountWithdrawalFrequencySetting> expectedSettings = Arrays.asList(
-            createSetting(accountId, 3, TimePeriod.WEEKLY),
-            createSetting(accountId, 1, TimePeriod.DAILY)
-        );
+        List<SavingsAccountWithdrawalFrequencySetting> expectedSettings = Arrays.asList(createSetting(accountId, 3, TimePeriod.WEEKLY),
+                createSetting(accountId, 1, TimePeriod.DAILY));
 
-        when(repository.findBySavingsAccountId(accountId))
-            .thenReturn(expectedSettings);
+        when(repository.findBySavingsAccountId(accountId)).thenReturn(expectedSettings);
 
         List<SavingsAccountWithdrawalFrequencySetting> result = repository.findBySavingsAccountId(accountId);
 
@@ -163,16 +156,12 @@ class SavingsAccountWithdrawalFrequencySettingRepositoryTest {
 
     @Test
     void testFindByTimePeriodAndIsActive() {
-        List<SavingsAccountWithdrawalFrequencySetting> expectedSettings = Arrays.asList(
-            createSetting(1L, 3, timePeriod),
-            createSetting(2L, 2, timePeriod)
-        );
+        List<SavingsAccountWithdrawalFrequencySetting> expectedSettings = Arrays.asList(createSetting(1L, 3, timePeriod),
+                createSetting(2L, 2, timePeriod));
 
-        when(repository.findByTimePeriodAndIsActive(timePeriod, isActive))
-            .thenReturn(expectedSettings);
+        when(repository.findByTimePeriodAndIsActive(timePeriod, isActive)).thenReturn(expectedSettings);
 
-        List<SavingsAccountWithdrawalFrequencySetting> result = repository
-            .findByTimePeriodAndIsActive(timePeriod, isActive);
+        List<SavingsAccountWithdrawalFrequencySetting> result = repository.findByTimePeriodAndIsActive(timePeriod, isActive);
 
         assertEquals(2, result.size());
         verify(repository).findByTimePeriodAndIsActive(timePeriod, isActive);
@@ -181,16 +170,12 @@ class SavingsAccountWithdrawalFrequencySettingRepositoryTest {
     @Test
     void testFindBySavingsAccountIdInAndIsActive() {
         List<Long> accountIds = Arrays.asList(1L, 2L, 3L);
-        List<SavingsAccountWithdrawalFrequencySetting> expectedSettings = Arrays.asList(
-            createSetting(1L, 3, TimePeriod.WEEKLY),
-            createSetting(2L, 2, TimePeriod.DAILY)
-        );
+        List<SavingsAccountWithdrawalFrequencySetting> expectedSettings = Arrays.asList(createSetting(1L, 3, TimePeriod.WEEKLY),
+                createSetting(2L, 2, TimePeriod.DAILY));
 
-        when(repository.findBySavingsAccountIdInAndIsActive(accountIds, isActive))
-            .thenReturn(expectedSettings);
+        when(repository.findBySavingsAccountIdInAndIsActive(accountIds, isActive)).thenReturn(expectedSettings);
 
-        List<SavingsAccountWithdrawalFrequencySetting> result = repository
-            .findBySavingsAccountIdInAndIsActive(accountIds, isActive);
+        List<SavingsAccountWithdrawalFrequencySetting> result = repository.findBySavingsAccountIdInAndIsActive(accountIds, isActive);
 
         assertEquals(2, result.size());
         verify(repository).findBySavingsAccountIdInAndIsActive(accountIds, isActive);

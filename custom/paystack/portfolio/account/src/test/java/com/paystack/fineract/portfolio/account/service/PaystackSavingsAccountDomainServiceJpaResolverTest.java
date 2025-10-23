@@ -77,7 +77,8 @@ class PaystackSavingsAccountDomainServiceJpaResolverTest {
                 applicationCurrencyRepositoryWrapper, journalEntryWritePlatformService, configurationDomainService, context,
                 depositAccountOnHoldTransactionRepository, businessEventNotifierService, noteRepository, null,
                 savingsAccountTransactionSummaryWrapper, savingsAccountChargePaymentWrapperService, clientChargeOverrideReadService,
-                savingsProductAttributesRepository, feeSplitService, productDiscountService, mock(com.paystack.fineract.portfolio.savings.service.WithdrawalFrequencyService.class));
+                savingsProductAttributesRepository, feeSplitService, productDiscountService,
+                mock(com.paystack.fineract.portfolio.savings.service.WithdrawalFrequencyService.class));
     }
 
     private BigDecimal invokeResolve(Long clientId, Charge chargeDef, BigDecimal txnAmount) throws Exception {

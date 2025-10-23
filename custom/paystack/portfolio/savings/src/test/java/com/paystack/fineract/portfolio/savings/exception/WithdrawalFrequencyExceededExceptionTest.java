@@ -32,7 +32,7 @@ class WithdrawalFrequencyExceededExceptionTest {
     void testConstructor_WithMessage() {
         String message = "Withdrawal limit exceeded";
         WithdrawalFrequencyExceededException exception = new WithdrawalFrequencyExceededException(message);
-        
+
         assertEquals("error.msg.withdrawal.frequency.exceeded", exception.getGlobalisationMessageCode());
         assertEquals(message, exception.getDefaultUserMessage());
     }
@@ -42,7 +42,7 @@ class WithdrawalFrequencyExceededExceptionTest {
         String message = "Withdrawal limit exceeded";
         String details = "Additional details";
         WithdrawalFrequencyExceededException exception = new WithdrawalFrequencyExceededException(message, details);
-        
+
         assertEquals("error.msg.withdrawal.frequency.exceeded", exception.getGlobalisationMessageCode());
         assertEquals(message, exception.getDefaultUserMessage());
     }
@@ -52,7 +52,7 @@ class WithdrawalFrequencyExceededExceptionTest {
         String message = "Withdrawal limit exceeded";
         RuntimeException cause = new RuntimeException("Root cause");
         WithdrawalFrequencyExceededException exception = new WithdrawalFrequencyExceededException(message, cause);
-        
+
         assertEquals("error.msg.withdrawal.frequency.exceeded", exception.getGlobalisationMessageCode());
         assertEquals(message, exception.getDefaultUserMessage());
         assertEquals(cause, exception.getCause());
@@ -63,10 +63,10 @@ class WithdrawalFrequencyExceededExceptionTest {
         String timePeriod = "Monthly";
         int currentCount = 2;
         int maxWithdrawals = 2;
-        
-        WithdrawalFrequencyExceededException exception = WithdrawalFrequencyExceededException.forPeriod(
-            timePeriod, currentCount, maxWithdrawals);
-        
+
+        WithdrawalFrequencyExceededException exception = WithdrawalFrequencyExceededException.forPeriod(timePeriod, currentCount,
+                maxWithdrawals);
+
         String expectedMessage = "Withdrawal limit exceeded for Monthly period: 2/2 withdrawals used";
         assertEquals(expectedMessage, exception.getDefaultUserMessage());
         assertEquals("error.msg.withdrawal.frequency.exceeded", exception.getGlobalisationMessageCode());
@@ -77,10 +77,10 @@ class WithdrawalFrequencyExceededExceptionTest {
         String timePeriod = "Daily";
         int currentCount = 5;
         int maxWithdrawals = 3;
-        
-        WithdrawalFrequencyExceededException exception = WithdrawalFrequencyExceededException.forPeriod(
-            timePeriod, currentCount, maxWithdrawals);
-        
+
+        WithdrawalFrequencyExceededException exception = WithdrawalFrequencyExceededException.forPeriod(timePeriod, currentCount,
+                maxWithdrawals);
+
         String expectedMessage = "Withdrawal limit exceeded for Daily period: 5/3 withdrawals used";
         assertEquals(expectedMessage, exception.getDefaultUserMessage());
     }
@@ -88,10 +88,9 @@ class WithdrawalFrequencyExceededExceptionTest {
     @Test
     void testForMultiplePeriods() {
         String violatedPeriods = "Daily, Weekly";
-        
-        WithdrawalFrequencyExceededException exception = WithdrawalFrequencyExceededException.forMultiplePeriods(
-            violatedPeriods);
-        
+
+        WithdrawalFrequencyExceededException exception = WithdrawalFrequencyExceededException.forMultiplePeriods(violatedPeriods);
+
         String expectedMessage = "Withdrawal limit exceeded for the following periods: Daily, Weekly";
         assertEquals(expectedMessage, exception.getDefaultUserMessage());
         assertEquals("error.msg.withdrawal.frequency.exceeded", exception.getGlobalisationMessageCode());
@@ -100,7 +99,7 @@ class WithdrawalFrequencyExceededExceptionTest {
     @Test
     void testInheritance() {
         WithdrawalFrequencyExceededException exception = new WithdrawalFrequencyExceededException("Test message");
-        
+
         assertTrue(exception instanceof org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException);
     }
 
@@ -109,7 +108,7 @@ class WithdrawalFrequencyExceededExceptionTest {
         WithdrawalFrequencyExceededException exception1 = new WithdrawalFrequencyExceededException("Message 1");
         WithdrawalFrequencyExceededException exception2 = WithdrawalFrequencyExceededException.forPeriod("Daily", 1, 1);
         WithdrawalFrequencyExceededException exception3 = WithdrawalFrequencyExceededException.forMultiplePeriods("Daily");
-        
+
         // All should have the same error code
         assertEquals("error.msg.withdrawal.frequency.exceeded", exception1.getGlobalisationMessageCode());
         assertEquals("error.msg.withdrawal.frequency.exceeded", exception2.getGlobalisationMessageCode());
