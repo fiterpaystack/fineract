@@ -7,6 +7,7 @@ import com.paystack.fineract.portfolio.discount.domain.policy.DiscountPolicyEnti
 import com.paystack.fineract.portfolio.discount.service.DiscountAssignmentPolicyService;
 import com.paystack.fineract.portfolio.discount.service.DiscountRuleService;
 import com.paystack.fineract.portfolio.savings.data.PaystackSavingsProductAdditionalAttributes;
+import com.paystack.fineract.portfolio.savings.data.WithdrawalFrequencySettingData;
 import com.paystack.fineract.portfolio.savings.domain.ExtendedSavingsAccountRepository;
 import com.paystack.fineract.portfolio.savings.domain.PaystackSavingsProductAttributes;
 import com.paystack.fineract.portfolio.savings.domain.PaystackSavingsProductAttributesRepository;
@@ -68,6 +69,8 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
     private DiscountRuleService discountRuleService;
     @Autowired
     private DiscountAssignmentPolicyService policyService;
+    @Autowired
+    private WithdrawalFrequencyService withdrawalFrequencyService;
 
     public PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl(PlatformSecurityContext context,
             SavingsProductRepository savingProductRepository, SavingsProductDataValidator fromApiJsonDataValidator,
@@ -98,6 +101,8 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
                 applyEmtLevyIfPresent(command, product, true);
                 // Handle discount rules during product creation
                 handleDiscountRules(command, productId, true);
+                // Handle withdrawal frequency settings during product creation
+                handleWithdrawalFrequencySettings(command, productId, true);
             }
         }
         return result;
@@ -111,15 +116,18 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
         Map<String, Object> baseChanges = baseResult.getChanges();
         boolean emtUpdated = false;
         boolean discountUpdated = false;
+        boolean withdrawalFrequencyUpdated = false;
         if (product != null) {
             ensureEmtFinancialActivityConfigured(product, command);
             emtUpdated = applyEmtLevyIfPresent(command, product, false);
             // Handle discount rules during product update
             discountUpdated = handleDiscountRules(command, productId, false);
+            // Handle withdrawal frequency settings during product update
+            withdrawalFrequencyUpdated = handleWithdrawalFrequencySettings(command, productId, false);
         }
         this.cascadeChargeChangesToAccounts(product, baseChanges);
         // Build result with changes
-        if (emtUpdated || discountUpdated) {
+        if (emtUpdated || discountUpdated || withdrawalFrequencyUpdated) {
             CommandProcessingResultBuilder builder = new CommandProcessingResultBuilder().withEntityId(productId);
             if (baseChanges != null) {
                 builder.with(baseChanges);
@@ -510,5 +518,50 @@ public class PaystackSavingsProductWritePlatformServiceJpaRepositoryImpl extends
         newCharge.update(account);
 
         return newCharge;
+    }
+
+    /**
+     * Handle withdrawal frequency settings during product creation/update
+     */
+    private boolean handleWithdrawalFrequencySettings(JsonCommand command, Long productId, boolean isNew) {
+        try {
+            // Check if withdrawal frequency settings are provided
+            if (command.parameterExists("withdrawalFrequencySettings")) {
+                JsonArray settingsArray = command.arrayOfParameterNamed("withdrawalFrequencySettings");
+
+                if (settingsArray != null && !settingsArray.isEmpty()) {
+                    List<WithdrawalFrequencySettingData> settingsData = new ArrayList<>();
+
+                    for (int i = 0; i < settingsArray.size(); i++) {
+                        JsonObject settingObject = settingsArray.get(i).getAsJsonObject();
+                        WithdrawalFrequencySettingData settingData = WithdrawalFrequencySettingData.fromJson(settingObject);
+
+                        if (settingData != null && settingData.isValid()) {
+                            settingsData.add(settingData);
+                        }
+                    }
+
+                    if (!settingsData.isEmpty()) {
+                        withdrawalFrequencyService.createProductSettings(productId, settingsData);
+                        return true;
+                    }
+                } else {
+                    // If array is empty, remove all settings
+                    withdrawalFrequencyService.createProductSettings(productId, new ArrayList<>());
+                    return true;
+                }
+            } else {
+                // If parameter is not provided in PUT request, clear existing settings
+                // This ensures PUT operations are idempotent - missing fields are cleared
+                if (!isNew) {
+                    withdrawalFrequencyService.createProductSettings(productId, new ArrayList<>());
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            // Log error but don't fail the product operation
+            log.error("Failed to handle withdrawal frequency settings for product {}", productId, e);
+        }
+        return false;
     }
 }

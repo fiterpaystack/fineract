@@ -23,6 +23,7 @@ import static org.apache.fineract.portfolio.savings.SavingsApiConstants.SAVINGS_
 
 import com.paystack.fineract.client.charge.service.ClientChargeOverrideReadService;
 import com.paystack.fineract.portfolio.account.data.ChargePaymentResult;
+import com.paystack.fineract.portfolio.savings.service.WithdrawalFrequencyService;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.time.LocalDate;
@@ -96,6 +97,7 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
     private final ChargeRepositoryWrapper chargeRepositoryWrapper;
     private final SavingsAccountChargeRepositoryWrapper savingsAccountChargeRepositoryWrapper;
     private final FeeSplitService feeSplitService;
+    private final WithdrawalFrequencyService withdrawalFrequencyService;
 
     public PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl(PlatformSecurityContext context,
             SavingsAccountDataValidator fromApiJsonDeserializer, SavingsAccountRepositoryWrapper savingAccountRepositoryWrapper,
@@ -113,7 +115,8 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
             StandingInstructionRepository standingInstructionRepository, BusinessEventNotifierService businessEventNotifierService,
             GSIMRepositoy gsimRepository, SavingsAccountInterestPostingService savingsAccountInterestPostingService,
             ErrorHandler errorHandler, SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService,
-            ClientChargeOverrideReadService clientChargeOverrideReadService, FeeSplitService feeSplitService) {
+            ClientChargeOverrideReadService clientChargeOverrideReadService, FeeSplitService feeSplitService,
+            WithdrawalFrequencyService withdrawalFrequencyService) {
         super(context, fromApiJsonDeserializer, savingAccountRepositoryWrapper, staffRepository, savingsAccountTransactionRepository,
                 savingAccountAssembler, savingsAccountTransactionDataValidator, savingsAccountChargeDataValidator,
                 paymentDetailWritePlatformService, journalEntryWritePlatformService, savingsAccountDomainService, noteRepository,
@@ -128,6 +131,7 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
         this.chargeRepositoryWrapper = chargeRepository;
         this.savingsAccountChargeRepositoryWrapper = savingsAccountChargeRepository;
         this.feeSplitService = feeSplitService;
+        this.withdrawalFrequencyService = withdrawalFrequencyService;
     }
 
     @Override
@@ -382,4 +386,6 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
                 .withSavingsId(savingsAccountCharge.savingsAccount().getId()) //
                 .build();
     }
+
+    // Removed obsolete withdrawal frequency endpoints; consolidated via SavingsApplicationProcess decorator
 }

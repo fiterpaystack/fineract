@@ -38,7 +38,9 @@ public class PaystackSavingsProductDataValidator extends SavingsProductDataValid
                 PaystackSavingsProductAdditionalAttributes.EMT_OVERRIDE_GLOBAL_LEVY,
                 // Discount Engine Parameters
                 PaystackSavingsProductAdditionalAttributes.ENABLE_DISCOUNT_ENGINE,
-                PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES));
+                PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES,
+                // Withdrawal Frequency Controls
+                "withdrawalFrequencySettings"));
     }
 
     @Override
@@ -46,6 +48,7 @@ public class PaystackSavingsProductDataValidator extends SavingsProductDataValid
         super.validateForCreate(json);
         validateEmtLevyParams(json);
         validateDiscountParams(json);
+        validateWithdrawalFrequencyParams(json);
     }
 
     @Override
@@ -53,6 +56,7 @@ public class PaystackSavingsProductDataValidator extends SavingsProductDataValid
         super.validateForUpdate(json, product);
         validateEmtLevyParams(json);
         validateDiscountParams(json);
+        validateWithdrawalFrequencyParams(json);
     }
 
     private void validateEmtLevyParams(String json) {
@@ -137,6 +141,56 @@ public class PaystackSavingsProductDataValidator extends SavingsProductDataValid
 
         if (!dataValidationErrors.isEmpty()) {
             throw new PlatformApiDataValidationException(dataValidationErrors);
+        }
+    }
+
+    private void validateWithdrawalFrequencyParams(String json) {
+        final JsonElement element = this.paystackFromJsonHelper.parse(json);
+        final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+        final DataValidatorBuilder base = new DataValidatorBuilder(dataValidationErrors).resource("savingsproduct.withdrawalfrequency");
+
+        // Validate withdrawalFrequencySettings parameter
+        if (paystackFromJsonHelper.parameterExists("withdrawalFrequencySettings", element)) {
+            JsonArray withdrawalFrequencySettings = paystackFromJsonHelper.extractJsonArrayNamed("withdrawalFrequencySettings", element);
+            base.reset().parameter("withdrawalFrequencySettings").value(withdrawalFrequencySettings).notNull().jsonArrayNotEmpty();
+
+            // Validate each setting in the array
+            if (withdrawalFrequencySettings != null && !withdrawalFrequencySettings.isEmpty()) {
+                for (int i = 0; i < withdrawalFrequencySettings.size(); i++) {
+                    JsonElement setting = withdrawalFrequencySettings.get(i);
+                    if (setting.isJsonObject()) {
+                        validateWithdrawalFrequencySetting(setting.getAsJsonObject(), i, dataValidationErrors);
+                    }
+                }
+            }
+        }
+
+        if (!dataValidationErrors.isEmpty()) {
+            throw new PlatformApiDataValidationException(dataValidationErrors);
+        }
+    }
+
+    private void validateWithdrawalFrequencySetting(com.google.gson.JsonObject setting, int index,
+            List<ApiParameterError> dataValidationErrors) {
+        final DataValidatorBuilder base = new DataValidatorBuilder(dataValidationErrors)
+                .resource("savingsproduct.withdrawalfrequency.setting[" + index + "]");
+
+        // Validate maxWithdrawals
+        if (setting.has("maxWithdrawals")) {
+            Integer maxWithdrawals = paystackFromJsonHelper.extractIntegerSansLocaleNamed("maxWithdrawals", setting);
+            base.reset().parameter("maxWithdrawals").value(maxWithdrawals).notNull().integerGreaterThanZero();
+        }
+
+        // Validate timePeriod
+        if (setting.has("timePeriod")) {
+            String timePeriod = paystackFromJsonHelper.extractStringNamed("timePeriod", setting);
+            base.reset().parameter("timePeriod").value(timePeriod).notNull().isOneOfTheseValues("DAILY", "WEEKLY", "MONTHLY", "YEARLY");
+        }
+
+        // Validate isActive (optional)
+        if (setting.has("isActive")) {
+            Boolean isActive = paystackFromJsonHelper.extractBooleanNamed("isActive", setting);
+            base.reset().parameter("isActive").value(isActive).ignoreIfNull().validateForBooleanValue();
         }
     }
 }

@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="paystack-withdrawal-frequency-002" author="paystack">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_savings_product_withdrawal_frequency_setting"/>
+            </not>
+        </preConditions>
+        <comment>Create product-level withdrawal frequency controls table</comment>
+
+        <!-- Product-level withdrawal frequency settings -->
+        <createTable tableName="m_savings_product_withdrawal_frequency_setting">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="savings_product_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="max_withdrawals" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="time_period" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on_utc" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Database-agnostic unique constraints using SQL -->
+        <sql dbms="postgresql">
+            ALTER TABLE m_savings_product_withdrawal_frequency_setting
+            ADD CONSTRAINT uq_spwfs_product_period
+            UNIQUE (savings_product_id, time_period);
+        </sql>
+
+        <sql dbms="mysql">
+            ALTER TABLE m_savings_product_withdrawal_frequency_setting
+            ADD CONSTRAINT uq_spwfs_product_period
+            UNIQUE (savings_product_id, time_period);
+        </sql>
+
+        <sql dbms="h2">
+            ALTER TABLE m_savings_product_withdrawal_frequency_setting
+            ADD CONSTRAINT uq_spwfs_product_period
+            UNIQUE (savings_product_id, time_period);
+        </sql>
+
+        <!-- Foreign key constraints -->
+        <addForeignKeyConstraint baseTableName="m_savings_product_withdrawal_frequency_setting"
+                                 baseColumnNames="savings_product_id"
+                                 referencedTableName="m_savings_product"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_spwfs_product_id"
+                                 onDelete="CASCADE"
+                                 onUpdate="CASCADE"/>
+
+        <!-- Audit foreign keys -->
+        <addForeignKeyConstraint baseTableName="m_savings_product_withdrawal_frequency_setting"
+                                 baseColumnNames="created_by"
+                                 referencedTableName="m_appuser"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_spwfs_created_by"/>
+
+        <addForeignKeyConstraint baseTableName="m_savings_product_withdrawal_frequency_setting"
+                                 baseColumnNames="last_modified_by"
+                                 referencedTableName="m_appuser"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_spwfs_modified_by"/>
+
+        <!-- Performance indexes -->
+        <createIndex tableName="m_savings_product_withdrawal_frequency_setting" indexName="idx_spwfs_product_id">
+            <column name="savings_product_id"/>
+        </createIndex>
+
+        <createIndex tableName="m_savings_product_withdrawal_frequency_setting" indexName="idx_spwfs_product_period">
+            <column name="savings_product_id"/>
+            <column name="time_period"/>
+        </createIndex>
+
+        <createIndex tableName="m_savings_product_withdrawal_frequency_setting" indexName="idx_spwfs_active">
+            <column name="is_active"/>
+        </createIndex>
+
+        <!-- Add permissions for withdrawal frequency management -->
+        <sql>
+            INSERT INTO m_permission (grouping, code, entity_name, action_name, can_maker_checker)
+            VALUES
+            ('portfolio', 'READ_WITHDRAWALFREQUENCY', 'WITHDRAWALFREQUENCY', 'READ', false),
+            ('portfolio', 'CREATE_WITHDRAWALFREQUENCY', 'WITHDRAWALFREQUENCY', 'CREATE', true),
+            ('portfolio', 'UPDATE_WITHDRAWALFREQUENCY', 'WITHDRAWALFREQUENCY', 'UPDATE', true),
+            ('portfolio', 'DELETE_WITHDRAWALFREQUENCY', 'WITHDRAWALFREQUENCY', 'DELETE', true);
+        </sql>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="m_savings_product_withdrawal_frequency_setting"
+                                     constraintName="fk_spwfs_modified_by"/>
+
+            <dropForeignKeyConstraint baseTableName="m_savings_product_withdrawal_frequency_setting"
+                                     constraintName="fk_spwfs_created_by"/>
+
+            <dropForeignKeyConstraint baseTableName="m_savings_product_withdrawal_frequency_setting"
+                                     constraintName="fk_spwfs_product_id"/>
+
+            <dropTable tableName="m_savings_product_withdrawal_frequency_setting"/>
+
+            <sql>
+                DELETE FROM m_permission WHERE code IN (
+                    'READ_WITHDRAWALFREQUENCY',
+                    'CREATE_WITHDRAWALFREQUENCY',
+                    'UPDATE_WITHDRAWALFREQUENCY',
+                    'DELETE_WITHDRAWALFREQUENCY'
+                );
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
