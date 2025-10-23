@@ -46,7 +46,7 @@ public enum TimePeriod {
         try {
             return TimePeriod.valueOf(value.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid time period: " + value + ". Valid values are: DAILY, WEEKLY, MONTHLY, YEARLY");
+            throw new IllegalArgumentException("Invalid time period: " + value + ". Valid values are: DAILY, WEEKLY, MONTHLY, YEARLY", e);
         }
     }
 
