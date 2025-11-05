@@ -39,6 +39,7 @@ import org.apache.fineract.infrastructure.bulkimport.domain.ImportDocumentReposi
 import org.apache.fineract.infrastructure.bulkimport.importhandler.ImportHandlerUtils;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
 import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
+import org.apache.fineract.infrastructure.core.exception.ResourceNotFoundException;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
 import org.apache.fineract.infrastructure.documentmanagement.data.DocumentData;
@@ -247,7 +248,7 @@ public class BulkImportWorkbookServiceImpl implements BulkImportWorkbookService 
         final ImportTemplateLocationMapper importTemplateLocationMapper = new ImportTemplateLocationMapper();
         final String sql = "select " + importTemplateLocationMapper.schema();
 
-        return this.jdbcTemplate.queryForObject(sql, importTemplateLocationMapper, new Object[] { Integer.parseInt(importDocumentId) }); // NOSONAR
+        return this.jdbcTemplate.queryForObject(sql, importTemplateLocationMapper, new Object[] { Long.parseLong(importDocumentId) }); // NOSONAR
     }
 
     @Override
@@ -255,14 +256,23 @@ public class BulkImportWorkbookServiceImpl implements BulkImportWorkbookService 
         this.securityContext.authenticatedUser();
         final ImportTemplateLocationMapper importTemplateLocationMapper = new ImportTemplateLocationMapper();
         final String sql = "select " + importTemplateLocationMapper.schema();
-        DocumentData documentData = this.jdbcTemplate.queryForObject(sql, importTemplateLocationMapper, new Object[] { importDocumentId }); // NOSONAR
+        DocumentData documentData = this.jdbcTemplate.queryForObject(sql, importTemplateLocationMapper,
+                new Object[] { Long.parseLong(importDocumentId) }); // NOSONAR
         return buildResponse(documentData);
     }
 
     private Response buildResponse(DocumentData documentData) {
         String fileName = "Output" + documentData.getFileName();
         String fileLocation = documentData.getLocation();
+        if (fileLocation == null || fileLocation.isBlank()) {
+            throw new ResourceNotFoundException("error.msg.document.location.missing", "Document file location is missing",
+                    new Object[] {});
+        }
         File file = new File(fileLocation);
+        if (!file.exists() || !file.isFile()) {
+            throw new ResourceNotFoundException("error.msg.document.file.not.found", "Document file not found at location: " + fileLocation,
+                    new Object[] { fileLocation });
+        }
         final Response.ResponseBuilder response = Response.ok(file);
         response.header("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
         response.header("Content-Type", "application/vnd.ms-excel");
