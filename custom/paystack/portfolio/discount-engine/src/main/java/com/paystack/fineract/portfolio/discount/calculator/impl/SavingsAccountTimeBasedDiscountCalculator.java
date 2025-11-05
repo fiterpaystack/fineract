@@ -27,6 +27,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -105,7 +106,8 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
         Map<String, String> descriptions = new HashMap<>();
         descriptions.put(PARAM_TIME_RULE_TYPE, "Time rule type: [WEEKEND, HOLIDAY, DATE_RANGE]");
         descriptions.put(PARAM_DISCOUNT_PERCENTAGE, "Discount percentage to apply (0 < p <= 100)");
-        descriptions.put(PARAM_WEEKEND_DAYS, "Weekend days for WEEKEND rule: [SATURDAY, SUNDAY] (optional)");
+        descriptions.put(PARAM_WEEKEND_DAYS,
+                "Weekend days for WEEKEND rule: [WEEKEND, SATURDAY, SUNDAY] (optional). Use 'WEEKEND' for both Saturday and Sunday.");
         descriptions.put(PARAM_START_DATE, "Start date for date range constraint (optional)");
         descriptions.put(PARAM_END_DATE, "End date for date range constraint (optional)");
         descriptions.put(PARAM_DATE_FORMAT, "Custom date format for parsing dates (default: yyyy-MM-dd)");
@@ -290,7 +292,7 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
     }
 
     /**
-     * Parse weekend days parameter
+     * Parse weekend days parameter Supports "WEEKEND" as a special value that means both Saturday and Sunday
      */
     @SuppressWarnings("unchecked")
     private List<String> parseWeekendDays(Map<String, Object> parameters) {
@@ -299,7 +301,24 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
         }
         Object val = parameters.get(PARAM_WEEKEND_DAYS);
         if (val instanceof List) {
-            return (List<String>) val;
+            List<String> days = (List<String>) val;
+            // Normalize "WEEKEND" - if present, expand to both Saturday and Sunday
+            // Remove duplicates while preserving order
+            if (days.stream().anyMatch(day -> "WEEKEND".equalsIgnoreCase(day))) {
+                List<String> normalized = new ArrayList<>();
+                // Add SATURDAY and SUNDAY if WEEKEND is present
+                if (!days.contains("SATURDAY")) {
+                    normalized.add("SATURDAY");
+                }
+                if (!days.contains("SUNDAY")) {
+                    normalized.add("SUNDAY");
+                }
+                // Add other valid day names (excluding WEEKEND)
+                days.stream().filter(day -> !"WEEKEND".equalsIgnoreCase(day)).filter(day -> !normalized.contains(day))
+                        .forEach(normalized::add);
+                return normalized;
+            }
+            return days;
         }
         log.warn("TIME_BASED CALCULATOR: Invalid weekend days format '{}'", val);
         return Collections.emptyList();

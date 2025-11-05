@@ -154,6 +154,100 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
             // Then
             assertThat(discount).isEqualByComparingTo(BigDecimal.ZERO);
         }
+
+        @Test
+        @DisplayName("Should apply weekend discount on Saturday when WEEKEND option is specified")
+        void shouldApplyWeekendDiscountOnSaturdayWithWeekendOption() {
+            // Given
+            Map<String, Object> parameters = createWeekendParameters(BigDecimal.valueOf(10.0), List.of("WEEKEND"));
+            calculator.configure(parameters);
+
+            DiscountContext context = createContext(LocalDate.of(2024, 1, 6)); // Saturday
+            BigDecimal originalAmount = BigDecimal.valueOf(100.00);
+
+            // When
+            BigDecimal discount = calculator.calculateDiscount(originalAmount, context);
+
+            // Then
+            assertThat(discount).isEqualByComparingTo(BigDecimal.valueOf(10.00));
+        }
+
+        @Test
+        @DisplayName("Should apply weekend discount on Sunday when WEEKEND option is specified")
+        void shouldApplyWeekendDiscountOnSundayWithWeekendOption() {
+            // Given
+            Map<String, Object> parameters = createWeekendParameters(BigDecimal.valueOf(15.0), List.of("WEEKEND"));
+            calculator.configure(parameters);
+
+            DiscountContext context = createContext(LocalDate.of(2024, 1, 7)); // Sunday
+            BigDecimal originalAmount = BigDecimal.valueOf(200.00);
+
+            // When
+            BigDecimal discount = calculator.calculateDiscount(originalAmount, context);
+
+            // Then
+            assertThat(discount).isEqualByComparingTo(BigDecimal.valueOf(30.00));
+        }
+
+        @Test
+        @DisplayName("Should not apply weekend discount on weekday when WEEKEND option is specified")
+        void shouldNotApplyWeekendDiscountOnWeekdayWithWeekendOption() {
+            // Given
+            Map<String, Object> parameters = createWeekendParameters(BigDecimal.valueOf(10.0), List.of("WEEKEND"));
+            calculator.configure(parameters);
+
+            DiscountContext context = createContext(LocalDate.of(2024, 1, 8)); // Monday
+            BigDecimal originalAmount = BigDecimal.valueOf(100.00);
+
+            // When
+            BigDecimal discount = calculator.calculateDiscount(originalAmount, context);
+
+            // Then
+            assertThat(discount).isEqualByComparingTo(BigDecimal.ZERO);
+        }
+
+        @Test
+        @DisplayName("Should handle WEEKEND option with date range constraint")
+        void shouldHandleWeekendOptionWithDateRange() {
+            // Given
+            Map<String, Object> parameters = createWeekendParametersWithDateRange(BigDecimal.valueOf(15.0), List.of("WEEKEND"),
+                    TEST_START_DATE_JAN, TEST_END_DATE_JAN);
+            calculator.configure(parameters);
+
+            DiscountContext context = createContext(LocalDate.of(2024, 1, 6)); // Saturday within range
+            BigDecimal originalAmount = BigDecimal.valueOf(100.00);
+
+            // When
+            BigDecimal discount = calculator.calculateDiscount(originalAmount, context);
+
+            // Then
+            assertThat(discount).isEqualByComparingTo(BigDecimal.valueOf(15.00));
+        }
+
+        @Test
+        @DisplayName("Should handle WEEKEND option combined with SATURDAY (should not duplicate)")
+        void shouldHandleWeekendOptionWithSaturday() {
+            // Given - WEEKEND should expand to both Saturday and Sunday, even if SATURDAY is also specified
+            Map<String, Object> parameters = createWeekendParameters(BigDecimal.valueOf(10.0), List.of("WEEKEND", "SATURDAY"));
+            calculator.configure(parameters);
+
+            // Saturday should work
+            DiscountContext contextSaturday = createContext(LocalDate.of(2024, 1, 6)); // Saturday
+            BigDecimal originalAmount = BigDecimal.valueOf(100.00);
+
+            // When
+            BigDecimal discountSaturday = calculator.calculateDiscount(originalAmount, contextSaturday);
+
+            // Then
+            assertThat(discountSaturday).isEqualByComparingTo(BigDecimal.valueOf(10.00));
+
+            // Sunday should also work (WEEKEND expands to include Sunday)
+            DiscountContext contextSunday = createContext(LocalDate.of(2024, 1, 7)); // Sunday
+            BigDecimal discountSunday = calculator.calculateDiscount(originalAmount, contextSunday);
+
+            // Then
+            assertThat(discountSunday).isEqualByComparingTo(BigDecimal.valueOf(10.00));
+        }
     }
 
     @Nested
