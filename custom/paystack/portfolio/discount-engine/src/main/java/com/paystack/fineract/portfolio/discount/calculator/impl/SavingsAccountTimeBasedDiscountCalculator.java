@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -305,7 +306,7 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
             boolean hasWeekendToken = days.stream().anyMatch(day -> "WEEKEND".equalsIgnoreCase(day));
 
             // Use LinkedHashSet to preserve order and ensure uniqueness; normalize to uppercase
-            java.util.LinkedHashSet<String> normalizedSet = new java.util.LinkedHashSet<>();
+            LinkedHashSet<String> normalizedSet = new LinkedHashSet<>();
 
             if (hasWeekendToken) {
                 // Expand WEEKEND to SATURDAY and SUNDAY

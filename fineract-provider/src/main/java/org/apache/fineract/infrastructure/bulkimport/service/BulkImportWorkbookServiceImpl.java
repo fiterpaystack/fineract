@@ -266,11 +266,11 @@ public class BulkImportWorkbookServiceImpl implements BulkImportWorkbookService 
         String fileLocation = documentData.getLocation();
         if (fileLocation == null || fileLocation.isBlank()) {
             throw new ResourceNotFoundException("error.msg.document.location.missing", "Document file location is missing",
-                    new Object[] {});
+                    new Object[] { documentData.getFileName() });
         }
         File file = new File(fileLocation);
         if (!file.exists() || !file.isFile()) {
-            throw new ResourceNotFoundException("error.msg.document.file.not.found", "Document file not found at location: " + fileLocation,
+            throw new ResourceNotFoundException("error.msg.document.file.not.found", "Document file not found at location: {0}",
                     new Object[] { fileLocation });
         }
         final Response.ResponseBuilder response = Response.ok(file);
