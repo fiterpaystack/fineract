@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -292,7 +293,7 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
     }
 
     /**
-     * Parse weekend days parameter Supports "WEEKEND" as a special value that means both Saturday and Sunday
+     * Parse weekend days parameter. Supports "WEEKEND" as a special value that means both Saturday and Sunday.
      */
     @SuppressWarnings("unchecked")
     private List<String> parseWeekendDays(Map<String, Object> parameters) {
@@ -302,23 +303,23 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
         Object val = parameters.get(PARAM_WEEKEND_DAYS);
         if (val instanceof List) {
             List<String> days = (List<String>) val;
-            // Normalize "WEEKEND" - if present, expand to both Saturday and Sunday
-            // Remove duplicates while preserving order
-            if (days.stream().anyMatch(day -> "WEEKEND".equalsIgnoreCase(day))) {
-                List<String> normalized = new ArrayList<>();
-                // Add SATURDAY and SUNDAY if WEEKEND is present
-                if (!days.contains("SATURDAY")) {
-                    normalized.add("SATURDAY");
-                }
-                if (!days.contains("SUNDAY")) {
-                    normalized.add("SUNDAY");
-                }
-                // Add other valid day names (excluding WEEKEND)
-                days.stream().filter(day -> !"WEEKEND".equalsIgnoreCase(day)).filter(day -> !normalized.contains(day))
-                        .forEach(normalized::add);
-                return normalized;
+            boolean hasWeekendToken = days.stream().anyMatch(day -> "WEEKEND".equalsIgnoreCase(day));
+
+            // Use LinkedHashSet to preserve order and ensure uniqueness; normalize to uppercase
+            LinkedHashSet<String> normalizedSet = new LinkedHashSet<>();
+
+            if (hasWeekendToken) {
+                // Expand WEEKEND to SATURDAY and SUNDAY
+                normalizedSet.add("SATURDAY");
+                normalizedSet.add("SUNDAY");
+                // Add other provided day names except the WEEKEND token
+                days.stream().filter(day -> !"WEEKEND".equalsIgnoreCase(day)).map(String::toUpperCase).forEach(normalizedSet::add);
+            } else {
+                // No WEEKEND token; just normalize and de-duplicate provided days
+                days.stream().map(String::toUpperCase).forEach(normalizedSet::add);
             }
-            return days;
+
+            return new ArrayList<>(normalizedSet);
         }
         log.warn("TIME_BASED CALCULATOR: Invalid weekend days format '{}'", val);
         return Collections.emptyList();
