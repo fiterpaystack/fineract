@@ -17,9 +17,9 @@
         <preConditions onFail="MARK_RAN" onError="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT CASE WHEN EXISTS (
-                    SELECT 1 FROM information_schema.table_constraints 
-                    WHERE table_schema = 'public' 
-                      AND table_name = 'm_discount_rule_product' 
+                    SELECT 1 FROM information_schema.table_constraints
+                    WHERE table_schema = 'public'
+                      AND table_name = 'm_discount_rule_product'
                       AND constraint_name = 'uq_drp_rule_product')
                 THEN 1 ELSE 0 END
             </sqlCheck>
@@ -31,9 +31,9 @@
     <changeSet id="0004-02-add-pk-m_discount_rule_product" author="paystack">
         <preConditions onFail="MARK_RAN" onError="MARK_RAN">
             <sqlCheck expectedResult="0">
-                SELECT COUNT(*) FROM information_schema.table_constraints 
-                WHERE table_schema = 'public' 
-                  AND table_name = 'm_discount_rule_product' 
+                SELECT COUNT(*) FROM information_schema.table_constraints
+                WHERE table_schema = 'public'
+                  AND table_name = 'm_discount_rule_product'
                   AND constraint_type = 'PRIMARY KEY'
             </sqlCheck>
         </preConditions>
@@ -47,9 +47,9 @@
         <preConditions onFail="MARK_RAN" onError="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT CASE WHEN EXISTS (
-                    SELECT 1 FROM information_schema.table_constraints 
-                    WHERE table_schema = 'public' 
-                      AND table_name = 'm_discount_rule_charge' 
+                    SELECT 1 FROM information_schema.table_constraints
+                    WHERE table_schema = 'public'
+                      AND table_name = 'm_discount_rule_charge'
                       AND constraint_name = 'uq_drc_rule_charge')
                 THEN 1 ELSE 0 END
             </sqlCheck>
@@ -61,9 +61,9 @@
     <changeSet id="0004-04-add-pk-m_discount_rule_charge" author="paystack">
         <preConditions onFail="MARK_RAN" onError="MARK_RAN">
             <sqlCheck expectedResult="0">
-                SELECT COUNT(*) FROM information_schema.table_constraints 
-                WHERE table_schema = 'public' 
-                  AND table_name = 'm_discount_rule_charge' 
+                SELECT COUNT(*) FROM information_schema.table_constraints
+                WHERE table_schema = 'public'
+                  AND table_name = 'm_discount_rule_charge'
                   AND constraint_type = 'PRIMARY KEY'
             </sqlCheck>
         </preConditions>
@@ -73,5 +73,3 @@
     </changeSet>
 
 </databaseChangeLog>
-
-

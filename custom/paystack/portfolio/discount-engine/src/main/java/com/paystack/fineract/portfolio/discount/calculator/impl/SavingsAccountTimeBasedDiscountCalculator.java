@@ -106,7 +106,8 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
         Map<String, String> descriptions = new HashMap<>();
         descriptions.put(PARAM_TIME_RULE_TYPE, "Time rule type: [WEEKEND, HOLIDAY, DATE_RANGE]");
         descriptions.put(PARAM_DISCOUNT_PERCENTAGE, "Discount percentage to apply (0 < p <= 100)");
-        descriptions.put(PARAM_WEEKEND_DAYS, "Weekend days for WEEKEND rule: [WEEKEND, SATURDAY, SUNDAY] (optional). Use 'WEEKEND' for both Saturday and Sunday.");
+        descriptions.put(PARAM_WEEKEND_DAYS,
+                "Weekend days for WEEKEND rule: [WEEKEND, SATURDAY, SUNDAY] (optional). Use 'WEEKEND' for both Saturday and Sunday.");
         descriptions.put(PARAM_START_DATE, "Start date for date range constraint (optional)");
         descriptions.put(PARAM_END_DATE, "End date for date range constraint (optional)");
         descriptions.put(PARAM_DATE_FORMAT, "Custom date format for parsing dates (default: yyyy-MM-dd)");
@@ -291,8 +292,7 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
     }
 
     /**
-     * Parse weekend days parameter
-     * Supports "WEEKEND" as a special value that means both Saturday and Sunday
+     * Parse weekend days parameter Supports "WEEKEND" as a special value that means both Saturday and Sunday
      */
     @SuppressWarnings("unchecked")
     private List<String> parseWeekendDays(Map<String, Object> parameters) {
@@ -314,10 +314,8 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
                     normalized.add("SUNDAY");
                 }
                 // Add other valid day names (excluding WEEKEND)
-                days.stream()
-                    .filter(day -> !"WEEKEND".equalsIgnoreCase(day))
-                    .filter(day -> !normalized.contains(day))
-                    .forEach(normalized::add);
+                days.stream().filter(day -> !"WEEKEND".equalsIgnoreCase(day)).filter(day -> !normalized.contains(day))
+                        .forEach(normalized::add);
                 return normalized;
             }
             return days;
