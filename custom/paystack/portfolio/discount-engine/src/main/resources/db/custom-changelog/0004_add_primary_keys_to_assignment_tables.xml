@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+    <!--
+        Purpose: Ensure join tables used by discount engine have PRIMARY KEYs so that
+        PostgreSQL can use replica identity for DELETEs in logical replication.
+
+        Changes:
+        - Drop existing unique constraints
+        - Add composite primary keys
+    -->
+
+    <!-- Drop unique constraint from m_discount_rule_product if present -->
+    <changeSet id="0004-01-drop-uniq-m_discount_rule_product" author="paystack">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT CASE WHEN EXISTS (
+                    SELECT 1 FROM information_schema.table_constraints 
+                    WHERE table_schema = 'public' 
+                      AND table_name = 'm_discount_rule_product' 
+                      AND constraint_name = 'uq_drp_rule_product')
+                THEN 1 ELSE 0 END
+            </sqlCheck>
+        </preConditions>
+        <dropUniqueConstraint tableName="m_discount_rule_product" constraintName="uq_drp_rule_product"/>
+    </changeSet>
+
+    <!-- Add composite primary key to m_discount_rule_product if missing -->
+    <changeSet id="0004-02-add-pk-m_discount_rule_product" author="paystack">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM information_schema.table_constraints 
+                WHERE table_schema = 'public' 
+                  AND table_name = 'm_discount_rule_product' 
+                  AND constraint_type = 'PRIMARY KEY'
+            </sqlCheck>
+        </preConditions>
+        <addPrimaryKey tableName="m_discount_rule_product"
+                       columnNames="discount_rule_id,product_id"
+                       constraintName="pk_m_discount_rule_product"/>
+    </changeSet>
+
+    <!-- Drop unique constraint from m_discount_rule_charge if present -->
+    <changeSet id="0004-03-drop-uniq-m_discount_rule_charge" author="paystack">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT CASE WHEN EXISTS (
+                    SELECT 1 FROM information_schema.table_constraints 
+                    WHERE table_schema = 'public' 
+                      AND table_name = 'm_discount_rule_charge' 
+                      AND constraint_name = 'uq_drc_rule_charge')
+                THEN 1 ELSE 0 END
+            </sqlCheck>
+        </preConditions>
+        <dropUniqueConstraint tableName="m_discount_rule_charge" constraintName="uq_drc_rule_charge"/>
+    </changeSet>
+
+    <!-- Add composite primary key to m_discount_rule_charge if missing -->
+    <changeSet id="0004-04-add-pk-m_discount_rule_charge" author="paystack">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM information_schema.table_constraints 
+                WHERE table_schema = 'public' 
+                  AND table_name = 'm_discount_rule_charge' 
+                  AND constraint_type = 'PRIMARY KEY'
+            </sqlCheck>
+        </preConditions>
+        <addPrimaryKey tableName="m_discount_rule_charge"
+                       columnNames="discount_rule_id,charge_id"
+                       constraintName="pk_m_discount_rule_charge"/>
+    </changeSet>
+
+</databaseChangeLog>
+
+
