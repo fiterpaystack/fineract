@@ -58,7 +58,6 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
     private static final String PARAM_WEEKEND_DAYS = "weekendDays";
     private static final String PARAM_START_DATE = "startDate";
     private static final String PARAM_END_DATE = "endDate";
-    private static final String PARAM_DATE_FORMAT = "dateFormat";
 
     // Time rule type constants
     private static final String TIME_RULE_WEEKEND = "WEEKEND";
@@ -75,7 +74,6 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
     private List<String> weekendDays;
     private LocalDate startDate;
     private LocalDate endDate;
-    private String dateFormat;
 
     @Override
     public String getRuleType() {
@@ -99,7 +97,7 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
 
     @Override
     public List<String> getOptionalParameters() {
-        return Arrays.asList(PARAM_WEEKEND_DAYS, PARAM_START_DATE, PARAM_END_DATE, PARAM_DATE_FORMAT);
+        return Arrays.asList(PARAM_WEEKEND_DAYS, PARAM_START_DATE, PARAM_END_DATE);
     }
 
     @Override
@@ -109,9 +107,8 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
         descriptions.put(PARAM_DISCOUNT_PERCENTAGE, "Discount percentage to apply (0 < p <= 100)");
         descriptions.put(PARAM_WEEKEND_DAYS,
                 "Weekend days for WEEKEND rule: [WEEKEND, SATURDAY, SUNDAY] (optional). Use 'WEEKEND' for both Saturday and Sunday.");
-        descriptions.put(PARAM_START_DATE, "Start date for date range constraint (optional)");
-        descriptions.put(PARAM_END_DATE, "End date for date range constraint (optional)");
-        descriptions.put(PARAM_DATE_FORMAT, "Custom date format for parsing dates (default: yyyy-MM-dd)");
+        descriptions.put(PARAM_START_DATE, "Start date for date range constraint (optional, format: yyyy-MM-dd)");
+        descriptions.put(PARAM_END_DATE, "End date for date range constraint (optional, format: yyyy-MM-dd)");
         return descriptions;
     }
 
@@ -150,7 +147,6 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
         this.timeRuleType = parseStringParam(parameters, PARAM_TIME_RULE_TYPE);
         this.discountPercentage = parseDiscountPercentage(parameters);
         this.weekendDays = parseWeekendDays(parameters);
-        this.dateFormat = parseStringParam(parameters, PARAM_DATE_FORMAT, DEFAULT_DATE_FORMAT);
         this.startDate = parseDateParam(parameters, PARAM_START_DATE);
         this.endDate = parseDateParam(parameters, PARAM_END_DATE);
     }
@@ -255,14 +251,6 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
     }
 
     /**
-     * Parse string parameter with default value
-     */
-    private String parseStringParam(Map<String, Object> parameters, String key, String defaultValue) {
-        String value = parseStringParam(parameters, key);
-        return value != null ? value : defaultValue;
-    }
-
-    /**
      * Parse string parameter
      */
     private String parseStringParam(Map<String, Object> parameters, String key) {
@@ -326,7 +314,7 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
     }
 
     /**
-     * Parse date parameter with custom format support
+     * Parse date parameter using yyyy-MM-dd format
      */
     private LocalDate parseDateParam(Map<String, Object> parameters, String key) {
         if (!parameters.containsKey(key)) {
@@ -343,10 +331,10 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
         }
 
         try {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern(dateFormat);
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern(DEFAULT_DATE_FORMAT);
             return LocalDate.parse(dateString, formatter);
         } catch (DateTimeParseException e) {
-            log.warn("TIME_BASED CALCULATOR: Invalid date format '{}' for parameter '{}'", dateString, key);
+            log.warn("TIME_BASED CALCULATOR: Invalid date format '{}' for parameter '{}'. Expected format: yyyy-MM-dd", dateString, key);
             return null;
         }
     }
