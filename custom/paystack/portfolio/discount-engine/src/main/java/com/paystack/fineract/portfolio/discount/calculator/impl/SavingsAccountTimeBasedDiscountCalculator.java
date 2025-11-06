@@ -251,14 +251,6 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
     }
 
     /**
-     * Parse string parameter with default value
-     */
-    private String parseStringParam(Map<String, Object> parameters, String key, String defaultValue) {
-        String value = parseStringParam(parameters, key);
-        return value != null ? value : defaultValue;
-    }
-
-    /**
      * Parse string parameter
      */
     private String parseStringParam(Map<String, Object> parameters, String key) {
