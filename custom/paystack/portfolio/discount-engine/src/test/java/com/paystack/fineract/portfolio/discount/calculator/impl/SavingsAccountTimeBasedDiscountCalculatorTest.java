@@ -50,9 +50,6 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
     private static final String TEST_END_DATE_JAN = "2024-01-31";
     private static final String TEST_START_DATE_DEC = "2024-12-01";
     private static final String TEST_END_DATE_DEC = "2024-12-31";
-    private static final String TEST_START_DATE_NOV = "24/11/2024";
-    private static final String TEST_END_DATE_NOV = "30/11/2024";
-    private static final String TEST_DATE_FORMAT = "dd/MM/yyyy";
 
     @Mock
     private HolidayRepositoryWrapper holidayRepositoryWrapper;
@@ -389,11 +386,10 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         }
 
         @Test
-        @DisplayName("Should apply date range discount with custom date format")
-        void shouldApplyDateRangeDiscountWithCustomDateFormat() {
+        @DisplayName("Should apply date range discount with yyyy-MM-dd format")
+        void shouldApplyDateRangeDiscountWithStandardDateFormat() {
             // Given
-            Map<String, Object> parameters = createDateRangeParametersWithFormat(BigDecimal.valueOf(25.0), TEST_START_DATE_NOV,
-                    TEST_END_DATE_NOV, TEST_DATE_FORMAT);
+            Map<String, Object> parameters = createDateRangeParameters(BigDecimal.valueOf(25.0), "2024-11-24", "2024-11-30");
             calculator.configure(parameters);
 
             DiscountContext context = createContext(LocalDate.of(2024, 11, 26));
@@ -527,7 +523,7 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         @Test
         @DisplayName("Should return optional parameters")
         void shouldReturnOptionalParameters() {
-            assertThat(calculator.getOptionalParameters()).containsExactly("weekendDays", "startDate", "endDate", "dateFormat");
+            assertThat(calculator.getOptionalParameters()).containsExactly("weekendDays", "startDate", "endDate");
         }
 
         @Test
@@ -599,13 +595,6 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         parameters.put("discountPercentage", discountPercentage);
         parameters.put("startDate", startDate);
         parameters.put("endDate", endDate);
-        return parameters;
-    }
-
-    private Map<String, Object> createDateRangeParametersWithFormat(BigDecimal discountPercentage, String startDate, String endDate,
-            String dateFormat) {
-        Map<String, Object> parameters = createDateRangeParameters(discountPercentage, startDate, endDate);
-        parameters.put("dateFormat", dateFormat);
         return parameters;
     }
 
