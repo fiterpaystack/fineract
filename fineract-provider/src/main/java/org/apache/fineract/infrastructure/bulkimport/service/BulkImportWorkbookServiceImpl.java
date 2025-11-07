@@ -18,11 +18,11 @@
  */
 package org.apache.fineract.infrastructure.bulkimport.service;
 
+import com.google.common.io.ByteSource;
 import jakarta.ws.rs.core.Response;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLConnection;
@@ -42,7 +42,10 @@ import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRu
 import org.apache.fineract.infrastructure.core.exception.ResourceNotFoundException;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
+import org.apache.fineract.infrastructure.documentmanagement.contentrepository.ContentRepository;
+import org.apache.fineract.infrastructure.documentmanagement.contentrepository.ContentRepositoryFactory;
 import org.apache.fineract.infrastructure.documentmanagement.data.DocumentData;
+import org.apache.fineract.infrastructure.documentmanagement.data.FileData;
 import org.apache.fineract.infrastructure.documentmanagement.domain.Document;
 import org.apache.fineract.infrastructure.documentmanagement.domain.DocumentRepository;
 import org.apache.fineract.infrastructure.documentmanagement.service.DocumentWritePlatformService;
@@ -71,17 +74,20 @@ public class BulkImportWorkbookServiceImpl implements BulkImportWorkbookService 
     private final DocumentRepository documentRepository;
     private final ImportDocumentRepository importDocumentRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final ContentRepositoryFactory contentRepositoryFactory;
 
     @Autowired
     public BulkImportWorkbookServiceImpl(final ApplicationContext applicationContext, final PlatformSecurityContext securityContext,
             final DocumentWritePlatformService documentWritePlatformService, final DocumentRepository documentRepository,
-            final ImportDocumentRepository importDocumentRepository, final JdbcTemplate jdbcTemplate) {
+            final ImportDocumentRepository importDocumentRepository, final JdbcTemplate jdbcTemplate,
+            final ContentRepositoryFactory contentRepositoryFactory) {
         this.applicationContext = applicationContext;
         this.securityContext = securityContext;
         this.documentWritePlatformService = documentWritePlatformService;
         this.documentRepository = documentRepository;
         this.importDocumentRepository = importDocumentRepository;
         this.jdbcTemplate = jdbcTemplate;
+        this.contentRepositoryFactory = contentRepositoryFactory;
     }
 
     @Override
@@ -268,22 +274,46 @@ public class BulkImportWorkbookServiceImpl implements BulkImportWorkbookService 
             throw new ResourceNotFoundException("error.msg.document.location.missing", "Document file location is missing",
                     new Object[] { documentData.getFileName() });
         }
-        File file = new File(fileLocation);
-        if (!file.exists() || !file.isFile()) {
+        
+        // Use content repository to fetch file (works for both filesystem and S3)
+        try {
+            final ContentRepository contentRepository;
+            if (documentData.getStorageType() != null) {
+                contentRepository = this.contentRepositoryFactory.getRepository(documentData.storageType());
+            } else {
+                // If storage type is null, use the default repository from configuration
+                contentRepository = this.contentRepositoryFactory.getRepository();
+            }
+            final FileData fileData = contentRepository.fetchFile(documentData);
+            
+            // Build response from FileData
+            final Response.ResponseBuilder response;
+            try {
+                ByteSource byteSource = fileData.getByteSource();
+                InputStream is = byteSource.openBufferedStream();
+                response = Response.ok(is);
+                response.header("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
+                response.header("Content-Length", byteSource.sizeIfKnown().or(-1L));
+                response.header("Content-Type", fileData.contentType() != null ? fileData.contentType() : "application/vnd.ms-excel");
+            } catch (IOException e) {
+                LOG.error("Failed to open file stream for document: {}", fileLocation, e);
+                throw new ResourceNotFoundException("error.msg.document.file.not.found", "Document file not found at location: {0}",
+                        new Object[] { fileLocation });
+            }
+            return response.build();
+        } catch (Exception e) {
+            LOG.error("Failed to fetch document file from repository: {}", fileLocation, e);
             throw new ResourceNotFoundException("error.msg.document.file.not.found", "Document file not found at location: {0}",
                     new Object[] { fileLocation });
         }
-        final Response.ResponseBuilder response = Response.ok(file);
-        response.header("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
-        response.header("Content-Type", "application/vnd.ms-excel");
-        return response.build();
     }
 
     private static final class ImportTemplateLocationMapper implements RowMapper<DocumentData> {
 
         public String schema() {
             final StringBuilder sql = new StringBuilder();
-            sql.append("d.location,d.file_name ").append("from m_import_document i inner join m_document d on i.document_id=d.id ")
+            sql.append("d.location,d.file_name,d.storage_type_enum ")
+                    .append("from m_import_document i inner join m_document d on i.document_id=d.id ")
                     .append("where i.id= ? ");
             return sql.toString();
         }
@@ -292,7 +322,8 @@ public class BulkImportWorkbookServiceImpl implements BulkImportWorkbookService 
         public DocumentData mapRow(ResultSet rs, @SuppressWarnings("unused") int rowNum) throws SQLException {
             final String location = rs.getString("location");
             final String fileName = rs.getString("file_name");
-            return new DocumentData(null, null, null, null, fileName, null, null, location, null, null);
+            final Integer storageType = JdbcSupport.getInteger(rs, "storage_type_enum");
+            return new DocumentData(null, null, null, null, fileName, null, null, location, null, storageType);
         }
     }
 }
