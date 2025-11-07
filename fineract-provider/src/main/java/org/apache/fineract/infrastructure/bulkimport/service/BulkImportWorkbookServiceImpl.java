@@ -274,7 +274,7 @@ public class BulkImportWorkbookServiceImpl implements BulkImportWorkbookService 
             throw new ResourceNotFoundException("error.msg.document.location.missing", "Document file location is missing",
                     new Object[] { documentData.getFileName() });
         }
-        
+
         // Use content repository to fetch file (works for both filesystem and S3)
         try {
             final ContentRepository contentRepository;
@@ -285,7 +285,7 @@ public class BulkImportWorkbookServiceImpl implements BulkImportWorkbookService 
                 contentRepository = this.contentRepositoryFactory.getRepository();
             }
             final FileData fileData = contentRepository.fetchFile(documentData);
-            
+
             // Build response from FileData
             final Response.ResponseBuilder response;
             try {
@@ -313,8 +313,7 @@ public class BulkImportWorkbookServiceImpl implements BulkImportWorkbookService 
         public String schema() {
             final StringBuilder sql = new StringBuilder();
             sql.append("d.location,d.file_name,d.storage_type_enum ")
-                    .append("from m_import_document i inner join m_document d on i.document_id=d.id ")
-                    .append("where i.id= ? ");
+                    .append("from m_import_document i inner join m_document d on i.document_id=d.id ").append("where i.id= ? ");
             return sql.toString();
         }
 
