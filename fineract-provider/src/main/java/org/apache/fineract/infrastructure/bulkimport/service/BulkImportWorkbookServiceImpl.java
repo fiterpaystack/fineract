@@ -278,10 +278,12 @@ public class BulkImportWorkbookServiceImpl implements BulkImportWorkbookService 
         // Use content repository to fetch file (works for both filesystem and S3)
         try {
             final ContentRepository contentRepository;
-            if (documentData.getStorageType() != null) {
+            final Integer storageTypeValue = documentData.getStorageType();
+            if (storageTypeValue != null) {
+                // Use the storage type from the document
                 contentRepository = this.contentRepositoryFactory.getRepository(documentData.storageType());
             } else {
-                // If storage type is null, use the default repository from configuration
+                // If storage type is null (legacy documents), use the default repository from configuration
                 contentRepository = this.contentRepositoryFactory.getRepository();
             }
             final FileData fileData = contentRepository.fetchFile(documentData);
