@@ -300,13 +300,13 @@ public class BulkImportWorkbookServiceImpl implements BulkImportWorkbookService 
             } catch (IOException e) {
                 LOG.error("Failed to open file stream for document: {}", fileLocation, e);
                 throw new ResourceNotFoundException("error.msg.document.file.not.found", "Document file not found at location: {0}",
-                        new Object[] { fileLocation });
+                        new Object[] { fileLocation, e });
             }
             return response.build();
         } catch (Exception e) {
             LOG.error("Failed to fetch document file from repository: {}", fileLocation, e);
             throw new ResourceNotFoundException("error.msg.document.file.not.found", "Document file not found at location: {0}",
-                    new Object[] { fileLocation });
+                    new Object[] { fileLocation, e });
         }
     }
 
