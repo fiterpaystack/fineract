@@ -31,6 +31,7 @@
         <!-- Paystack classes -->
         <!-- New: weave client charge override entity -->
         <class>com.paystack.fineract.client.charge.domain.ClientChargeOverride</class>
+        <class>com.paystack.fineract.client.charge.domain.ClientChargeOverrideSlab</class>
 
         <exclude-unlisted-classes>false</exclude-unlisted-classes>
         <properties>

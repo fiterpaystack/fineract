@@ -20,6 +20,7 @@
 package com.paystack.fineract.portfolio.account.service;
 
 import com.paystack.fineract.client.charge.domain.ClientChargeOverride;
+import com.paystack.fineract.client.charge.domain.ClientChargeOverrideSlab;
 import com.paystack.fineract.client.charge.service.ClientChargeOverrideReadService;
 import com.paystack.fineract.portfolio.account.data.ChargePaymentResult;
 import com.paystack.fineract.portfolio.account.data.SavingsAccountTransactionLimitValidator;
@@ -559,8 +560,15 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         // 1) Client-specific override takes precedence if present with a value
         java.util.Optional<ClientChargeOverride> overrideOpt = clientChargeOverrideReadService.getActiveOverride(clientId,
                 chargeDefinition.getId());
-        if (overrideOpt.isPresent() && overrideOpt.get().getAmount() != null) {
-            return overrideOpt.get().getAmount();
+        if (overrideOpt.isPresent()) {
+            ClientChargeOverride override = overrideOpt.get();
+            if (override.getAmount() != null) {
+                return override.getAmount();
+            }
+            BigDecimal slabValue = resolveOverrideSlabValue(transactionAmount, override);
+            if (slabValue != null) {
+                return slabValue;
+            }
         }
 
         // 2) Tiered (varying) charge applies only if no client override
@@ -573,7 +581,33 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         // For percentage resolution, savingsAmountFromApi is irrelevant (null). For flat, we cannot access the
         // SavingsAccountCharge.amount() here; call sites already ignore API-provided amount and rely on
         // override/product.
-        return clientChargeOverrideReadService.resolvePrimaryAmount(clientId, chargeDefinition, null);
+        return chargeDefinition.getAmount();
+    }
+
+    private BigDecimal resolveOverrideSlabValue(BigDecimal transactionAmount, ClientChargeOverride override) {
+        List<ClientChargeOverrideSlab> slabs = override.getSlabs();
+        if (slabs == null || slabs.isEmpty()) {
+            return null;
+        }
+
+        if (transactionAmount == null) {
+            return slabs.get(0).getValue();
+        }
+
+        for (ClientChargeOverrideSlab slab : slabs) {
+            BigDecimal from = slab.getFromAmount();
+            BigDecimal to = slab.getToAmount();
+            if (from == null) {
+                continue;
+            }
+            boolean withinLowerBound = transactionAmount.compareTo(from) >= 0;
+            boolean withinUpperBound = to == null || transactionAmount.compareTo(to) <= 0;
+            if (withinLowerBound && withinUpperBound) {
+                return slab.getValue();
+            }
+        }
+
+        return null;
     }
 
     private void payChargeWithVatAndSave(SavingsAccount account, SavingsAccountCharge charge, Money amount, LocalDate transactionDate,

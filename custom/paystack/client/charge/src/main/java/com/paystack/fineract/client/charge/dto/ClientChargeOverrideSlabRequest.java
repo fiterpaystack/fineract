@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements. See the NOTICE file
  * distributed with this work for additional information
@@ -16,24 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package com.paystack.fineract.client.charge.dto;
 
-dependencies {
-    implementation(project(':fineract-charge'))
-    implementation(project(':fineract-accounting'))
+import java.math.BigDecimal;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa") {
-        exclude group: 'org.hibernate'
-    }
+/**
+ * Payload representation for a single slab row in a client charge override.
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ClientChargeOverrideSlabRequest {
 
-    implementation('org.eclipse.persistence:org.eclipse.persistence.jpa') {
-        exclude group: 'org.hibernate'
-    }
+    /**
+     * Present only when updating existing slabs. Null indicates a new slab row.
+     */
+    private Long id;
 
-    // JAX-RS (Jersey) for REST resources
-    implementation("org.springframework.boot:spring-boot-starter-jersey")
+    private BigDecimal fromAmount;
 
-    implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("io.swagger.core.v3:swagger-annotations-jakarta")
-    implementation("io.swagger.core.v3:swagger-jaxrs2-jakarta")
-    implementation("com.google.code.gson:gson")
+    private BigDecimal toAmount;
+
+    private BigDecimal value;
 }

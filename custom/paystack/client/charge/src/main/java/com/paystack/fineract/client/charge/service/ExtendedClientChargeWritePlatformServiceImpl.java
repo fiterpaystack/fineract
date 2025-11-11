@@ -20,10 +20,14 @@ package com.paystack.fineract.client.charge.service;
 
 import com.paystack.fineract.client.charge.domain.ClientChargeOverride;
 import com.paystack.fineract.client.charge.domain.ClientChargeOverrideRepository;
+import com.paystack.fineract.client.charge.domain.ClientChargeOverrideSlab;
 import com.paystack.fineract.client.charge.dto.ClientChargeOverrideRequest;
 import com.paystack.fineract.client.charge.dto.ClientChargeOverrideResult;
+import com.paystack.fineract.client.charge.dto.ClientChargeOverrideSlabRequest;
 import jakarta.transaction.Transactional;
+import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
@@ -53,12 +57,16 @@ public class ExtendedClientChargeWritePlatformServiceImpl implements ExtendedCli
 
         validateChargeForClientOverride(charge, request);
 
-        ClientChargeOverride entity = overrideRepository.findByClient_IdAndCharge_Id(client.getId(), charge.getId())
+        ClientChargeOverride entity = overrideRepository.findWithSlabsByClient_IdAndCharge_Id(client.getId(), charge.getId())
                 .orElse(new ClientChargeOverride(client, charge, null, null, null));
 
         entity.setAmount(request.getAmount());
         entity.setMinCap(request.getMinCap());
         entity.setMaxCap(request.getMaxCap());
+        if (request.getActive() != null) {
+            entity.setIsActive(request.getActive());
+        }
+        applySlabs(entity, request, charge);
 
         ClientChargeOverride saved = overrideRepository.saveAndFlush(entity);
         return ClientChargeOverrideResult.fromEntity(saved);
@@ -67,7 +75,7 @@ public class ExtendedClientChargeWritePlatformServiceImpl implements ExtendedCli
     @Transactional
     @Override
     public ClientChargeOverrideResult update(Long id, ClientChargeOverrideRequest request) {
-        ClientChargeOverride entity = overrideRepository.findById(id)
+        ClientChargeOverride entity = overrideRepository.findWithSlabsById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Override not found: " + id));
 
         if (request.getClientId() != null && !request.getClientId().equals(entity.getClient().getId())) {
@@ -79,13 +87,18 @@ public class ExtendedClientChargeWritePlatformServiceImpl implements ExtendedCli
 
             validateChargeForClientOverride(charge, request);
             entity.setCharge(charge);
+            applySlabs(entity, request, charge);
+        } else {
+            applySlabs(entity, request, entity.getCharge());
         }
 
         // Allow nulls to clear overrides
         entity.setAmount(request.getAmount());
         entity.setMinCap(request.getMinCap());
         entity.setMaxCap(request.getMaxCap());
-        entity.setIsActive(request.isActive());
+        if (request.getActive() != null) {
+            entity.setIsActive(request.getActive());
+        }
 
         ClientChargeOverride saved = overrideRepository.saveAndFlush(entity);
         return ClientChargeOverrideResult.fromEntity(saved);
@@ -120,9 +133,11 @@ public class ExtendedClientChargeWritePlatformServiceImpl implements ExtendedCli
         }
 
         // At least one override value must be provided
-        if (request.getAmount() == null && request.getMinCap() == null && request.getMaxCap() == null) {
+        boolean hasScalarOverride = request.getAmount() != null || request.getMinCap() != null || request.getMaxCap() != null;
+        boolean hasSlabOverride = request.getSlabs() != null && !request.getSlabs().isEmpty();
+        if (!hasScalarOverride && !hasSlabOverride) {
             throwValidationError("error.msg.charge.override.required",
-                    "At least one override value (amount, minCap, or maxCap) must be provided", "amount");
+                    "At least one override value (amount, minCap, maxCap, or slabs) must be provided", "amount");
         }
 
         // If caps are provided, ensure base charge supports caps (percentage-based types)
@@ -130,11 +145,83 @@ public class ExtendedClientChargeWritePlatformServiceImpl implements ExtendedCli
                 && !(charge.isPercentageOfApprovedAmount() || charge.isPercentageOfDisbursementAmount())) {
             throwValidationError("error.msg.charge.values.not.supported", "Caps are only allowed for percentage-based charges", "minCap");
         }
+        if (hasSlabOverride && !Boolean.TRUE.equals(charge.getHasVaryingCharge())) {
+            throwValidationError("error.msg.charge.slabs.not.supported", "Charge does not support slab overrides: " + charge.getId(),
+                    "slabs");
+        }
     }
 
     private void throwValidationError(String errorCode, String defaultMessage, String parameterName) {
         List<ApiParameterError> errors = new ArrayList<>();
         errors.add(ApiParameterError.parameterError(errorCode, defaultMessage, parameterName));
         throw new PlatformApiDataValidationException(errorCode, defaultMessage, errors);
+    }
+
+    private void applySlabs(ClientChargeOverride entity, ClientChargeOverrideRequest request, Charge charge) {
+        List<ClientChargeOverrideSlabRequest> slabRequests = request.getSlabs();
+        if (slabRequests == null) {
+            return;
+        }
+        if (slabRequests.isEmpty()) {
+            entity.replaceSlabs(List.of());
+            return;
+        }
+        List<ClientChargeOverrideSlabRequest> ordered = validateSlabOverrides(slabRequests);
+
+        List<ClientChargeOverrideSlab> mapped = ordered.stream()
+                .map(slab -> new ClientChargeOverrideSlab(entity, slab.getFromAmount(), slab.getToAmount(), slab.getValue())).toList();
+        entity.replaceSlabs(mapped);
+    }
+
+    private List<ClientChargeOverrideSlabRequest> validateSlabOverrides(List<ClientChargeOverrideSlabRequest> slabRequests) {
+        if (slabRequests == null || slabRequests.isEmpty()) {
+            return List.of();
+        }
+        List<ClientChargeOverrideSlabRequest> sorted = slabRequests.stream()
+                .sorted(Comparator.comparing(ClientChargeOverrideSlabRequest::getFromAmount, Comparator.nullsFirst(BigDecimal::compareTo)))
+                .toList();
+
+        ClientChargeOverrideSlabRequest previous = null;
+        for (int i = 0; i < sorted.size(); i++) {
+            ClientChargeOverrideSlabRequest current = sorted.get(i);
+            String baseParam = "slabs[" + i + "]";
+
+            if (current.getFromAmount() == null) {
+                throwValidationError("error.msg.charge.slabs.from.required", "fromAmount is required for slab overrides", baseParam);
+            }
+            if (current.getValue() == null) {
+                throwValidationError("error.msg.charge.slabs.value.required", "value is required for slab overrides", baseParam);
+            }
+            ensureNonNegative(current.getFromAmount(), baseParam + ".fromAmount");
+            ensureNonNegative(current.getValue(), baseParam + ".value");
+
+            if (previous != null) {
+                if (current.getFromAmount().compareTo(previous.getFromAmount()) <= 0) {
+                    throwValidationError("error.msg.charge.slabs.order.invalid", "fromAmount must be strictly increasing", baseParam);
+                }
+                if (previous.getToAmount() != null && current.getFromAmount().compareTo(previous.getToAmount()) <= 0) {
+                    throwValidationError("error.msg.charge.slabs.overlap", "Slab ranges cannot overlap", baseParam);
+                }
+                if (previous.getToAmount() == null) {
+                    throwValidationError("error.msg.charge.slabs.open.range.must.be.last",
+                            "Only the last slab can omit toAmount (open ended)", baseParam);
+                }
+            }
+            if (current.getToAmount() != null) {
+                ensureNonNegative(current.getToAmount(), baseParam + ".toAmount");
+                if (current.getToAmount().compareTo(current.getFromAmount()) < 0) {
+                    throwValidationError("error.msg.charge.slabs.range.invalid", "toAmount must be greater than or equal to fromAmount",
+                            baseParam);
+                }
+            }
+            previous = current;
+        }
+        return sorted;
+    }
+
+    private void ensureNonNegative(BigDecimal value, String parameterName) {
+        if (value != null && value.compareTo(BigDecimal.ZERO) < 0) {
+            throwValidationError("error.msg.charge.slabs.negative", "Value cannot be negative", parameterName);
+        }
     }
 }

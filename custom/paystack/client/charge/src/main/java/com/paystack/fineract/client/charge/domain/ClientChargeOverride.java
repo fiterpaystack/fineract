@@ -18,13 +18,18 @@
  */
 package com.paystack.fineract.client.charge.domain;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.fineract.infrastructure.core.domain.AbstractAuditableCustom;
@@ -63,6 +68,10 @@ public class ClientChargeOverride extends AbstractAuditableCustom {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = Boolean.TRUE;
 
+    @OneToMany(mappedBy = "override", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("fromAmount ASC, id ASC")
+    private List<ClientChargeOverrideSlab> slabs = new ArrayList<>();
+
     protected ClientChargeOverride() {
         // for JPA
     }
@@ -76,4 +85,10 @@ public class ClientChargeOverride extends AbstractAuditableCustom {
         this.isActive = Boolean.TRUE;
     }
 
+    public void replaceSlabs(List<ClientChargeOverrideSlab> newSlabs) {
+        slabs.clear();
+        if (newSlabs != null) {
+            slabs.addAll(newSlabs);
+        }
+    }
 }
