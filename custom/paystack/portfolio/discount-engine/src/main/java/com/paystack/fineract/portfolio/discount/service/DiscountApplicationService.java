@@ -76,7 +76,7 @@ public class DiscountApplicationService {
 
         } catch (Exception e) {
             // Log error but don't fail the discount application
-            log.error("Failed to save discount application record for rule {}: {}", rule.getId(), e.getMessage(), e);
+            log.error("Failed to save discount application record for rule {}", rule.getId(), e);
         }
     }
 
@@ -102,7 +102,7 @@ public class DiscountApplicationService {
                 log.debug("Updated transaction ID {} for discount application {}", transactionId, da.getId());
             });
         } catch (Exception e) {
-            log.error("Failed to update transaction ID for discount application: {}", e.getMessage(), e);
+            log.error("Failed to update transaction ID for discount application", e);
         }
     }
 
@@ -124,7 +124,7 @@ public class DiscountApplicationService {
                     }
                 }
             } catch (Exception e) {
-                log.warn("Failed to fetch account information for accountId {}: {}", context.getAccountId(), e.getMessage());
+                log.warn("Failed to fetch account information for accountId {}", context.getAccountId(), e);
             }
         }
 
@@ -144,7 +144,7 @@ public class DiscountApplicationService {
                 String conditions = conditionFormatter.formatConditions(rule.getRuleType(), parameters);
                 application.setTriggeredConditions(conditions);
             } catch (Exception e) {
-                log.warn("Failed to format triggered conditions for rule {}: {}", rule.getId(), e.getMessage());
+                log.warn("Failed to format triggered conditions for rule {}", rule.getId(), e);
                 application.setTriggeredConditions("Conditions parsing failed");
             }
         } else {
@@ -186,7 +186,7 @@ public class DiscountApplicationService {
             SavingsAccount account = savingsAccountRepository.findSavingsAccountByAccountNumber(accountNumber);
             return account != null ? account.getId() : null;
         } catch (Exception e) {
-            log.warn("Failed to get account ID from account number {}: {}", accountNumber, e.getMessage());
+            log.warn("Failed to get account ID from account number {}", accountNumber, e);
             return null;
         }
     }
