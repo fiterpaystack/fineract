@@ -19,6 +19,7 @@
 package com.paystack.fineract.client.charge.domain;
 
 import java.util.Optional;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
@@ -26,5 +27,11 @@ public interface ClientChargeOverrideRepository
         extends JpaRepository<ClientChargeOverride, Long>, JpaSpecificationExecutor<ClientChargeOverride> {
 
     Optional<ClientChargeOverride> findByClient_IdAndCharge_Id(Long clientId, Long chargeId);
+
+    @EntityGraph(attributePaths = "slabs")
+    Optional<ClientChargeOverride> findWithSlabsByClient_IdAndCharge_Id(Long clientId, Long chargeId);
+
+    @EntityGraph(attributePaths = "slabs")
+    Optional<ClientChargeOverride> findWithSlabsById(Long id);
 
 }

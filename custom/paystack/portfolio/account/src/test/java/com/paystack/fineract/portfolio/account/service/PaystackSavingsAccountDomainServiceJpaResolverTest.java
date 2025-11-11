@@ -24,11 +24,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.paystack.fineract.client.charge.domain.ClientChargeOverride;
+import com.paystack.fineract.client.charge.domain.ClientChargeOverrideSlab;
 import com.paystack.fineract.client.charge.service.ClientChargeOverrideReadService;
 import com.paystack.fineract.portfolio.discount.service.ProductDiscountService;
 import com.paystack.fineract.portfolio.savings.domain.PaystackSavingsProductAttributesRepository;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
@@ -166,11 +168,117 @@ class PaystackSavingsAccountDomainServiceJpaResolverTest {
         when(chargeDef.getHasVaryingCharge()).thenReturn(false);
         when(chargeDef.getAmount()).thenReturn(new BigDecimal("7"));
 
-        // resolvePrimaryAmount fallback branch returns product charge amount
-        when(clientChargeOverrideReadService.resolvePrimaryAmount(clientId, chargeDef, null)).thenReturn(new BigDecimal("7"));
-
         // resolvePrimaryAmount(client, charge, null) should fallback to charge.getAmount()
         BigDecimal resolved = invokeResolve(clientId, chargeDef, txn);
         assertThat(resolved).isEqualByComparingTo("7");
+    }
+
+    @Test
+    void slabOverrideShouldResolveUsingTransactionAmount() throws Exception {
+        Long clientId = 5L;
+        BigDecimal txn = new BigDecimal("4000");
+
+        ClientChargeOverride override = Mockito.mock(ClientChargeOverride.class);
+        ClientChargeOverrideSlab first = Mockito.mock(ClientChargeOverrideSlab.class);
+        when(first.getFromAmount()).thenReturn(BigDecimal.ZERO);
+        when(first.getToAmount()).thenReturn(new BigDecimal("5000"));
+        when(first.getValue()).thenReturn(new BigDecimal("12"));
+
+        ClientChargeOverrideSlab second = Mockito.mock(ClientChargeOverrideSlab.class);
+        when(second.getFromAmount()).thenReturn(new BigDecimal("5000.01"));
+        when(second.getToAmount()).thenReturn(new BigDecimal("50000"));
+        when(second.getValue()).thenReturn(new BigDecimal("25"));
+
+        when(override.getAmount()).thenReturn(null);
+        when(override.getSlabs()).thenReturn(List.of(first, second));
+        when(clientChargeOverrideReadService.getActiveOverride(Mockito.eq(clientId), Mockito.anyLong())).thenReturn(Optional.of(override));
+
+        org.apache.fineract.portfolio.charge.domain.Charge chargeDef = mock(org.apache.fineract.portfolio.charge.domain.Charge.class);
+        when(chargeDef.getId()).thenReturn(15L);
+        when(chargeDef.getHasVaryingCharge()).thenReturn(true);
+        when(chargeDef.calculateChargeAmount(txn)).thenReturn(new BigDecimal("10"));
+
+        BigDecimal resolved = invokeResolve(clientId, chargeDef, txn);
+        assertThat(resolved).isEqualByComparingTo("12");
+    }
+
+    @Test
+    void slabOverrideShouldHandleOpenEndedTier() throws Exception {
+        Long clientId = 6L;
+        BigDecimal txn = new BigDecimal("75000");
+
+        ClientChargeOverride override = Mockito.mock(ClientChargeOverride.class);
+        ClientChargeOverrideSlab first = Mockito.mock(ClientChargeOverrideSlab.class);
+        when(first.getFromAmount()).thenReturn(BigDecimal.ZERO);
+        when(first.getToAmount()).thenReturn(new BigDecimal("5000"));
+        when(first.getValue()).thenReturn(new BigDecimal("12"));
+
+        ClientChargeOverrideSlab second = Mockito.mock(ClientChargeOverrideSlab.class);
+        when(second.getFromAmount()).thenReturn(new BigDecimal("5000.01"));
+        when(second.getToAmount()).thenReturn(null);
+        when(second.getValue()).thenReturn(new BigDecimal("50"));
+
+        when(override.getAmount()).thenReturn(null);
+        when(override.getSlabs()).thenReturn(List.of(first, second));
+        when(clientChargeOverrideReadService.getActiveOverride(Mockito.eq(clientId), Mockito.anyLong())).thenReturn(Optional.of(override));
+
+        org.apache.fineract.portfolio.charge.domain.Charge chargeDef = mock(org.apache.fineract.portfolio.charge.domain.Charge.class);
+        when(chargeDef.getId()).thenReturn(16L);
+        when(chargeDef.getHasVaryingCharge()).thenReturn(true);
+        when(chargeDef.calculateChargeAmount(txn)).thenReturn(new BigDecimal("40"));
+
+        BigDecimal resolved = invokeResolve(clientId, chargeDef, txn);
+        assertThat(resolved).isEqualByComparingTo("50");
+    }
+
+    @Test
+    void slabOverrideFallsBackToProductWhenNoMatch() throws Exception {
+        Long clientId = 7L;
+        BigDecimal txn = new BigDecimal("90000");
+
+        ClientChargeOverride override = Mockito.mock(ClientChargeOverride.class);
+        ClientChargeOverrideSlab first = Mockito.mock(ClientChargeOverrideSlab.class);
+        when(first.getFromAmount()).thenReturn(BigDecimal.ZERO);
+        when(first.getToAmount()).thenReturn(new BigDecimal("1000"));
+        when(first.getValue()).thenReturn(new BigDecimal("5"));
+
+        when(override.getAmount()).thenReturn(null);
+        when(override.getSlabs()).thenReturn(List.of(first));
+        when(clientChargeOverrideReadService.getActiveOverride(Mockito.eq(clientId), Mockito.anyLong())).thenReturn(Optional.of(override));
+
+        org.apache.fineract.portfolio.charge.domain.Charge chargeDef = mock(org.apache.fineract.portfolio.charge.domain.Charge.class);
+        when(chargeDef.getId()).thenReturn(17L);
+        when(chargeDef.getHasVaryingCharge()).thenReturn(true);
+        when(chargeDef.calculateChargeAmount(txn)).thenReturn(new BigDecimal("55"));
+
+        BigDecimal resolved = invokeResolve(clientId, chargeDef, txn);
+        assertThat(resolved).isEqualByComparingTo("55");
+    }
+
+    @Test
+    void slabOverrideFallsBackToFirstTierWhenTransactionAmountMissing() throws Exception {
+        Long clientId = 8L;
+
+        ClientChargeOverride override = Mockito.mock(ClientChargeOverride.class);
+        ClientChargeOverrideSlab first = Mockito.mock(ClientChargeOverrideSlab.class);
+        when(first.getFromAmount()).thenReturn(BigDecimal.ZERO);
+        when(first.getToAmount()).thenReturn(new BigDecimal("1000"));
+        when(first.getValue()).thenReturn(new BigDecimal("5"));
+
+        ClientChargeOverrideSlab second = Mockito.mock(ClientChargeOverrideSlab.class);
+        when(second.getFromAmount()).thenReturn(new BigDecimal("1000.01"));
+        when(second.getToAmount()).thenReturn(null);
+        when(second.getValue()).thenReturn(new BigDecimal("10"));
+
+        when(override.getAmount()).thenReturn(null);
+        when(override.getSlabs()).thenReturn(List.of(first, second));
+        when(clientChargeOverrideReadService.getActiveOverride(Mockito.eq(clientId), Mockito.anyLong())).thenReturn(Optional.of(override));
+
+        org.apache.fineract.portfolio.charge.domain.Charge chargeDef = mock(org.apache.fineract.portfolio.charge.domain.Charge.class);
+        when(chargeDef.getId()).thenReturn(18L);
+        when(chargeDef.getHasVaryingCharge()).thenReturn(true);
+
+        BigDecimal resolved = invokeResolve(clientId, chargeDef, null);
+        assertThat(resolved).isEqualByComparingTo("5");
     }
 }

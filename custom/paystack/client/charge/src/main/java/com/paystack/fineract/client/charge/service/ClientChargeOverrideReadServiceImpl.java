@@ -19,7 +19,7 @@ public class ClientChargeOverrideReadServiceImpl implements ClientChargeOverride
         if (clientId == null || chargeId == null) {
             return Optional.empty();
         }
-        return repository.findByClient_IdAndCharge_Id(clientId, chargeId).filter(ov -> Boolean.TRUE.equals(ov.getIsActive()));
+        return repository.findWithSlabsByClient_IdAndCharge_Id(clientId, chargeId).filter(ov -> Boolean.TRUE.equals(ov.getIsActive()));
     }
 
     @Override

@@ -20,6 +20,8 @@ package com.paystack.fineract.client.charge.dto;
 
 import com.paystack.fineract.client.charge.domain.ClientChargeOverride;
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Objects;
 import lombok.Data;
 
 @Data
@@ -31,6 +33,7 @@ public class ClientChargeOverrideResult {
     private BigDecimal amount;
     private BigDecimal minCap;
     private BigDecimal maxCap;
+    private List<ClientChargeOverrideSlabResult> slabs;
 
     public static ClientChargeOverrideResult fromEntity(ClientChargeOverride e) {
         ClientChargeOverrideResult r = new ClientChargeOverrideResult();
@@ -40,6 +43,9 @@ public class ClientChargeOverrideResult {
         r.amount = e.getAmount();
         r.minCap = e.getMinCap();
         r.maxCap = e.getMaxCap();
+        if (e.getSlabs() != null) {
+            r.slabs = e.getSlabs().stream().filter(Objects::nonNull).map(ClientChargeOverrideSlabResult::fromEntity).toList();
+        }
         return r;
     }
 }

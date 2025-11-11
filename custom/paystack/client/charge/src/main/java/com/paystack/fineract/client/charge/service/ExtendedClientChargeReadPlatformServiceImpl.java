@@ -20,11 +20,16 @@
 package com.paystack.fineract.client.charge.service;
 
 import com.paystack.fineract.client.charge.dto.ChargeSearchResult;
+import com.paystack.fineract.client.charge.dto.ClientChargeOverrideSlabResult;
 import com.paystack.fineract.client.charge.dto.ClientChargeResult;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.fineract.accounting.common.AccountingDropdownReadPlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainServiceJpa;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
@@ -87,7 +92,11 @@ public class ExtendedClientChargeReadPlatformServiceImpl extends ChargeReadPlatf
         String sql = "select " + this.schema() + this.fromClause() + " where c.is_deleted=false and o.id = :id";
         MapSqlParameterSource params = new MapSqlParameterSource().addValue("id", id);
         try {
-            return this.npJdbcTemplate.queryForObject(sql, params, rowMapper::mapRow);
+            ClientChargeResult base = this.npJdbcTemplate.queryForObject(sql, params, rowMapper::mapRow);
+            if (base == null) {
+                return null;
+            }
+            return enrichWithSlabs(List.of(base)).get(0);
         } catch (EmptyResultDataAccessException e) {
             return null;
         }
@@ -110,7 +119,8 @@ public class ExtendedClientChargeReadPlatformServiceImpl extends ChargeReadPlatf
 
         Integer total = npJdbcTemplate.queryForObject(countSql, params, Integer.class);
         List<ClientChargeResult> items = npJdbcTemplate.query(listSql, params, rowMapper::mapRow);
-        return new Page<>(items, total == null ? 0 : total);
+        List<ClientChargeResult> enriched = enrichWithSlabs(items);
+        return new Page<>(enriched, total == null ? 0 : total);
     }
 
     private static final class ExtRowMapper implements RowMapper<ClientChargeResult> {
@@ -123,8 +133,8 @@ public class ExtendedClientChargeReadPlatformServiceImpl extends ChargeReadPlatf
                     .overrideMaxCap(JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "overrideMaxCap"))
                     .overrideMinCap(JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "overrideMinCap"))
                     .overrideAmount(JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "overrideAmount"))
-                    .overrideActive(rs.getBoolean("overrideActive")).clientId(JdbcSupport.getLong(rs, "clientId")).chargeData(chargeData)
-                    .build();
+                    .overrideActive(rs.getBoolean("overrideActive")).overrideSlabs(Collections.emptyList())
+                    .clientId(JdbcSupport.getLong(rs, "clientId")).chargeData(chargeData).build();
 
         }
 
@@ -151,5 +161,45 @@ public class ExtendedClientChargeReadPlatformServiceImpl extends ChargeReadPlatf
                 + " LEFT JOIN acc_gl_account acc on acc.id = c.income_or_liability_account_id "
                 + " LEFT JOIN m_tax_group tg on tg.id = c.tax_group_id " + " LEFT JOIN m_payment_type pt on pt.id = c.payment_type_id "
                 + " inner join m_client_charge_override o on o.charge_id = c.id ";
+    }
+
+    private List<ClientChargeResult> enrichWithSlabs(List<ClientChargeResult> base) {
+        if (base == null || base.isEmpty()) {
+            return base;
+        }
+        List<Long> overrideIds = base.stream().map(ClientChargeResult::getOverrideId).filter(Objects::nonNull).toList();
+        if (overrideIds.isEmpty()) {
+            return base;
+        }
+
+        String slabSql = """
+                select s.client_charge_override_id as overrideId, s.id as slabId, s.from_amount as fromAmount,
+                       s.to_amount as toAmount, s.value as value
+                from m_client_charge_override_slab s
+                where s.client_charge_override_id in (:overrideIds)
+                order by s.client_charge_override_id, s.from_amount, s.id
+                """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource().addValue("overrideIds", overrideIds);
+        List<SlabRow> rows = npJdbcTemplate.query(slabSql, params, (rs, rowNum) -> new SlabRow(rs.getLong("overrideId"),
+                JdbcSupport.getLong(rs, "slabId"), JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "fromAmount"),
+                JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "toAmount"), JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "value")));
+
+        Map<Long, List<ClientChargeOverrideSlabResult>> grouped = new HashMap<>();
+        for (SlabRow row : rows) {
+            grouped.computeIfAbsent(row.overrideId(), key -> new ArrayList<>()).add(row.asResult());
+        }
+
+        return base.stream()
+                .map(item -> item.toBuilder().overrideSlabs(grouped.getOrDefault(item.getOverrideId(), Collections.emptyList())).build())
+                .toList();
+    }
+
+    private record SlabRow(Long overrideId, Long slabId, java.math.BigDecimal fromAmount, java.math.BigDecimal toAmount,
+            java.math.BigDecimal value) {
+
+        ClientChargeOverrideSlabResult asResult() {
+            return ClientChargeOverrideSlabResult.builder().id(slabId).fromAmount(fromAmount).toAmount(toAmount).value(value).build();
+        }
     }
 }

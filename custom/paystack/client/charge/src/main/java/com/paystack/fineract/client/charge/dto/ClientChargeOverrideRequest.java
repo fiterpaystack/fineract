@@ -19,6 +19,7 @@
 package com.paystack.fineract.client.charge.dto;
 
 import java.math.BigDecimal;
+import java.util.List;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 
@@ -31,5 +32,6 @@ public class ClientChargeOverrideRequest {
     private BigDecimal amount;
     private BigDecimal minCap;
     private BigDecimal maxCap;
-    private boolean active;
+    private Boolean active;
+    private List<ClientChargeOverrideSlabRequest> slabs;
 }

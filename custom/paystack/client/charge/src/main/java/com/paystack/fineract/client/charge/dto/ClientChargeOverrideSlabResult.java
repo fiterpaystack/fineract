@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements. See the NOTICE file
  * distributed with this work for additional information
@@ -16,24 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package com.paystack.fineract.client.charge.dto;
 
-dependencies {
-    implementation(project(':fineract-charge'))
-    implementation(project(':fineract-accounting'))
+import com.paystack.fineract.client.charge.domain.ClientChargeOverrideSlab;
+import java.math.BigDecimal;
+import lombok.Builder;
+import lombok.Value;
 
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa") {
-        exclude group: 'org.hibernate'
+@Value
+@Builder
+public class ClientChargeOverrideSlabResult {
+
+    Long id;
+    BigDecimal fromAmount;
+    BigDecimal toAmount;
+    BigDecimal value;
+
+    public static ClientChargeOverrideSlabResult fromEntity(ClientChargeOverrideSlab slab) {
+        return ClientChargeOverrideSlabResult.builder().id(slab.getId()).fromAmount(slab.getFromAmount()).toAmount(slab.getToAmount())
+                .value(slab.getValue()).build();
     }
-
-    implementation('org.eclipse.persistence:org.eclipse.persistence.jpa') {
-        exclude group: 'org.hibernate'
-    }
-
-    // JAX-RS (Jersey) for REST resources
-    implementation("org.springframework.boot:spring-boot-starter-jersey")
-
-    implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("io.swagger.core.v3:swagger-annotations-jakarta")
-    implementation("io.swagger.core.v3:swagger-jaxrs2-jakarta")
-    implementation("com.google.code.gson:gson")
 }
