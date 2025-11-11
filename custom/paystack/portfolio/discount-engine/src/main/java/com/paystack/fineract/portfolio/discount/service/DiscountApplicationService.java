@@ -47,12 +47,12 @@ public class DiscountApplicationService {
     private final ChargeRepository chargeRepository;
 
     /**
-     * Save discount application record for audit trail
-     * This is called in a separate transaction to avoid affecting the read-only discount calculation
+     * Save discount application record for audit trail This is called in a separate transaction to avoid affecting the
+     * read-only discount calculation
      */
     @Transactional
-    public void saveDiscountApplication(DiscountRule rule, String entityType, Long entityId, Long chargeId,
-            BigDecimal originalAmount, BigDecimal discountAmount, DiscountContext context, Charge charge) {
+    public void saveDiscountApplication(DiscountRule rule, String entityType, Long entityId, Long chargeId, BigDecimal originalAmount,
+            BigDecimal discountAmount, DiscountContext context, Charge charge) {
         try {
             // Fetch Charge entity if not provided
             if (charge == null && chargeId != null) {
@@ -64,12 +64,7 @@ public class DiscountApplicationService {
             }
 
             // Create discount application record
-            DiscountApplication application = DiscountApplication.createNew(
-                    rule.getId(),
-                    entityType,
-                    entityId,
-                    chargeId,
-                    originalAmount,
+            DiscountApplication application = DiscountApplication.createNew(rule.getId(), entityType, entityId, chargeId, originalAmount,
                     discountAmount);
 
             // Populate reporting fields
@@ -86,26 +81,26 @@ public class DiscountApplicationService {
     }
 
     /**
-     * Update transaction ID for discount application records
-     * Called after transaction is created
+     * Update transaction ID for discount application records Called after transaction is created
      */
     @Transactional
     public void updateTransactionId(Long chargeId, Long accountId, Long transactionId) {
         try {
             // Find the most recent discount application for this charge and account
             // This assumes we're updating the latest one (which should be the case)
-            discountApplicationRepository.findByChargeId(chargeId).stream()
-                    .filter(da -> da.getTransactionId() == null) // Only update records without transaction_id
+            discountApplicationRepository.findByChargeId(chargeId).stream().filter(da -> da.getTransactionId() == null) // Only
+                                                                                                                        // update
+                                                                                                                        // records
+                                                                                                                        // without
+                                                                                                                        // transaction_id
                     .filter(da -> {
                         // Match by account if we have account info
                         if (accountId != null && da.getEntityType().equals("SAVINGS_PRODUCT")) {
-                            return da.getEntityId().equals(accountId) || 
-                                   (da.getAccountNumber() != null && getAccountIdFromNumber(da.getAccountNumber()).equals(accountId));
+                            return da.getEntityId().equals(accountId)
+                                    || (da.getAccountNumber() != null && getAccountIdFromNumber(da.getAccountNumber()).equals(accountId));
                         }
                         return true; // Update all if we can't match
-                    })
-                    .findFirst()
-                    .ifPresent(da -> {
+                    }).findFirst().ifPresent(da -> {
                         da.updateTransactionId(transactionId);
                         discountApplicationRepository.save(da);
                         log.debug("Updated transaction ID {} for discount application {}", transactionId, da.getId());
@@ -200,4 +195,3 @@ public class DiscountApplicationService {
         }
     }
 }
-

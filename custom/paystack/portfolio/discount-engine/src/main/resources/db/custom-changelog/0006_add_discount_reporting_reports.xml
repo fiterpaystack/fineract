@@ -32,7 +32,7 @@
             <column name="report_type" value="Table"/>
             <column name="report_subtype" value=""/>
             <column name="report_category" value="Discount"/>
-            <column name="report_sql" value="SELECT 
+            <column name="report_sql" value="SELECT
     COALESCE(da.customer_id, mc.id) AS &quot;Customer ID&quot;,
     COALESCE(mc.display_name, 'Unknown') AS &quot;Customer Name&quot;,
     COALESCE(mc.account_no, 'N/A') AS &quot;Customer Account No&quot;,
@@ -61,7 +61,7 @@ ORDER BY SUM(da.discount_amount) DESC"/>
             <column name="report_type" value="Table"/>
             <column name="report_subtype" value=""/>
             <column name="report_category" value="Discount"/>
-            <column name="report_sql" value="SELECT 
+            <column name="report_sql" value="SELECT
     COALESCE(da.customer_id, mc.id) AS &quot;Customer ID&quot;,
     COALESCE(mc.display_name, 'Unknown') AS &quot;Customer Name&quot;,
     COALESCE(mc.account_no, 'N/A') AS &quot;Customer Account No&quot;,
@@ -168,7 +168,7 @@ ORDER BY &quot;Period&quot; DESC, da.fee_type_category"/>
             <column name="report_type" value="Table"/>
             <column name="report_subtype" value=""/>
             <column name="report_category" value="Discount"/>
-            <column name="report_sql" value="SELECT 
+            <column name="report_sql" value="SELECT
     dr.id AS &quot;Rule ID&quot;,
     dr.name AS &quot;Rule Name&quot;,
     dr.rule_type AS &quot;Rule Type&quot;,
@@ -177,7 +177,7 @@ ORDER BY &quot;Period&quot; DESC, da.fee_type_category"/>
     COALESCE(ROUND(AVG(da.discount_amount), 2), 0) AS &quot;Average Discount Amount&quot;,
     MIN(da.application_date) AS &quot;First Application&quot;,
     MAX(da.application_date) AS &quot;Last Application&quot;,
-    CASE 
+    CASE
         WHEN COUNT(da.id) = 0 THEN 'Never Used'
         WHEN COUNT(da.id) &lt; 10 THEN 'Low Usage'
         WHEN COUNT(da.id) &lt; 100 THEN 'Medium Usage'
@@ -203,7 +203,7 @@ ORDER BY COUNT(da.id) DESC, dr.name"/>
             <column name="report_type" value="Table"/>
             <column name="report_subtype" value=""/>
             <column name="report_category" value="Discount"/>
-            <column name="report_sql" value="SELECT 
+            <column name="report_sql" value="SELECT
     dr.id AS &quot;Rule ID&quot;,
     dr.name AS &quot;Rule Name&quot;,
     dr.rule_type AS &quot;Rule Type&quot;,
@@ -212,7 +212,7 @@ ORDER BY COUNT(da.id) DESC, dr.name"/>
     COALESCE(ROUND(AVG(da.discount_amount), 2), 0) AS &quot;Average Discount Amount&quot;,
     MIN(da.application_date) AS &quot;First Application&quot;,
     MAX(da.application_date) AS &quot;Last Application&quot;,
-    CASE 
+    CASE
         WHEN COUNT(da.id) = 0 THEN 'Never Used'
         WHEN COUNT(da.id) &lt; 10 THEN 'Low Usage'
         WHEN COUNT(da.id) &lt; 100 THEN 'Medium Usage'
@@ -241,7 +241,7 @@ ORDER BY COUNT(da.id) DESC, dr.name"/>
             <column name="report_type" value="Table"/>
             <column name="report_subtype" value=""/>
             <column name="report_category" value="Discount"/>
-            <column name="report_sql" value="SELECT 
+            <column name="report_sql" value="SELECT
     COALESCE(da.fee_type_category, 'OTHER') AS &quot;Fee Type&quot;,
     COUNT(*) AS &quot;Number of Discounts&quot;,
     SUM(da.original_amount) AS &quot;Total Original Fees&quot;,
@@ -268,7 +268,7 @@ ORDER BY SUM(da.discount_amount) DESC"/>
             <column name="report_type" value="Table"/>
             <column name="report_subtype" value=""/>
             <column name="report_category" value="Discount"/>
-            <column name="report_sql" value="SELECT 
+            <column name="report_sql" value="SELECT
     COALESCE(da.fee_type_category, 'OTHER') AS &quot;Fee Type&quot;,
     COUNT(*) AS &quot;Number of Discounts&quot;,
     SUM(da.original_amount) AS &quot;Total Original Fees&quot;,
@@ -298,7 +298,7 @@ ORDER BY SUM(da.discount_amount) DESC"/>
             <column name="report_type" value="Table"/>
             <column name="report_subtype" value=""/>
             <column name="report_category" value="Discount"/>
-            <column name="report_sql" value="SELECT 
+            <column name="report_sql" value="SELECT
     da.id AS &quot;Application ID&quot;,
     COALESCE(mc.account_no, 'N/A') AS &quot;Customer ID&quot;,
     da.account_number AS &quot;Account Number&quot;,
@@ -338,7 +338,7 @@ ORDER BY da.application_date DESC"/>
             <column name="report_type" value="Table"/>
             <column name="report_subtype" value=""/>
             <column name="report_category" value="Discount"/>
-            <column name="report_sql" value="SELECT 
+            <column name="report_sql" value="SELECT
     da.id AS &quot;Application ID&quot;,
     COALESCE(mc.account_no, 'N/A') AS &quot;Customer ID&quot;,
     da.account_number AS &quot;Account Number&quot;,
@@ -377,10 +377,10 @@ ORDER BY da.application_date DESC"/>
     <!-- Note: Parameters are linked using SQL to get report IDs dynamically -->
     <!-- Standard parameters (startDateSelect, endDateSelect) are assumed to exist -->
     <!-- Custom parameters will be created if they don't exist -->
-    
+
     <changeSet id="paystack-discount-0006-parameters-link" author="paystack">
         <comment>Link parameters to discount reports</comment>
-        
+
         <!-- Link parameters to Report 1: Per-Customer Discount Usage Report -->
         <sql>
             INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
@@ -389,11 +389,11 @@ ORDER BY da.application_date DESC"/>
             WHERE r.report_name = 'Per-Customer Discount Usage Report'
             AND p.parameter_name = 'startDateSelect'
             AND NOT EXISTS (
-                SELECT 1 FROM stretchy_report_parameter rp 
+                SELECT 1 FROM stretchy_report_parameter rp
                 WHERE rp.report_id = r.id AND rp.parameter_id = p.id
             );
         </sql>
-        
+
         <sql>
             INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
             SELECT r.id, p.id, 'R_endDate'
@@ -401,11 +401,11 @@ ORDER BY da.application_date DESC"/>
             WHERE r.report_name = 'Per-Customer Discount Usage Report'
             AND p.parameter_name = 'endDateSelect'
             AND NOT EXISTS (
-                SELECT 1 FROM stretchy_report_parameter rp 
+                SELECT 1 FROM stretchy_report_parameter rp
                 WHERE rp.report_id = r.id AND rp.parameter_id = p.id
             );
         </sql>
-        
+
         <!-- Link parameters to Report 2: Fees Waived Report -->
         <sql>
             INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
@@ -414,11 +414,11 @@ ORDER BY da.application_date DESC"/>
             WHERE r.report_name = 'Fees Waived Report'
             AND p.parameter_name = 'startDateSelect'
             AND NOT EXISTS (
-                SELECT 1 FROM stretchy_report_parameter rp 
+                SELECT 1 FROM stretchy_report_parameter rp
                 WHERE rp.report_id = r.id AND rp.parameter_id = p.id
             );
         </sql>
-        
+
         <sql>
             INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
             SELECT r.id, p.id, 'R_endDate'
@@ -426,25 +426,25 @@ ORDER BY da.application_date DESC"/>
             WHERE r.report_name = 'Fees Waived Report'
             AND p.parameter_name = 'endDateSelect'
             AND NOT EXISTS (
-                SELECT 1 FROM stretchy_report_parameter rp 
+                SELECT 1 FROM stretchy_report_parameter rp
                 WHERE rp.report_id = r.id AND rp.parameter_id = p.id
             );
         </sql>
-        
+
         <!-- Create periodType parameter if it doesn't exist -->
         <sql dbms="postgresql"><![CDATA[
             INSERT INTO stretchy_parameter (parameter_name, parameter_variable, parameter_label, "parameter_displayType", "parameter_FormatType", parameter_default, special, "selectOne", "selectAll", parameter_sql, parent_id)
-            SELECT 'periodTypeSelect', 'periodType', 'Period Type', 'select', 'string', 'daily', NULL, 'Y', NULL, 
+            SELECT 'periodTypeSelect', 'periodType', 'Period Type', 'select', 'string', 'daily', NULL, 'Y', NULL,
                    'SELECT ''daily'' AS id, ''Daily'' AS value UNION SELECT ''monthly'' AS id, ''Monthly'' AS value UNION SELECT ''quarterly'' AS id, ''Quarterly'' AS value', NULL
             WHERE NOT EXISTS (SELECT 1 FROM stretchy_parameter WHERE parameter_name = 'periodTypeSelect');
         ]]></sql>
         <sql dbms="mysql"><![CDATA[
             INSERT INTO stretchy_parameter (parameter_name, parameter_variable, parameter_label, parameter_displayType, parameter_FormatType, parameter_default, special, selectOne, selectAll, parameter_sql, parent_id)
-            SELECT 'periodTypeSelect', 'periodType', 'Period Type', 'select', 'string', 'daily', NULL, 'Y', NULL, 
+            SELECT 'periodTypeSelect', 'periodType', 'Period Type', 'select', 'string', 'daily', NULL, 'Y', NULL,
                    'SELECT ''daily'' AS id, ''Daily'' AS value UNION SELECT ''monthly'' AS id, ''Monthly'' AS value UNION SELECT ''quarterly'' AS id, ''Quarterly'' AS value', NULL
             WHERE NOT EXISTS (SELECT 1 FROM stretchy_parameter WHERE parameter_name = 'periodTypeSelect');
         ]]></sql>
-        
+
         <sql>
             INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
             SELECT r.id, p.id, 'R_periodType'
@@ -452,11 +452,11 @@ ORDER BY da.application_date DESC"/>
             WHERE r.report_name = 'Fees Waived Report'
             AND p.parameter_name = 'periodTypeSelect'
             AND NOT EXISTS (
-                SELECT 1 FROM stretchy_report_parameter rp 
+                SELECT 1 FROM stretchy_report_parameter rp
                 WHERE rp.report_id = r.id AND rp.parameter_id = p.id
             );
         </sql>
-        
+
         <!-- Link parameters to Report 3: Rule Utilization Report -->
         <sql>
             INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
@@ -465,11 +465,11 @@ ORDER BY da.application_date DESC"/>
             WHERE r.report_name = 'Rule Utilization Report'
             AND p.parameter_name = 'startDateSelect'
             AND NOT EXISTS (
-                SELECT 1 FROM stretchy_report_parameter rp 
+                SELECT 1 FROM stretchy_report_parameter rp
                 WHERE rp.report_id = r.id AND rp.parameter_id = p.id
             );
         </sql>
-        
+
         <sql>
             INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
             SELECT r.id, p.id, 'R_endDate'
@@ -477,11 +477,11 @@ ORDER BY da.application_date DESC"/>
             WHERE r.report_name = 'Rule Utilization Report'
             AND p.parameter_name = 'endDateSelect'
             AND NOT EXISTS (
-                SELECT 1 FROM stretchy_report_parameter rp 
+                SELECT 1 FROM stretchy_report_parameter rp
                 WHERE rp.report_id = r.id AND rp.parameter_id = p.id
             );
         </sql>
-        
+
         <!-- Link parameters to Report 4: Fee Type Breakdown Report -->
         <sql>
             INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
@@ -490,11 +490,11 @@ ORDER BY da.application_date DESC"/>
             WHERE r.report_name = 'Fee Type Breakdown Report'
             AND p.parameter_name = 'startDateSelect'
             AND NOT EXISTS (
-                SELECT 1 FROM stretchy_report_parameter rp 
+                SELECT 1 FROM stretchy_report_parameter rp
                 WHERE rp.report_id = r.id AND rp.parameter_id = p.id
             );
         </sql>
-        
+
         <sql>
             INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
             SELECT r.id, p.id, 'R_endDate'
@@ -502,11 +502,11 @@ ORDER BY da.application_date DESC"/>
             WHERE r.report_name = 'Fee Type Breakdown Report'
             AND p.parameter_name = 'endDateSelect'
             AND NOT EXISTS (
-                SELECT 1 FROM stretchy_report_parameter rp 
+                SELECT 1 FROM stretchy_report_parameter rp
                 WHERE rp.report_id = r.id AND rp.parameter_id = p.id
             );
         </sql>
-        
+
         <!-- Link parameters to Report 5: Discount Audit Trail -->
         <sql>
             INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
@@ -515,11 +515,11 @@ ORDER BY da.application_date DESC"/>
             WHERE r.report_name = 'Discount Audit Trail'
             AND p.parameter_name = 'startDateSelect'
             AND NOT EXISTS (
-                SELECT 1 FROM stretchy_report_parameter rp 
+                SELECT 1 FROM stretchy_report_parameter rp
                 WHERE rp.report_id = r.id AND rp.parameter_id = p.id
             );
         </sql>
-        
+
         <sql>
             INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
             SELECT r.id, p.id, 'R_endDate'
@@ -527,11 +527,11 @@ ORDER BY da.application_date DESC"/>
             WHERE r.report_name = 'Discount Audit Trail'
             AND p.parameter_name = 'endDateSelect'
             AND NOT EXISTS (
-                SELECT 1 FROM stretchy_report_parameter rp 
+                SELECT 1 FROM stretchy_report_parameter rp
                 WHERE rp.report_id = r.id AND rp.parameter_id = p.id
             );
         </sql>
-        
+
         <!-- Create accountNumber parameter if it doesn't exist -->
         <sql dbms="postgresql"><![CDATA[
             INSERT INTO stretchy_parameter (parameter_name, parameter_variable, parameter_label, "parameter_displayType", "parameter_FormatType", parameter_default, special, "selectOne", "selectAll", parameter_sql, parent_id)
@@ -543,7 +543,7 @@ ORDER BY da.application_date DESC"/>
             SELECT 'accountNumberText', 'accountNumber', 'Account Number', 'text', 'string', '', NULL, NULL, NULL, NULL, NULL
             WHERE NOT EXISTS (SELECT 1 FROM stretchy_parameter WHERE parameter_name = 'accountNumberText');
         ]]></sql>
-        
+
         <sql>
             INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
             SELECT r.id, p.id, 'R_accountNumber'
@@ -551,25 +551,25 @@ ORDER BY da.application_date DESC"/>
             WHERE r.report_name = 'Discount Audit Trail'
             AND p.parameter_name = 'accountNumberText'
             AND NOT EXISTS (
-                SELECT 1 FROM stretchy_report_parameter rp 
+                SELECT 1 FROM stretchy_report_parameter rp
                 WHERE rp.report_id = r.id AND rp.parameter_id = p.id
             );
         </sql>
-        
+
         <!-- Create discountType parameter if it doesn't exist -->
         <sql dbms="postgresql"><![CDATA[
             INSERT INTO stretchy_parameter (parameter_name, parameter_variable, parameter_label, "parameter_displayType", "parameter_FormatType", parameter_default, special, "selectOne", "selectAll", parameter_sql, parent_id)
-            SELECT 'discountTypeSelect', 'discountType', 'Discount Type', 'select', 'string', '', NULL, 'Y', NULL, 
+            SELECT 'discountTypeSelect', 'discountType', 'Discount Type', 'select', 'string', '', NULL, 'Y', NULL,
                    'SELECT DISTINCT rule_type AS id, rule_type AS value FROM m_discount_rule WHERE rule_type IS NOT NULL ORDER BY rule_type', NULL
             WHERE NOT EXISTS (SELECT 1 FROM stretchy_parameter WHERE parameter_name = 'discountTypeSelect');
         ]]></sql>
         <sql dbms="mysql"><![CDATA[
             INSERT INTO stretchy_parameter (parameter_name, parameter_variable, parameter_label, parameter_displayType, parameter_FormatType, parameter_default, special, selectOne, selectAll, parameter_sql, parent_id)
-            SELECT 'discountTypeSelect', 'discountType', 'Discount Type', 'select', 'string', '', NULL, 'Y', NULL, 
+            SELECT 'discountTypeSelect', 'discountType', 'Discount Type', 'select', 'string', '', NULL, 'Y', NULL,
                    'SELECT DISTINCT rule_type AS id, rule_type AS value FROM m_discount_rule WHERE rule_type IS NOT NULL ORDER BY rule_type', NULL
             WHERE NOT EXISTS (SELECT 1 FROM stretchy_parameter WHERE parameter_name = 'discountTypeSelect');
         ]]></sql>
-        
+
         <sql>
             INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
             SELECT r.id, p.id, 'R_discountType'
@@ -577,11 +577,10 @@ ORDER BY da.application_date DESC"/>
             WHERE r.report_name = 'Discount Audit Trail'
             AND p.parameter_name = 'discountTypeSelect'
             AND NOT EXISTS (
-                SELECT 1 FROM stretchy_report_parameter rp 
+                SELECT 1 FROM stretchy_report_parameter rp
                 WHERE rp.report_id = r.id AND rp.parameter_id = p.id
             );
         </sql>
     </changeSet>
 
 </databaseChangeLog>
-

@@ -92,16 +92,14 @@ class DiscountApplicationServiceTest {
             when(savingsAccountRepository.findById(200L)).thenReturn(Optional.of(account));
             // Charge is passed directly, so we don't need to mock repository lookup
             // Mock the formatter to return the expected string
-            when(conditionFormatter.formatConditions(eq("PERCENTAGE"), any()))
-                    .thenReturn("Percentage: 10%");
+            when(conditionFormatter.formatConditions(eq("PERCENTAGE"), any())).thenReturn("Percentage: 10%");
 
             ArgumentCaptor<DiscountApplication> captor = ArgumentCaptor.forClass(DiscountApplication.class);
-            when(discountApplicationRepository.save(any(DiscountApplication.class)))
-                    .thenAnswer(invocation -> invocation.getArgument(0));
+            when(discountApplicationRepository.save(any(DiscountApplication.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             // When
-            service.saveDiscountApplication(rule, "SAVINGS_PRODUCT", 100L, 50L, new BigDecimal("100.00"),
-                    new BigDecimal("10.00"), context, charge);
+            service.saveDiscountApplication(rule, "SAVINGS_PRODUCT", 100L, 50L, new BigDecimal("100.00"), new BigDecimal("10.00"), context,
+                    charge);
 
             // Then
             verify(discountApplicationRepository).save(captor.capture());
@@ -137,8 +135,8 @@ class DiscountApplicationServiceTest {
             when(conditionFormatter.formatConditions(anyString(), params)).thenReturn("Flat discount: 50");
 
             // When
-            service.saveDiscountApplication(rule, "SAVINGS_PRODUCT", 100L, 50L, new BigDecimal("100.00"),
-                    new BigDecimal("50.00"), context, null);
+            service.saveDiscountApplication(rule, "SAVINGS_PRODUCT", 100L, 50L, new BigDecimal("100.00"), new BigDecimal("50.00"), context,
+                    null);
 
             // Then
             verify(chargeRepository).findById(50L);
@@ -161,12 +159,11 @@ class DiscountApplicationServiceTest {
             when(conditionFormatter.formatConditions(anyString(), params)).thenReturn("Percentage: 5%");
 
             ArgumentCaptor<DiscountApplication> captor = ArgumentCaptor.forClass(DiscountApplication.class);
-            when(discountApplicationRepository.save(any(DiscountApplication.class)))
-                    .thenAnswer(invocation -> invocation.getArgument(0));
+            when(discountApplicationRepository.save(any(DiscountApplication.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             // When
-            service.saveDiscountApplication(rule, "SAVINGS_PRODUCT", 100L, 50L, new BigDecimal("100.00"),
-                    new BigDecimal("5.00"), context, charge);
+            service.saveDiscountApplication(rule, "SAVINGS_PRODUCT", 100L, 50L, new BigDecimal("100.00"), new BigDecimal("5.00"), context,
+                    charge);
 
             // Then
             verify(discountApplicationRepository).save(captor.capture());
@@ -189,12 +186,11 @@ class DiscountApplicationServiceTest {
             when(conditionFormatter.formatConditions(anyString(), params)).thenReturn("Percentage: 10%");
 
             ArgumentCaptor<DiscountApplication> captor = ArgumentCaptor.forClass(DiscountApplication.class);
-            when(discountApplicationRepository.save(any(DiscountApplication.class)))
-                    .thenAnswer(invocation -> invocation.getArgument(0));
+            when(discountApplicationRepository.save(any(DiscountApplication.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             // When
-            service.saveDiscountApplication(rule, "SAVINGS_PRODUCT", 100L, 50L, new BigDecimal("100.00"),
-                    new BigDecimal("10.00"), context, charge);
+            service.saveDiscountApplication(rule, "SAVINGS_PRODUCT", 100L, 50L, new BigDecimal("100.00"), new BigDecimal("10.00"), context,
+                    charge);
 
             // Then
             verify(discountApplicationRepository).save(captor.capture());
@@ -213,8 +209,8 @@ class DiscountApplicationServiceTest {
             when(chargeRepository.findById(50L)).thenReturn(Optional.empty());
 
             // When
-            service.saveDiscountApplication(rule, "SAVINGS_PRODUCT", 100L, 50L, new BigDecimal("100.00"),
-                    new BigDecimal("10.00"), context, null);
+            service.saveDiscountApplication(rule, "SAVINGS_PRODUCT", 100L, 50L, new BigDecimal("100.00"), new BigDecimal("10.00"), context,
+                    null);
 
             // Then
             verify(discountApplicationRepository, never()).save(any(DiscountApplication.class));
@@ -234,12 +230,11 @@ class DiscountApplicationServiceTest {
             @SuppressWarnings("unchecked")
             Map<String, Object> params = any(Map.class);
             when(conditionFormatter.formatConditions(anyString(), params)).thenReturn("Percentage: 10%");
-            when(discountApplicationRepository.save(any(DiscountApplication.class)))
-                    .thenThrow(new RuntimeException("Database error"));
+            when(discountApplicationRepository.save(any(DiscountApplication.class))).thenThrow(new RuntimeException("Database error"));
 
             // When & Then - Should not throw exception
-            service.saveDiscountApplication(rule, "SAVINGS_PRODUCT", 100L, 50L, new BigDecimal("100.00"),
-                    new BigDecimal("10.00"), context, charge);
+            service.saveDiscountApplication(rule, "SAVINGS_PRODUCT", 100L, 50L, new BigDecimal("100.00"), new BigDecimal("10.00"), context,
+                    charge);
 
             verify(discountApplicationRepository).save(any(DiscountApplication.class));
         }
@@ -266,8 +261,7 @@ class DiscountApplicationServiceTest {
             applications.add(application);
 
             when(discountApplicationRepository.findByChargeId(chargeId)).thenReturn(applications);
-            when(discountApplicationRepository.save(any(DiscountApplication.class)))
-                    .thenAnswer(invocation -> invocation.getArgument(0));
+            when(discountApplicationRepository.save(any(DiscountApplication.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             // When
             service.updateTransactionId(chargeId, accountId, transactionId);
@@ -311,8 +305,7 @@ class DiscountApplicationServiceTest {
             Long accountId = 200L;
             Long transactionId = 500L;
 
-            when(discountApplicationRepository.findByChargeId(chargeId))
-                    .thenThrow(new RuntimeException("Database error"));
+            when(discountApplicationRepository.findByChargeId(chargeId)).thenThrow(new RuntimeException("Database error"));
 
             // When & Then - Should not throw exception
             service.updateTransactionId(chargeId, accountId, transactionId);
@@ -369,4 +362,3 @@ class DiscountApplicationServiceTest {
         return account;
     }
 }
-

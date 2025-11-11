@@ -24,8 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 /**
- * Formats discount rule parameters into human-readable condition descriptions
- * for audit trail and reporting purposes
+ * Formats discount rule parameters into human-readable condition descriptions for audit trail and reporting purposes
  */
 @Service
 @Slf4j
@@ -59,12 +58,12 @@ public class DiscountConditionFormatter {
 
     private String formatAccountBalanceConditions(Map<String, Object> parameters) {
         StringBuilder condition = new StringBuilder();
-        
+
         if (parameters.containsKey("minimumAverageBalance")) {
             BigDecimal minBalance = getBigDecimal(parameters, "minimumAverageBalance");
             condition.append("Average balance >= ").append(formatCurrency(minBalance));
         }
-        
+
         if (parameters.containsKey("discountPercentage")) {
             BigDecimal percentage = getBigDecimal(parameters, "discountPercentage");
             if (condition.length() > 0) {
@@ -72,7 +71,7 @@ public class DiscountConditionFormatter {
             }
             condition.append("Discount: ").append(percentage).append("%");
         }
-        
+
         if (parameters.containsKey("maxDiscountAmount")) {
             BigDecimal maxDiscount = getBigDecimal(parameters, "maxDiscountAmount");
             if (condition.length() > 0) {
@@ -80,18 +79,18 @@ public class DiscountConditionFormatter {
             }
             condition.append("Max discount: ").append(formatCurrency(maxDiscount));
         }
-        
+
         return condition.length() > 0 ? condition.toString() : "Balance-based discount";
     }
 
     private String formatTransactionCountConditions(Map<String, Object> parameters) {
         StringBuilder condition = new StringBuilder();
-        
+
         if (parameters.containsKey("thresholdCount")) {
             Integer threshold = getInteger(parameters, "thresholdCount");
             condition.append("Transaction count >= ").append(threshold);
         }
-        
+
         if (parameters.containsKey("periodType")) {
             String periodType = getString(parameters, "periodType");
             if (condition.length() > 0) {
@@ -100,7 +99,7 @@ public class DiscountConditionFormatter {
                 condition.append("Period: ").append(periodType);
             }
         }
-        
+
         if (parameters.containsKey("directionType")) {
             String direction = getString(parameters, "directionType");
             if (condition.length() > 0) {
@@ -109,7 +108,7 @@ public class DiscountConditionFormatter {
                 condition.append("Direction: ").append(direction);
             }
         }
-        
+
         if (parameters.containsKey("discountPercentage")) {
             BigDecimal percentage = getBigDecimal(parameters, "discountPercentage");
             if (condition.length() > 0) {
@@ -118,55 +117,55 @@ public class DiscountConditionFormatter {
                 condition.append("Discount: ").append(percentage).append("%");
             }
         }
-        
+
         return condition.length() > 0 ? condition.toString() : "Transaction count-based discount";
     }
 
     private String formatTransactionFlowConditions(Map<String, Object> parameters) {
         StringBuilder condition = new StringBuilder("Transaction flow: ");
-        
+
         if (parameters.containsKey("directionType")) {
             condition.append(getString(parameters, "directionType"));
         }
-        
+
         if (parameters.containsKey("discountPercentage")) {
             BigDecimal percentage = getBigDecimal(parameters, "discountPercentage");
             condition.append(", Discount: ").append(percentage).append("%");
         }
-        
+
         return condition.toString();
     }
 
     private String formatTimeBasedConditions(Map<String, Object> parameters) {
         StringBuilder condition = new StringBuilder("Time-based: ");
-        
+
         if (parameters.containsKey("dayOfWeek")) {
             condition.append("Day: ").append(getString(parameters, "dayOfWeek"));
         }
-        
+
         if (parameters.containsKey("timeRange")) {
             if (condition.length() > 12) {
                 condition.append(", ");
             }
             condition.append("Time: ").append(getString(parameters, "timeRange"));
         }
-        
+
         if (parameters.containsKey("discountPercentage")) {
             BigDecimal percentage = getBigDecimal(parameters, "discountPercentage");
             condition.append(", Discount: ").append(percentage).append("%");
         }
-        
+
         return condition.toString();
     }
 
     private String formatPercentageConditions(Map<String, Object> parameters) {
         StringBuilder condition = new StringBuilder();
-        
+
         if (parameters.containsKey("percentage")) {
             BigDecimal percentage = getBigDecimal(parameters, "percentage");
             condition.append("Percentage: ").append(percentage).append("%");
         }
-        
+
         if (parameters.containsKey("minimumTransactionAmount")) {
             BigDecimal minAmount = getBigDecimal(parameters, "minimumTransactionAmount");
             if (condition.length() > 0) {
@@ -175,7 +174,7 @@ public class DiscountConditionFormatter {
                 condition.append("Min amount: ").append(formatCurrency(minAmount));
             }
         }
-        
+
         if (parameters.containsKey("maximumTransactionAmount")) {
             BigDecimal maxAmount = getBigDecimal(parameters, "maximumTransactionAmount");
             if (condition.length() > 0) {
@@ -184,7 +183,7 @@ public class DiscountConditionFormatter {
                 condition.append("Max amount: ").append(formatCurrency(maxAmount));
             }
         }
-        
+
         if (parameters.containsKey("maxDiscountAmount")) {
             BigDecimal maxDiscount = getBigDecimal(parameters, "maxDiscountAmount");
             if (condition.length() > 0) {
@@ -193,27 +192,27 @@ public class DiscountConditionFormatter {
                 condition.append("Max discount: ").append(formatCurrency(maxDiscount));
             }
         }
-        
+
         return condition.length() > 0 ? condition.toString() : "Percentage discount";
     }
 
     private String formatFlatConditions(Map<String, Object> parameters) {
         StringBuilder condition = new StringBuilder("Flat discount: ");
-        
+
         if (parameters.containsKey("amount")) {
             BigDecimal amount = getBigDecimal(parameters, "amount");
             condition.append(formatCurrency(amount));
         } else {
             condition.append("Amount not specified");
         }
-        
+
         return condition.toString();
     }
 
     private String formatGenericConditions(Map<String, Object> parameters) {
         StringBuilder condition = new StringBuilder();
         boolean first = true;
-        
+
         for (Map.Entry<String, Object> entry : parameters.entrySet()) {
             if (!first) {
                 condition.append(", ");
@@ -221,7 +220,7 @@ public class DiscountConditionFormatter {
             condition.append(entry.getKey()).append(": ").append(entry.getValue());
             first = false;
         }
-        
+
         return condition.length() > 0 ? condition.toString() : "Generic discount conditions";
     }
 
@@ -275,4 +274,3 @@ public class DiscountConditionFormatter {
         return amount.toPlainString();
     }
 }
-

@@ -143,13 +143,12 @@ public class ProductDiscountService {
             List<DiscountRule> chargeRules = discountRuleService.getAssignedDiscountRules("CHARGE", chargeId);
             if (!chargeRules.isEmpty()) {
                 // Get Charge entity from context for logging
-                org.apache.fineract.portfolio.charge.domain.Charge charge = ctx.charge() != null 
-                        ? ctx.charge().getCharge() : null;
+                org.apache.fineract.portfolio.charge.domain.Charge charge = ctx.charge() != null ? ctx.charge().getCharge() : null;
                 return applyRulesWithCalculator(chargeRules, ctx.originalAmount(), context, "CHARGE", chargeId, charge);
             }
 
             // For product-level rules, we don't have direct charge access, so pass null
-            return applyRulesWithCalculatorForProduct(productId, ctx.originalAmount(), context, 
+            return applyRulesWithCalculatorForProduct(productId, ctx.originalAmount(), context,
                     ctx.charge() != null ? ctx.charge().getCharge() : null);
         } finally {
             appliedDiscounts.remove();
@@ -211,11 +210,11 @@ public class ProductDiscountService {
                 BigDecimal discountAmount = calculateDiscountWithRule(rule, originalAmount, context);
                 if (discountAmount.compareTo(BigDecimal.ZERO) > 0) {
                     totalDiscount = totalDiscount.add(discountAmount);
-                    
+
                     // Save discount application record for audit trail (one record per rule)
                     if (chargeId != null) {
-                        discountApplicationService.saveDiscountApplication(
-                                rule, entityType, entityId, chargeId, originalAmount, discountAmount, context, charge);
+                        discountApplicationService.saveDiscountApplication(rule, entityType, entityId, chargeId, originalAmount,
+                                discountAmount, context, charge);
                     }
                 }
             }
@@ -233,7 +232,7 @@ public class ProductDiscountService {
             org.apache.fineract.portfolio.charge.domain.Charge charge) {
         // Get product-level rules and apply them
         List<DiscountRule> productRules = discountRuleService.getAssignedDiscountRules("SAVINGS_PRODUCT", productId);
-        
+
         if (productRules.isEmpty()) {
             return originalAmount;
         }

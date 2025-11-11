@@ -84,7 +84,7 @@
         <!-- Optimized view for reporting queries (PostgreSQL) -->
         <sql dbms="postgresql">
             CREATE OR REPLACE VIEW v_discount_application_report AS
-            SELECT 
+            SELECT
                 da.id,
                 da.discount_rule_id,
                 da.entity_type,
@@ -122,7 +122,7 @@
         <!-- Optimized view for reporting queries (MySQL) -->
         <sql dbms="mysql">
             CREATE OR REPLACE VIEW v_discount_application_report AS
-            SELECT 
+            SELECT
                 da.id,
                 da.discount_rule_id,
                 da.entity_type,
@@ -177,4 +177,3 @@
     </changeSet>
 
 </databaseChangeLog>
-
