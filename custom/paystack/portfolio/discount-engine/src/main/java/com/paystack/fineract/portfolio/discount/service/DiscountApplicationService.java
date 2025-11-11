@@ -88,23 +88,19 @@ public class DiscountApplicationService {
         try {
             // Find the most recent discount application for this charge and account
             // This assumes we're updating the latest one (which should be the case)
-            discountApplicationRepository.findByChargeId(chargeId).stream().filter(da -> da.getTransactionId() == null) // Only
-                                                                                                                        // update
-                                                                                                                        // records
-                                                                                                                        // without
-                                                                                                                        // transaction_id
-                    .filter(da -> {
-                        // Match by account if we have account info
-                        if (accountId != null && da.getEntityType().equals("SAVINGS_PRODUCT")) {
-                            return da.getEntityId().equals(accountId)
-                                    || (da.getAccountNumber() != null && getAccountIdFromNumber(da.getAccountNumber()).equals(accountId));
-                        }
-                        return true; // Update all if we can't match
-                    }).findFirst().ifPresent(da -> {
-                        da.updateTransactionId(transactionId);
-                        discountApplicationRepository.save(da);
-                        log.debug("Updated transaction ID {} for discount application {}", transactionId, da.getId());
-                    });
+            // Only update records without transaction_id
+            discountApplicationRepository.findByChargeId(chargeId).stream().filter(da -> da.getTransactionId() == null).filter(da -> {
+                // Match by account if we have account info
+                if (accountId != null && da.getEntityType().equals("SAVINGS_PRODUCT")) {
+                    return da.getEntityId().equals(accountId)
+                            || (da.getAccountNumber() != null && getAccountIdFromNumber(da.getAccountNumber()).equals(accountId));
+                }
+                return true; // Update all if we can't match
+            }).findFirst().ifPresent(da -> {
+                da.updateTransactionId(transactionId);
+                discountApplicationRepository.save(da);
+                log.debug("Updated transaction ID {} for discount application {}", transactionId, da.getId());
+            });
         } catch (Exception e) {
             log.error("Failed to update transaction ID for discount application: {}", e.getMessage(), e);
         }

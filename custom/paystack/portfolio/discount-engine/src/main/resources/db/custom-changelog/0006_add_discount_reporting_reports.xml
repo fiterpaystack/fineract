@@ -185,7 +185,7 @@ ORDER BY &quot;Period&quot; DESC, da.fee_type_category"/>
     END AS &quot;Usage Status&quot;
 FROM m_discount_rule dr
 LEFT JOIN v_discount_application_report da ON dr.id = da.discount_rule_id
-    AND (da.application_date IS NULL OR (da.application_date::date BETWEEN '${startDate}'::date AND '${endDate}'::date))
+    AND da.application_date::date BETWEEN '${startDate}'::date AND '${endDate}'::date
 WHERE dr.is_active = true
 GROUP BY dr.id, dr.name, dr.rule_type
 ORDER BY COUNT(da.id) DESC, dr.name"/>
