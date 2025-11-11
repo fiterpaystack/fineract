@@ -68,6 +68,21 @@ public class DiscountApplication extends AbstractAuditableWithUTCDateTimeCustom<
     @Column(name = "transaction_id")
     private Long transactionId;
 
+    @Column(name = "account_number", length = 20)
+    private String accountNumber;
+
+    @Column(name = "customer_id")
+    private Long customerId;
+
+    @Column(name = "discount_type", length = 50)
+    private String discountType;
+
+    @Column(name = "fee_type_category", length = 50)
+    private String feeTypeCategory;
+
+    @Column(name = "triggered_conditions", columnDefinition = "TEXT")
+    private String triggeredConditions;
+
     /**
      * Create new discount application
      */
@@ -82,6 +97,15 @@ public class DiscountApplication extends AbstractAuditableWithUTCDateTimeCustom<
         application.setDiscountAmount(discountAmount);
         application.setFinalAmount(originalAmount.subtract(discountAmount));
         application.setApplicationDate(OffsetDateTime.now());
+        // transaction_id will be set later after transaction is created
+        application.setTransactionId(null);
         return application;
+    }
+
+    /**
+     * Update transaction ID after transaction is created
+     */
+    public void updateTransactionId(Long transactionId) {
+        this.transactionId = transactionId;
     }
 }

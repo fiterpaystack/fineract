@@ -32,6 +32,7 @@ public class ProductDiscountService {
     private final DiscountRuleService discountRuleService;
     private final DiscountRuleCalculatorFactory calculatorFactory;
     private final DiscountAssignmentPolicyService policyService;
+    private final DiscountApplicationService discountApplicationService;
     private final ThreadLocal<Set<String>> appliedDiscounts = ThreadLocal.withInitial(HashSet::new);
 
     /**
@@ -83,11 +84,13 @@ public class ProductDiscountService {
             List<DiscountRule> chargeRules = discountRuleService.getAssignedDiscountRules("CHARGE", chargeId);
 
             if (!chargeRules.isEmpty()) {
-                return applyRulesWithCalculator(chargeRules, originalAmount, context);
+                // For charge-level rules, we need to fetch Charge entity for logging
+                // Since we don't have it here, pass null and it will be fetched in the service if needed
+                return applyRulesWithCalculator(chargeRules, originalAmount, context, "CHARGE", chargeId, null);
             }
 
             // 2. Fall back to product-level rules
-            return discountRuleService.applyDiscountWithCalculator("SAVINGS_PRODUCT", productId, originalAmount, context);
+            return applyRulesWithCalculatorForProduct(productId, originalAmount, context, null);
 
         } finally {
             // Clean up ThreadLocal after each discount application to prevent memory leaks
@@ -139,10 +142,15 @@ public class ProductDiscountService {
 
             List<DiscountRule> chargeRules = discountRuleService.getAssignedDiscountRules("CHARGE", chargeId);
             if (!chargeRules.isEmpty()) {
-                return applyRulesWithCalculator(chargeRules, ctx.originalAmount(), context);
+                // Get Charge entity from context for logging
+                org.apache.fineract.portfolio.charge.domain.Charge charge = ctx.charge() != null 
+                        ? ctx.charge().getCharge() : null;
+                return applyRulesWithCalculator(chargeRules, ctx.originalAmount(), context, "CHARGE", chargeId, charge);
             }
 
-            return discountRuleService.applyDiscountWithCalculator("SAVINGS_PRODUCT", productId, ctx.originalAmount(), context);
+            // For product-level rules, we don't have direct charge access, so pass null
+            return applyRulesWithCalculatorForProduct(productId, ctx.originalAmount(), context, 
+                    ctx.charge() != null ? ctx.charge().getCharge() : null);
         } finally {
             appliedDiscounts.remove();
         }
@@ -164,8 +172,10 @@ public class ProductDiscountService {
 
     /**
      * Apply discount rules to an amount using the new calculator system with policy-based AND gating and combination.
+     * Saves discount application records for audit trail.
      */
-    private BigDecimal applyRulesWithCalculator(List<DiscountRule> rules, BigDecimal originalAmount, DiscountContext context) {
+    private BigDecimal applyRulesWithCalculator(List<DiscountRule> rules, BigDecimal originalAmount, DiscountContext context,
+            String entityType, Long entityId, org.apache.fineract.portfolio.charge.domain.Charge charge) {
         if (originalAmount == null || originalAmount.compareTo(BigDecimal.ZERO) <= 0) {
             return originalAmount;
         }
@@ -175,15 +185,13 @@ public class ProductDiscountService {
         }
 
         // Resolve policy for the target entity
-        DiscountPolicyEntityType entityType = context.getChargeId() != null ? DiscountPolicyEntityType.CHARGE
+        DiscountPolicyEntityType policyEntityType = "CHARGE".equals(entityType) ? DiscountPolicyEntityType.CHARGE
                 : DiscountPolicyEntityType.SAVINGS_PRODUCT;
-        Long entityId = context.getChargeId() != null ? context.getChargeId() : context.getProductId();
-
-        DiscountAssignmentPolicy policy = policyService.resolvePolicyOrDefault(entityType, entityId);
+        DiscountAssignmentPolicy policy = policyService.resolvePolicyOrDefault(policyEntityType, entityId);
 
         // If AND is required, check all rules are applicable/valid
         if (policy.isAndRequired()) {
-            for (com.paystack.fineract.portfolio.discount.domain.DiscountRule rule : rules) {
+            for (DiscountRule rule : rules) {
                 if (!isRuleApplicableAndValid(rule, context)) {
                     log.debug("AND policy requires all rules to be applicable; rule {} failed, returning original amount", rule.getName());
                     return originalAmount;
@@ -191,16 +199,24 @@ public class ProductDiscountService {
             }
         }
 
-        // Calculate discounts for applicable rules
+        // Calculate discounts for applicable rules and save audit records
         BigDecimal totalDiscount = BigDecimal.ZERO;
         java.time.LocalDate evaluationDate = context.getTransactionDate() != null ? context.getTransactionDate()
                 : DateUtils.getBusinessLocalDate();
+
+        Long chargeId = context.getChargeId() != null ? context.getChargeId() : charge != null ? charge.getId() : null;
 
         for (DiscountRule rule : rules) {
             if (rule.isValidForDate(evaluationDate)) {
                 BigDecimal discountAmount = calculateDiscountWithRule(rule, originalAmount, context);
                 if (discountAmount.compareTo(BigDecimal.ZERO) > 0) {
                     totalDiscount = totalDiscount.add(discountAmount);
+                    
+                    // Save discount application record for audit trail (one record per rule)
+                    if (chargeId != null) {
+                        discountApplicationService.saveDiscountApplication(
+                                rule, entityType, entityId, chargeId, originalAmount, discountAmount, context, charge);
+                    }
                 }
             }
         }
@@ -208,6 +224,21 @@ public class ProductDiscountService {
         // Apply combination strategy
         BigDecimal finalDiscount = applyCombinationStrategy(totalDiscount, originalAmount, policy.getCombinationStrategy());
         return originalAmount.subtract(finalDiscount);
+    }
+
+    /**
+     * Apply discount rules for product-level (fallback when no charge rules)
+     */
+    private BigDecimal applyRulesWithCalculatorForProduct(Long productId, BigDecimal originalAmount, DiscountContext context,
+            org.apache.fineract.portfolio.charge.domain.Charge charge) {
+        // Get product-level rules and apply them
+        List<DiscountRule> productRules = discountRuleService.getAssignedDiscountRules("SAVINGS_PRODUCT", productId);
+        
+        if (productRules.isEmpty()) {
+            return originalAmount;
+        }
+
+        return applyRulesWithCalculator(productRules, originalAmount, context, "SAVINGS_PRODUCT", productId, charge);
     }
 
     /**

@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="paystack-discount-0005-add-reporting-fields" author="paystack">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="m_discount_application"/>
+            <not>
+                <columnExists tableName="m_discount_application" columnName="account_number"/>
+            </not>
+        </preConditions>
+        <comment>Add reporting fields to m_discount_application table for optimized reporting queries</comment>
+
+        <!-- Add reporting columns -->
+        <addColumn tableName="m_discount_application">
+            <column name="account_number" type="VARCHAR(20)"/>
+            <column name="customer_id" type="BIGINT"/>
+            <column name="discount_type" type="VARCHAR(50)"/>
+            <column name="fee_type_category" type="VARCHAR(50)"/>
+            <column name="triggered_conditions" type="TEXT"/>
+        </addColumn>
+
+        <!-- Performance indexes for optimized reporting queries -->
+        <createIndex indexName="idx_discount_app_account_number" tableName="m_discount_application">
+            <column name="account_number"/>
+        </createIndex>
+
+        <createIndex indexName="idx_discount_app_customer_id" tableName="m_discount_application">
+            <column name="customer_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_discount_app_application_date" tableName="m_discount_application">
+            <column name="application_date"/>
+        </createIndex>
+
+        <createIndex indexName="idx_discount_app_fee_type" tableName="m_discount_application">
+            <column name="fee_type_category"/>
+        </createIndex>
+
+        <createIndex indexName="idx_discount_app_rule_id" tableName="m_discount_application">
+            <column name="discount_rule_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_discount_app_charge_id" tableName="m_discount_application">
+            <column name="charge_id"/>
+        </createIndex>
+
+        <!-- Composite index for common query patterns -->
+        <createIndex indexName="idx_discount_app_date_customer" tableName="m_discount_application">
+            <column name="application_date"/>
+            <column name="customer_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_discount_app_date_fee_type" tableName="m_discount_application">
+            <column name="application_date"/>
+            <column name="fee_type_category"/>
+        </createIndex>
+
+        <createIndex indexName="idx_discount_app_rule_date" tableName="m_discount_application">
+            <column name="discount_rule_id"/>
+            <column name="application_date"/>
+        </createIndex>
+
+        <!-- Optimized view for reporting queries (PostgreSQL) -->
+        <sql dbms="postgresql">
+            CREATE OR REPLACE VIEW v_discount_application_report AS
+            SELECT 
+                da.id,
+                da.discount_rule_id,
+                da.entity_type,
+                da.entity_id,
+                da.charge_id,
+                da.account_number,
+                da.customer_id,
+                da.original_amount,
+                da.discount_amount,
+                da.final_amount,
+                da.application_date,
+                da.transaction_id,
+                da.discount_type,
+                da.fee_type_category,
+                da.triggered_conditions,
+                dr.name AS rule_name,
+                dr.rule_type,
+                c.name AS charge_name,
+                c.charge_time_enum,
+                c.is_penalty,
+                mc.account_no AS customer_account_no,
+                mc.display_name AS customer_name,
+                msa.account_no AS savings_account_no,
+                da.created_by,
+                da.created_on_utc,
+                da.last_modified_by,
+                da.last_modified_on_utc
+            FROM m_discount_application da
+            INNER JOIN m_discount_rule dr ON da.discount_rule_id = dr.id
+            INNER JOIN m_charge c ON da.charge_id = c.id
+            LEFT JOIN m_savings_account msa ON da.entity_id = msa.id AND da.entity_type = 'SAVINGS_PRODUCT'
+            LEFT JOIN m_client mc ON (msa.client_id = mc.id OR da.customer_id = mc.id);
+        </sql>
+
+        <!-- Optimized view for reporting queries (MySQL) -->
+        <sql dbms="mysql">
+            CREATE OR REPLACE VIEW v_discount_application_report AS
+            SELECT 
+                da.id,
+                da.discount_rule_id,
+                da.entity_type,
+                da.entity_id,
+                da.charge_id,
+                da.account_number,
+                da.customer_id,
+                da.original_amount,
+                da.discount_amount,
+                da.final_amount,
+                da.application_date,
+                da.transaction_id,
+                da.discount_type,
+                da.fee_type_category,
+                da.triggered_conditions,
+                dr.name AS rule_name,
+                dr.rule_type,
+                c.name AS charge_name,
+                c.charge_time_enum,
+                c.is_penalty,
+                mc.account_no AS customer_account_no,
+                mc.display_name AS customer_name,
+                msa.account_no AS savings_account_no,
+                da.created_by,
+                da.created_on_utc,
+                da.last_modified_by,
+                da.last_modified_on_utc
+            FROM m_discount_application da
+            INNER JOIN m_discount_rule dr ON da.discount_rule_id = dr.id
+            INNER JOIN m_charge c ON da.charge_id = c.id
+            LEFT JOIN m_savings_account msa ON da.entity_id = msa.id AND da.entity_type = 'SAVINGS_PRODUCT'
+            LEFT JOIN m_client mc ON (msa.client_id = mc.id OR da.customer_id = mc.id);
+        </sql>
+
+        <rollback>
+            <dropView viewName="v_discount_application_report"/>
+            <dropIndex indexName="idx_discount_app_rule_date" tableName="m_discount_application"/>
+            <dropIndex indexName="idx_discount_app_date_fee_type" tableName="m_discount_application"/>
+            <dropIndex indexName="idx_discount_app_date_customer" tableName="m_discount_application"/>
+            <dropIndex indexName="idx_discount_app_charge_id" tableName="m_discount_application"/>
+            <dropIndex indexName="idx_discount_app_rule_id" tableName="m_discount_application"/>
+            <dropIndex indexName="idx_discount_app_fee_type" tableName="m_discount_application"/>
+            <dropIndex indexName="idx_discount_app_application_date" tableName="m_discount_application"/>
+            <dropIndex indexName="idx_discount_app_customer_id" tableName="m_discount_application"/>
+            <dropIndex indexName="idx_discount_app_account_number" tableName="m_discount_application"/>
+            <dropColumn tableName="m_discount_application" columnName="triggered_conditions"/>
+            <dropColumn tableName="m_discount_application" columnName="fee_type_category"/>
+            <dropColumn tableName="m_discount_application" columnName="discount_type"/>
+            <dropColumn tableName="m_discount_application" columnName="customer_id"/>
+            <dropColumn tableName="m_discount_application" columnName="account_number"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
+

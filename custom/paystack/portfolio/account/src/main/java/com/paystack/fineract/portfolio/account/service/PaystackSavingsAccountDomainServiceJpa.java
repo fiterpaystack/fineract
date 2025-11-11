@@ -25,6 +25,7 @@ import com.paystack.fineract.client.charge.service.ClientChargeOverrideReadServi
 import com.paystack.fineract.portfolio.account.data.ChargePaymentResult;
 import com.paystack.fineract.portfolio.account.data.SavingsAccountTransactionLimitValidator;
 import com.paystack.fineract.portfolio.discount.domain.ChargeDiscountContext;
+import com.paystack.fineract.portfolio.discount.service.DiscountApplicationService;
 import com.paystack.fineract.portfolio.discount.service.ProductDiscountService;
 import com.paystack.fineract.portfolio.savings.domain.PaystackSavingsProductAttributesRepository;
 import com.paystack.fineract.portfolio.savings.exception.WithdrawalFrequencyExceededException;
@@ -88,6 +89,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
     private final SavingsAccountTransactionLimitValidator savingsAccountTransactionLimitValidator;
     private final PaystackSavingsProductAttributesRepository savingsProductAttributesRepository;
     private final ProductDiscountService productDiscountService;
+    private final DiscountApplicationService discountApplicationService;
     private final NoteRepository noteRepository;
     private final WithdrawalFrequencyService withdrawalFrequencyService;
 
@@ -102,7 +104,8 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService,
             ClientChargeOverrideReadService clientChargeOverrideReadService,
             PaystackSavingsProductAttributesRepository savingsProductAttributesRepository, FeeSplitService feeSplitService,
-            ProductDiscountService productDiscountService, WithdrawalFrequencyService withdrawalFrequencyService) {
+            ProductDiscountService productDiscountService, DiscountApplicationService discountApplicationService,
+            WithdrawalFrequencyService withdrawalFrequencyService) {
         super(savingsAccountRepository, savingsAccountTransactionRepository, applicationCurrencyRepositoryWrapper,
                 journalEntryWritePlatformService, configurationDomainService, context, depositAccountOnHoldTransactionRepository,
                 businessEventNotifierService);
@@ -113,6 +116,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         this.savingsAccountTransactionLimitValidator = savingsAccountTransactionLimitValidator;
         this.savingsProductAttributesRepository = savingsProductAttributesRepository;
         this.productDiscountService = productDiscountService;
+        this.discountApplicationService = discountApplicationService;
         this.noteRepository = noteRepository;
         this.withdrawalFrequencyService = withdrawalFrequencyService;
     }
@@ -618,6 +622,13 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         if (result.getFeeTransaction() != null) {
             final SavingsAccountTransaction feeTransaction = result.getFeeTransaction();
             saveTransactionToGenerateTransactionId(feeTransaction);
+            
+            // Update discount application records with transaction ID
+            if (feeTransaction.getId() != null && charge != null && charge.getCharge() != null) {
+                discountApplicationService.updateTransactionId(
+                        charge.getCharge().getId(), account.getId(), feeTransaction.getId());
+            }
+            
             if (StringUtils.isNotBlank(noteText)) {
                 final Note note = Note.savingsTransactionNote(account, feeTransaction, noteText);
                 this.noteRepository.save(note);
