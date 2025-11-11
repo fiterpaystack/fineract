@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="paystack" id="1">
+        <update tableName="stretchy_report">
+            <column name="report_sql" value="SELECT
+    mc.account_no AS &quot;CustomerID&quot;,
+    TO_CHAR(msa.created_on_utc, 'YYYY-MM-DD HH24:MI:SS') AS &quot;Date Opened&quot;,
+    mc.display_name AS &quot;Account Name&quot;,
+    msa.account_no AS &quot;Account No&quot;,
+    coalesce(trxn.running_balance_derived,0) AS &quot;Account Balance&quot;,
+    mcv.code_value AS &quot;Account Tier&quot;,
+    CONCAT(msp.&quot;name&quot;, ' ', msp.currency_code) AS &quot;Account Type&quot;,
+    rev.enum_value AS &quot;Account Status&quot;,
+    CONCAT(ma.firstname, ' ', ma.lastname) AS &quot;Account Opened By&quot;,
+    ii.&quot;ID Number&quot; AS &quot;BVN&quot;,
+    mc.mobile_no AS &quot;Mobile&quot;,
+    mc.email_address AS &quot;Email&quot;,
+    CONCAT(mad.address_line_1, ' ', mad.address_line_2, ' ', mad.city) AS &quot;Address&quot;,
+    ms.display_name AS &quot;Account Officer&quot;
+FROM
+    m_savings_account msa
+JOIN
+    m_client mc ON mc.id = msa.client_id
+JOIN
+    m_savings_product msp ON msa.product_id = msp.id
+LEFT JOIN
+    r_enum_value rev ON rev.enum_id = msa.status_enum AND rev.enum_name = 'status_enum'
+LEFT JOIN
+    m_appuser ma ON ma.id = msa.created_by
+LEFT JOIN
+    m_code_value mcv ON mc.client_classification_cv_id = mcv.id
+LEFT JOIN
+    m_client_address mca ON mc.id = mca.client_id AND mca.address_type_id = 18
+LEFT JOIN
+    m_address mad ON mad.id = mca.address_id
+LEFT JOIN
+    m_staff ms ON msa.field_officer_id = ms.id
+LEFT JOIN
+    &quot;Identity Information&quot; ii ON ii.client_id = mc.id AND ii.&quot;Identity Types_cd_Identity Type&quot; = (SELECT id FROM m_code_value mcvb WHERE mcvb.code_id = (SELECT id FROM m_code WHERE code_name = 'Identity Types') AND mcvb.code_value = 'BVN')
+LEFT JOIN (
+    SELECT
+        savings_account_id,
+        MAX(id) AS latest_transaction_id
+    FROM
+        m_savings_account_transaction msat
+    WHERE
+        msat.is_reversed = FALSE
+        AND msat.transaction_date &lt;= '${endDate}'
+        AND msat.transaction_type_enum IN (1, 2, 3, 4, 5, 6, 7, 18, 22, 23, 24)
+    GROUP BY
+        savings_account_id
+) latest_trxn ON msa.id = latest_trxn.savings_account_id
+LEFT JOIN
+    m_savings_account_transaction trxn ON trxn.id = latest_trxn.latest_transaction_id
+WHERE
+    (msa.product_id = ${savingsProductId} OR -1 = ${savingsProductId})
+ORDER BY
+    mc.display_name"/>
+            <where>report_name = 'Account Balance'</where>
+        </update>
+    </changeSet>
+
+    <changeSet author="paystack" id="2">
+        <delete tableName="stretchy_report_parameter">
+            <where>
+                report_id = (SELECT id FROM stretchy_report WHERE report_name = 'Account Balance')
+                AND report_parameter_name = 'startDate'
+            </where>
+        </delete>
+    </changeSet>
+</databaseChangeLog>
