@@ -45,7 +45,6 @@
 FROM v_discount_application_report da
 LEFT JOIN m_client mc ON da.customer_id = mc.id
 WHERE da.application_date::date BETWEEN '${startDate}'::date AND '${endDate}'::date
-    AND (${customerId} = -1 OR da.customer_id = ${customerId})
 GROUP BY COALESCE(da.customer_id, mc.id), COALESCE(mc.display_name, 'Unknown'), COALESCE(mc.account_no, 'N/A')
 ORDER BY SUM(da.discount_amount) DESC"/>
             <column name="description" value="Per-customer discount usage report showing total discounts applied per customer with account breakdown"/>
@@ -75,7 +74,6 @@ ORDER BY SUM(da.discount_amount) DESC"/>
 FROM v_discount_application_report da
 LEFT JOIN m_client mc ON da.customer_id = mc.id
 WHERE DATE(da.application_date) BETWEEN DATE('${startDate}') AND DATE('${endDate}')
-    AND (${customerId} = -1 OR da.customer_id = ${customerId})
 GROUP BY COALESCE(da.customer_id, mc.id), COALESCE(mc.display_name, 'Unknown'), COALESCE(mc.account_no, 'N/A')
 ORDER BY SUM(da.discount_amount) DESC"/>
             <column name="description" value="Per-customer discount usage report showing total discounts applied per customer with account breakdown"/>
@@ -321,9 +319,9 @@ ORDER BY SUM(da.discount_amount) DESC"/>
     da.last_modified_on_utc AS &quot;Last Modified On&quot;
 FROM v_discount_application_report da
 LEFT JOIN m_client mc ON da.customer_id = mc.id
+LEFT JOIN m_discount_rule dr ON da.discount_rule_id = dr.id
 WHERE da.application_date::date BETWEEN '${startDate}'::date AND '${endDate}'::date
     AND ('${accountNumber}' = '' OR da.account_number = '${accountNumber}')
-    AND (${customerId} = -1 OR da.customer_id = ${customerId})
     AND ('${discountType}' = '' OR da.discount_type = '${discountType}')
 ORDER BY da.application_date DESC"/>
             <column name="description" value="Complete audit trail with all discount application details including triggered conditions, timestamps, and user information"/>
@@ -361,9 +359,9 @@ ORDER BY da.application_date DESC"/>
     da.last_modified_on_utc AS &quot;Last Modified On&quot;
 FROM v_discount_application_report da
 LEFT JOIN m_client mc ON da.customer_id = mc.id
+LEFT JOIN m_discount_rule dr ON da.discount_rule_id = dr.id
 WHERE DATE(da.application_date) BETWEEN DATE('${startDate}') AND DATE('${endDate}')
     AND ('${accountNumber}' = '' OR da.account_number = '${accountNumber}')
-    AND (${customerId} = -1 OR da.customer_id = ${customerId})
     AND ('${discountType}' = '' OR da.discount_type = '${discountType}')
 ORDER BY da.application_date DESC"/>
             <column name="description" value="Complete audit trail with all discount application details including triggered conditions, timestamps, and user information"/>
@@ -402,18 +400,6 @@ ORDER BY da.application_date DESC"/>
             FROM stretchy_report r, stretchy_parameter p
             WHERE r.report_name = 'Per-Customer Discount Usage Report'
             AND p.parameter_name = 'endDateSelect'
-            AND NOT EXISTS (
-                SELECT 1 FROM stretchy_report_parameter rp 
-                WHERE rp.report_id = r.id AND rp.parameter_id = p.id
-            );
-        </sql>
-        
-        <sql>
-            INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
-            SELECT r.id, p.id, 'R_customerId'
-            FROM stretchy_report r, stretchy_parameter p
-            WHERE r.report_name = 'Per-Customer Discount Usage Report'
-            AND p.parameter_name = 'selectClient'
             AND NOT EXISTS (
                 SELECT 1 FROM stretchy_report_parameter rp 
                 WHERE rp.report_id = r.id AND rp.parameter_id = p.id
@@ -564,19 +550,6 @@ ORDER BY da.application_date DESC"/>
             FROM stretchy_report r, stretchy_parameter p
             WHERE r.report_name = 'Discount Audit Trail'
             AND p.parameter_name = 'accountNumberText'
-            AND NOT EXISTS (
-                SELECT 1 FROM stretchy_report_parameter rp 
-                WHERE rp.report_id = r.id AND rp.parameter_id = p.id
-            );
-        </sql>
-        
-        <!-- Link customerId parameter to Audit Trail -->
-        <sql>
-            INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
-            SELECT r.id, p.id, 'R_customerId'
-            FROM stretchy_report r, stretchy_parameter p
-            WHERE r.report_name = 'Discount Audit Trail'
-            AND p.parameter_name = 'selectClient'
             AND NOT EXISTS (
                 SELECT 1 FROM stretchy_report_parameter rp 
                 WHERE rp.report_id = r.id AND rp.parameter_id = p.id
