@@ -13,14 +13,13 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import java.util.ArrayList;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.jpa.CriteriaQueryFactory;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientIdentifier;
 import org.apache.fineract.portfolio.client.domain.search.SearchedClient;
-import org.apache.fineract.portfolio.client.domain.search.SearchingClientRepository;
+import org.apache.fineract.portfolio.client.domain.search.SearchingClientRepositoryImpl;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -29,19 +28,23 @@ import org.springframework.stereotype.Repository;
 
 /**
  * Custom implementation of SearchingClientRepository with case-insensitive search.
- * This overrides the core implementation to provide case-insensitive search functionality
+ * Extends the core implementation to provide case-insensitive search functionality
  * for client search operations.
  */
 @Slf4j
 @Repository
 @Primary
-@RequiredArgsConstructor
-public class PaystackSearchingClientRepositoryImpl implements SearchingClientRepository {
+public class PaystackSearchingClientRepositoryImpl extends SearchingClientRepositoryImpl {
 
     @PersistenceContext
     private EntityManager entityManager;
 
     private final CriteriaQueryFactory criteriaQueryFactory;
+
+    public PaystackSearchingClientRepositoryImpl(CriteriaQueryFactory criteriaQueryFactory) {
+        super(criteriaQueryFactory);
+        this.criteriaQueryFactory = criteriaQueryFactory;
+    }
 
     @Override
     public Page<SearchedClient> searchByText(String searchText, Pageable pageable, String officeHierarchy) {
