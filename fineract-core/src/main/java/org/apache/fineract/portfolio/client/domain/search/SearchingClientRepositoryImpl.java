@@ -78,7 +78,8 @@ public class SearchingClientRepositoryImpl implements SearchingClientRepository 
             String searchLikeValue = "%" + normalizedSearchText + "%";
             predicates.add(cb.or(cb.like(cb.upper(r.get("accountNumber")), searchLikeValue),
                     cb.like(cb.upper(r.get("displayName")), searchLikeValue), cb.like(cb.upper(r.get("externalId")), searchLikeValue),
-                    cb.like(cb.upper(r.get("mobileNo")), searchLikeValue), cb.like(cb.upper(identity.get("documentKey")), searchLikeValue)));
+                    cb.like(cb.upper(r.get("mobileNo")), searchLikeValue),
+                    cb.like(cb.upper(identity.get("documentKey")), searchLikeValue)));
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
