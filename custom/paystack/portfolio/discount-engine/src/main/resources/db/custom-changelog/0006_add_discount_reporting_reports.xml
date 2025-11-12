@@ -1,0 +1,586 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <!-- ============================================ -->
+    <!-- Report 1: Per-Customer Discount Usage Report -->
+    <!-- ============================================ -->
+    <changeSet id="paystack-discount-0006-report1-customer-usage-postgresql" author="paystack" dbms="postgresql">
+        <comment>Add Per-Customer Discount Usage Report for PostgreSQL</comment>
+        <insert tableName="stretchy_report">
+            <column name="report_name" value="Per-Customer Discount Usage Report"/>
+            <column name="report_type" value="Table"/>
+            <column name="report_subtype" value=""/>
+            <column name="report_category" value="Discount"/>
+            <column name="report_sql" value="SELECT
+    COALESCE(da.customer_id, mc.id) AS &quot;Customer ID&quot;,
+    COALESCE(mc.display_name, 'Unknown') AS &quot;Customer Name&quot;,
+    COALESCE(mc.account_no, 'N/A') AS &quot;Customer Account No&quot;,
+    COUNT(DISTINCT da.account_number) AS &quot;Number of Accounts&quot;,
+    COUNT(da.id) AS &quot;Number of Discounts&quot;,
+    SUM(da.original_amount) AS &quot;Total Original Fees&quot;,
+    SUM(da.discount_amount) AS &quot;Total Discounts Applied&quot;,
+    SUM(da.final_amount) AS &quot;Total Final Fees&quot;,
+    ROUND(SUM(da.discount_amount) * 100.0 / NULLIF(SUM(da.original_amount), 0), 2) AS &quot;Discount Percentage&quot;
+FROM v_discount_application_report da
+LEFT JOIN m_client mc ON da.customer_id = mc.id
+WHERE da.application_date::date BETWEEN '${startDate}'::date AND '${endDate}'::date
+GROUP BY COALESCE(da.customer_id, mc.id), COALESCE(mc.display_name, 'Unknown'), COALESCE(mc.account_no, 'N/A')
+ORDER BY SUM(da.discount_amount) DESC"/>
+            <column name="description" value="Per-customer discount usage report showing total discounts applied per customer with account breakdown"/>
+            <column name="core_report" valueBoolean="false"/>
+            <column name="use_report" valueBoolean="true"/>
+            <column name="self_service_user_report" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="paystack-discount-0006-report1-customer-usage-mysql" author="paystack" dbms="mysql">
+        <comment>Add Per-Customer Discount Usage Report for MySQL</comment>
+        <insert tableName="stretchy_report">
+            <column name="report_name" value="Per-Customer Discount Usage Report"/>
+            <column name="report_type" value="Table"/>
+            <column name="report_subtype" value=""/>
+            <column name="report_category" value="Discount"/>
+            <column name="report_sql" value="SELECT
+    COALESCE(da.customer_id, mc.id) AS &quot;Customer ID&quot;,
+    COALESCE(mc.display_name, 'Unknown') AS &quot;Customer Name&quot;,
+    COALESCE(mc.account_no, 'N/A') AS &quot;Customer Account No&quot;,
+    COUNT(DISTINCT da.account_number) AS &quot;Number of Accounts&quot;,
+    COUNT(da.id) AS &quot;Number of Discounts&quot;,
+    SUM(da.original_amount) AS &quot;Total Original Fees&quot;,
+    SUM(da.discount_amount) AS &quot;Total Discounts Applied&quot;,
+    SUM(da.final_amount) AS &quot;Total Final Fees&quot;,
+    ROUND(SUM(da.discount_amount) * 100.0 / NULLIF(SUM(da.original_amount), 0), 2) AS &quot;Discount Percentage&quot;
+FROM v_discount_application_report da
+LEFT JOIN m_client mc ON da.customer_id = mc.id
+WHERE DATE(da.application_date) BETWEEN DATE('${startDate}') AND DATE('${endDate}')
+GROUP BY COALESCE(da.customer_id, mc.id), COALESCE(mc.display_name, 'Unknown'), COALESCE(mc.account_no, 'N/A')
+ORDER BY SUM(da.discount_amount) DESC"/>
+            <column name="description" value="Per-customer discount usage report showing total discounts applied per customer with account breakdown"/>
+            <column name="core_report" valueBoolean="false"/>
+            <column name="use_report" valueBoolean="true"/>
+            <column name="self_service_user_report" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- ============================================ -->
+    <!-- Report 2: Fees Waived Report -->
+    <!-- ============================================ -->
+    <changeSet id="paystack-discount-0006-report2-fees-waived-postgresql" author="paystack" dbms="postgresql">
+        <comment>Add Fees Waived Report for PostgreSQL</comment>
+        <insert tableName="stretchy_report">
+            <column name="report_name" value="Fees Waived Report"/>
+            <column name="report_type" value="Table"/>
+            <column name="report_subtype" value=""/>
+            <column name="report_category" value="Discount"/>
+            <column name="report_sql" value="SELECT
+    CASE
+        WHEN '${periodType}' = 'monthly' THEN TO_CHAR(da.application_date, 'YYYY-MM')
+        WHEN '${periodType}' = 'quarterly' THEN TO_CHAR(da.application_date, 'YYYY') || '-Q' || TO_CHAR(da.application_date, 'Q')
+        ELSE TO_CHAR(da.application_date, 'YYYY-MM-DD')
+    END AS &quot;Period&quot;,
+    SUM(da.discount_amount) AS &quot;Total Fees Waived&quot;,
+    COUNT(*) AS &quot;Number of Discounts&quot;,
+    da.fee_type_category AS &quot;Fee Type&quot;,
+    dr.name AS &quot;Discount Rule&quot;
+FROM v_discount_application_report da
+JOIN m_discount_rule dr ON da.discount_rule_id = dr.id
+WHERE da.application_date::date BETWEEN '${startDate}'::date AND '${endDate}'::date
+GROUP BY
+    CASE
+        WHEN '${periodType}' = 'monthly' THEN TO_CHAR(da.application_date, 'YYYY-MM')
+        WHEN '${periodType}' = 'quarterly' THEN TO_CHAR(da.application_date, 'YYYY') || '-Q' || TO_CHAR(da.application_date, 'Q')
+        ELSE TO_CHAR(da.application_date, 'YYYY-MM-DD')
+    END,
+    da.fee_type_category,
+    dr.name
+ORDER BY &quot;Period&quot; DESC, da.fee_type_category"/>
+            <column name="description" value="Total fees waived per period (daily, monthly, quarterly) with breakdown by fee type and discount rule"/>
+            <column name="core_report" valueBoolean="false"/>
+            <column name="use_report" valueBoolean="true"/>
+            <column name="self_service_user_report" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="paystack-discount-0006-report2-fees-waived-mysql" author="paystack" dbms="mysql">
+        <comment>Add Fees Waived Report for MySQL</comment>
+        <insert tableName="stretchy_report">
+            <column name="report_name" value="Fees Waived Report"/>
+            <column name="report_type" value="Table"/>
+            <column name="report_subtype" value=""/>
+            <column name="report_category" value="Discount"/>
+            <column name="report_sql" value="SELECT
+    CASE
+        WHEN '${periodType}' = 'monthly' THEN DATE_FORMAT(da.application_date, '%Y-%m')
+        WHEN '${periodType}' = 'quarterly' THEN CONCAT(YEAR(da.application_date), '-Q', QUARTER(da.application_date))
+        ELSE DATE(da.application_date)
+    END AS &quot;Period&quot;,
+    SUM(da.discount_amount) AS &quot;Total Fees Waived&quot;,
+    COUNT(*) AS &quot;Number of Discounts&quot;,
+    da.fee_type_category AS &quot;Fee Type&quot;,
+    dr.name AS &quot;Discount Rule&quot;
+FROM v_discount_application_report da
+JOIN m_discount_rule dr ON da.discount_rule_id = dr.id
+WHERE DATE(da.application_date) BETWEEN DATE('${startDate}') AND DATE('${endDate}')
+GROUP BY
+    CASE
+        WHEN '${periodType}' = 'monthly' THEN DATE_FORMAT(da.application_date, '%Y-%m')
+        WHEN '${periodType}' = 'quarterly' THEN CONCAT(YEAR(da.application_date), '-Q', QUARTER(da.application_date))
+        ELSE DATE(da.application_date)
+    END,
+    da.fee_type_category,
+    dr.name
+ORDER BY &quot;Period&quot; DESC, da.fee_type_category"/>
+            <column name="description" value="Total fees waived per period (daily, monthly, quarterly) with breakdown by fee type and discount rule"/>
+            <column name="core_report" valueBoolean="false"/>
+            <column name="use_report" valueBoolean="true"/>
+            <column name="self_service_user_report" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- ============================================ -->
+    <!-- Report 3: Rule Utilization Statistics -->
+    <!-- ============================================ -->
+    <changeSet id="paystack-discount-0006-report3-rule-utilization-postgresql" author="paystack" dbms="postgresql">
+        <comment>Add Rule Utilization Statistics Report for PostgreSQL</comment>
+        <insert tableName="stretchy_report">
+            <column name="report_name" value="Rule Utilization Report"/>
+            <column name="report_type" value="Table"/>
+            <column name="report_subtype" value=""/>
+            <column name="report_category" value="Discount"/>
+            <column name="report_sql" value="SELECT
+    dr.id AS &quot;Rule ID&quot;,
+    dr.name AS &quot;Rule Name&quot;,
+    dr.rule_type AS &quot;Rule Type&quot;,
+    COUNT(da.id) AS &quot;Times Fired&quot;,
+    COALESCE(SUM(da.discount_amount), 0) AS &quot;Total Discount Amount&quot;,
+    COALESCE(ROUND(AVG(da.discount_amount), 2), 0) AS &quot;Average Discount Amount&quot;,
+    MIN(da.application_date) AS &quot;First Application&quot;,
+    MAX(da.application_date) AS &quot;Last Application&quot;,
+    CASE
+        WHEN COUNT(da.id) = 0 THEN 'Never Used'
+        WHEN COUNT(da.id) &lt; 10 THEN 'Low Usage'
+        WHEN COUNT(da.id) &lt; 100 THEN 'Medium Usage'
+        ELSE 'High Usage'
+    END AS &quot;Usage Status&quot;
+FROM m_discount_rule dr
+LEFT JOIN v_discount_application_report da ON dr.id = da.discount_rule_id
+    AND da.application_date::date BETWEEN '${startDate}'::date AND '${endDate}'::date
+WHERE dr.is_active = true
+GROUP BY dr.id, dr.name, dr.rule_type
+ORDER BY COUNT(da.id) DESC, dr.name"/>
+            <column name="description" value="Rule utilization statistics showing which rules are most/least used with performance metrics"/>
+            <column name="core_report" valueBoolean="false"/>
+            <column name="use_report" valueBoolean="true"/>
+            <column name="self_service_user_report" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="paystack-discount-0006-report3-rule-utilization-mysql" author="paystack" dbms="mysql">
+        <comment>Add Rule Utilization Statistics Report for MySQL</comment>
+        <insert tableName="stretchy_report">
+            <column name="report_name" value="Rule Utilization Report"/>
+            <column name="report_type" value="Table"/>
+            <column name="report_subtype" value=""/>
+            <column name="report_category" value="Discount"/>
+            <column name="report_sql" value="SELECT
+    dr.id AS &quot;Rule ID&quot;,
+    dr.name AS &quot;Rule Name&quot;,
+    dr.rule_type AS &quot;Rule Type&quot;,
+    COUNT(da.id) AS &quot;Times Fired&quot;,
+    COALESCE(SUM(da.discount_amount), 0) AS &quot;Total Discount Amount&quot;,
+    COALESCE(ROUND(AVG(da.discount_amount), 2), 0) AS &quot;Average Discount Amount&quot;,
+    MIN(da.application_date) AS &quot;First Application&quot;,
+    MAX(da.application_date) AS &quot;Last Application&quot;,
+    CASE
+        WHEN COUNT(da.id) = 0 THEN 'Never Used'
+        WHEN COUNT(da.id) &lt; 10 THEN 'Low Usage'
+        WHEN COUNT(da.id) &lt; 100 THEN 'Medium Usage'
+        ELSE 'High Usage'
+    END AS &quot;Usage Status&quot;
+FROM m_discount_rule dr
+LEFT JOIN v_discount_application_report da ON dr.id = da.discount_rule_id
+    AND DATE(da.application_date) BETWEEN DATE('${startDate}') AND DATE('${endDate}')
+WHERE dr.is_active = true
+GROUP BY dr.id, dr.name, dr.rule_type
+ORDER BY COUNT(da.id) DESC, dr.name"/>
+            <column name="description" value="Rule utilization statistics showing which rules are most/least used with performance metrics"/>
+            <column name="core_report" valueBoolean="false"/>
+            <column name="use_report" valueBoolean="true"/>
+            <column name="self_service_user_report" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- ============================================ -->
+    <!-- Report 4: Fee Type Breakdown Report -->
+    <!-- ============================================ -->
+    <changeSet id="paystack-discount-0006-report4-fee-type-breakdown-postgresql" author="paystack" dbms="postgresql">
+        <comment>Add Fee Type Breakdown Report for PostgreSQL</comment>
+        <insert tableName="stretchy_report">
+            <column name="report_name" value="Fee Type Breakdown Report"/>
+            <column name="report_type" value="Table"/>
+            <column name="report_subtype" value=""/>
+            <column name="report_category" value="Discount"/>
+            <column name="report_sql" value="SELECT
+    COALESCE(da.fee_type_category, 'OTHER') AS &quot;Fee Type&quot;,
+    COUNT(*) AS &quot;Number of Discounts&quot;,
+    SUM(da.original_amount) AS &quot;Total Original Fees&quot;,
+    SUM(da.discount_amount) AS &quot;Total Discounts Applied&quot;,
+    SUM(da.final_amount) AS &quot;Total Final Fees&quot;,
+    ROUND(SUM(da.discount_amount) * 100.0 / NULLIF(SUM(da.original_amount), 0), 2) AS &quot;Discount Percentage&quot;,
+    COUNT(DISTINCT da.customer_id) AS &quot;Unique Customers&quot;,
+    COUNT(DISTINCT da.account_number) AS &quot;Unique Accounts&quot;
+FROM v_discount_application_report da
+WHERE da.application_date::date BETWEEN '${startDate}'::date AND '${endDate}'::date
+GROUP BY COALESCE(da.fee_type_category, 'OTHER')
+ORDER BY SUM(da.discount_amount) DESC"/>
+            <column name="description" value="Breakdown of discounts by fee type category (transfers, maintenance, penalties, others)"/>
+            <column name="core_report" valueBoolean="false"/>
+            <column name="use_report" valueBoolean="true"/>
+            <column name="self_service_user_report" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="paystack-discount-0006-report4-fee-type-breakdown-mysql" author="paystack" dbms="mysql">
+        <comment>Add Fee Type Breakdown Report for MySQL</comment>
+        <insert tableName="stretchy_report">
+            <column name="report_name" value="Fee Type Breakdown Report"/>
+            <column name="report_type" value="Table"/>
+            <column name="report_subtype" value=""/>
+            <column name="report_category" value="Discount"/>
+            <column name="report_sql" value="SELECT
+    COALESCE(da.fee_type_category, 'OTHER') AS &quot;Fee Type&quot;,
+    COUNT(*) AS &quot;Number of Discounts&quot;,
+    SUM(da.original_amount) AS &quot;Total Original Fees&quot;,
+    SUM(da.discount_amount) AS &quot;Total Discounts Applied&quot;,
+    SUM(da.final_amount) AS &quot;Total Final Fees&quot;,
+    ROUND(SUM(da.discount_amount) * 100.0 / NULLIF(SUM(da.original_amount), 0), 2) AS &quot;Discount Percentage&quot;,
+    COUNT(DISTINCT da.customer_id) AS &quot;Unique Customers&quot;,
+    COUNT(DISTINCT da.account_number) AS &quot;Unique Accounts&quot;
+FROM v_discount_application_report da
+WHERE DATE(da.application_date) BETWEEN DATE('${startDate}') AND DATE('${endDate}')
+GROUP BY COALESCE(da.fee_type_category, 'OTHER')
+ORDER BY SUM(da.discount_amount) DESC"/>
+            <column name="description" value="Breakdown of discounts by fee type category (transfers, maintenance, penalties, others)"/>
+            <column name="core_report" valueBoolean="false"/>
+            <column name="use_report" valueBoolean="true"/>
+            <column name="self_service_user_report" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- ============================================ -->
+    <!-- Report 5: Complete Audit Trail Report -->
+    <!-- ============================================ -->
+    <changeSet id="paystack-discount-0006-report5-audit-trail-postgresql" author="paystack" dbms="postgresql">
+        <comment>Add Complete Audit Trail Report for PostgreSQL</comment>
+        <insert tableName="stretchy_report">
+            <column name="report_name" value="Discount Audit Trail"/>
+            <column name="report_type" value="Table"/>
+            <column name="report_subtype" value=""/>
+            <column name="report_category" value="Discount"/>
+            <column name="report_sql" value="SELECT
+    da.id AS &quot;Application ID&quot;,
+    COALESCE(mc.account_no, 'N/A') AS &quot;Customer ID&quot;,
+    da.account_number AS &quot;Account Number&quot;,
+    da.transaction_id AS &quot;Transaction ID&quot;,
+    da.application_date AS &quot;Timestamp&quot;,
+    da.original_amount AS &quot;Original Fee Amount&quot;,
+    da.discount_amount AS &quot;Discounted Fee Amount&quot;,
+    da.final_amount AS &quot;Final Fee Amount&quot;,
+    da.triggered_conditions AS &quot;Condition(s) Triggered&quot;,
+    da.discount_type AS &quot;Discount Type&quot;,
+    dr.name AS &quot;Discount Rule Name&quot;,
+    dr.rule_type AS &quot;Rule Type&quot;,
+    da.charge_name AS &quot;Charge Name&quot;,
+    da.fee_type_category AS &quot;Fee Type&quot;,
+    da.created_by AS &quot;Created By User ID&quot;,
+    da.created_on_utc AS &quot;Created On&quot;,
+    da.last_modified_by AS &quot;Last Modified By User ID&quot;,
+    da.last_modified_on_utc AS &quot;Last Modified On&quot;
+FROM v_discount_application_report da
+LEFT JOIN m_client mc ON da.customer_id = mc.id
+LEFT JOIN m_discount_rule dr ON da.discount_rule_id = dr.id
+WHERE da.application_date::date BETWEEN '${startDate}'::date AND '${endDate}'::date
+    AND ('${accountNumber}' = '' OR da.account_number = '${accountNumber}')
+    AND ('${discountType}' = '' OR da.discount_type = '${discountType}')
+ORDER BY da.application_date DESC"/>
+            <column name="description" value="Complete audit trail with all discount application details including triggered conditions, timestamps, and user information"/>
+            <column name="core_report" valueBoolean="false"/>
+            <column name="use_report" valueBoolean="true"/>
+            <column name="self_service_user_report" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="paystack-discount-0006-report5-audit-trail-mysql" author="paystack" dbms="mysql">
+        <comment>Add Complete Audit Trail Report for MySQL</comment>
+        <insert tableName="stretchy_report">
+            <column name="report_name" value="Discount Audit Trail"/>
+            <column name="report_type" value="Table"/>
+            <column name="report_subtype" value=""/>
+            <column name="report_category" value="Discount"/>
+            <column name="report_sql" value="SELECT
+    da.id AS &quot;Application ID&quot;,
+    COALESCE(mc.account_no, 'N/A') AS &quot;Customer ID&quot;,
+    da.account_number AS &quot;Account Number&quot;,
+    da.transaction_id AS &quot;Transaction ID&quot;,
+    da.application_date AS &quot;Timestamp&quot;,
+    da.original_amount AS &quot;Original Fee Amount&quot;,
+    da.discount_amount AS &quot;Discounted Fee Amount&quot;,
+    da.final_amount AS &quot;Final Fee Amount&quot;,
+    da.triggered_conditions AS &quot;Condition(s) Triggered&quot;,
+    da.discount_type AS &quot;Discount Type&quot;,
+    dr.name AS &quot;Discount Rule Name&quot;,
+    dr.rule_type AS &quot;Rule Type&quot;,
+    da.charge_name AS &quot;Charge Name&quot;,
+    da.fee_type_category AS &quot;Fee Type&quot;,
+    da.created_by AS &quot;Created By User ID&quot;,
+    da.created_on_utc AS &quot;Created On&quot;,
+    da.last_modified_by AS &quot;Last Modified By User ID&quot;,
+    da.last_modified_on_utc AS &quot;Last Modified On&quot;
+FROM v_discount_application_report da
+LEFT JOIN m_client mc ON da.customer_id = mc.id
+LEFT JOIN m_discount_rule dr ON da.discount_rule_id = dr.id
+WHERE DATE(da.application_date) BETWEEN DATE('${startDate}') AND DATE('${endDate}')
+    AND ('${accountNumber}' = '' OR da.account_number = '${accountNumber}')
+    AND ('${discountType}' = '' OR da.discount_type = '${discountType}')
+ORDER BY da.application_date DESC"/>
+            <column name="description" value="Complete audit trail with all discount application details including triggered conditions, timestamps, and user information"/>
+            <column name="core_report" valueBoolean="false"/>
+            <column name="use_report" valueBoolean="true"/>
+            <column name="self_service_user_report" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- ============================================ -->
+    <!-- Add Report Parameters -->
+    <!-- ============================================ -->
+    <!-- Note: Parameters are linked using SQL to get report IDs dynamically -->
+    <!-- Standard parameters (startDateSelect, endDateSelect) are assumed to exist -->
+    <!-- Custom parameters will be created if they don't exist -->
+
+    <changeSet id="paystack-discount-0006-parameters-link" author="paystack">
+        <comment>Link parameters to discount reports</comment>
+
+        <!-- Link parameters to Report 1: Per-Customer Discount Usage Report -->
+        <sql>
+            INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
+            SELECT r.id, p.id, 'R_startDate'
+            FROM stretchy_report r, stretchy_parameter p
+            WHERE r.report_name = 'Per-Customer Discount Usage Report'
+            AND p.parameter_name = 'startDateSelect'
+            AND NOT EXISTS (
+                SELECT 1 FROM stretchy_report_parameter rp
+                WHERE rp.report_id = r.id AND rp.parameter_id = p.id
+            );
+        </sql>
+
+        <sql>
+            INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
+            SELECT r.id, p.id, 'R_endDate'
+            FROM stretchy_report r, stretchy_parameter p
+            WHERE r.report_name = 'Per-Customer Discount Usage Report'
+            AND p.parameter_name = 'endDateSelect'
+            AND NOT EXISTS (
+                SELECT 1 FROM stretchy_report_parameter rp
+                WHERE rp.report_id = r.id AND rp.parameter_id = p.id
+            );
+        </sql>
+
+        <!-- Link parameters to Report 2: Fees Waived Report -->
+        <sql>
+            INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
+            SELECT r.id, p.id, 'R_startDate'
+            FROM stretchy_report r, stretchy_parameter p
+            WHERE r.report_name = 'Fees Waived Report'
+            AND p.parameter_name = 'startDateSelect'
+            AND NOT EXISTS (
+                SELECT 1 FROM stretchy_report_parameter rp
+                WHERE rp.report_id = r.id AND rp.parameter_id = p.id
+            );
+        </sql>
+
+        <sql>
+            INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
+            SELECT r.id, p.id, 'R_endDate'
+            FROM stretchy_report r, stretchy_parameter p
+            WHERE r.report_name = 'Fees Waived Report'
+            AND p.parameter_name = 'endDateSelect'
+            AND NOT EXISTS (
+                SELECT 1 FROM stretchy_report_parameter rp
+                WHERE rp.report_id = r.id AND rp.parameter_id = p.id
+            );
+        </sql>
+
+        <!-- Create periodType parameter if it doesn't exist -->
+        <sql dbms="postgresql"><![CDATA[
+            INSERT INTO stretchy_parameter (parameter_name, parameter_variable, parameter_label, "parameter_displayType", "parameter_FormatType", parameter_default, special, "selectOne", "selectAll", parameter_sql, parent_id)
+            SELECT 'periodTypeSelect', 'periodType', 'Period Type', 'select', 'string', 'daily', NULL, 'Y', NULL,
+                   'SELECT ''daily'' AS id, ''Daily'' AS value UNION SELECT ''monthly'' AS id, ''Monthly'' AS value UNION SELECT ''quarterly'' AS id, ''Quarterly'' AS value', NULL
+            WHERE NOT EXISTS (SELECT 1 FROM stretchy_parameter WHERE parameter_name = 'periodTypeSelect');
+        ]]></sql>
+        <sql dbms="mysql"><![CDATA[
+            INSERT INTO stretchy_parameter (parameter_name, parameter_variable, parameter_label, parameter_displayType, parameter_FormatType, parameter_default, special, selectOne, selectAll, parameter_sql, parent_id)
+            SELECT 'periodTypeSelect', 'periodType', 'Period Type', 'select', 'string', 'daily', NULL, 'Y', NULL,
+                   'SELECT ''daily'' AS id, ''Daily'' AS value UNION SELECT ''monthly'' AS id, ''Monthly'' AS value UNION SELECT ''quarterly'' AS id, ''Quarterly'' AS value', NULL
+            WHERE NOT EXISTS (SELECT 1 FROM stretchy_parameter WHERE parameter_name = 'periodTypeSelect');
+        ]]></sql>
+
+        <sql>
+            INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
+            SELECT r.id, p.id, 'R_periodType'
+            FROM stretchy_report r, stretchy_parameter p
+            WHERE r.report_name = 'Fees Waived Report'
+            AND p.parameter_name = 'periodTypeSelect'
+            AND NOT EXISTS (
+                SELECT 1 FROM stretchy_report_parameter rp
+                WHERE rp.report_id = r.id AND rp.parameter_id = p.id
+            );
+        </sql>
+
+        <!-- Link parameters to Report 3: Rule Utilization Report -->
+        <sql>
+            INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
+            SELECT r.id, p.id, 'R_startDate'
+            FROM stretchy_report r, stretchy_parameter p
+            WHERE r.report_name = 'Rule Utilization Report'
+            AND p.parameter_name = 'startDateSelect'
+            AND NOT EXISTS (
+                SELECT 1 FROM stretchy_report_parameter rp
+                WHERE rp.report_id = r.id AND rp.parameter_id = p.id
+            );
+        </sql>
+
+        <sql>
+            INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
+            SELECT r.id, p.id, 'R_endDate'
+            FROM stretchy_report r, stretchy_parameter p
+            WHERE r.report_name = 'Rule Utilization Report'
+            AND p.parameter_name = 'endDateSelect'
+            AND NOT EXISTS (
+                SELECT 1 FROM stretchy_report_parameter rp
+                WHERE rp.report_id = r.id AND rp.parameter_id = p.id
+            );
+        </sql>
+
+        <!-- Link parameters to Report 4: Fee Type Breakdown Report -->
+        <sql>
+            INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
+            SELECT r.id, p.id, 'R_startDate'
+            FROM stretchy_report r, stretchy_parameter p
+            WHERE r.report_name = 'Fee Type Breakdown Report'
+            AND p.parameter_name = 'startDateSelect'
+            AND NOT EXISTS (
+                SELECT 1 FROM stretchy_report_parameter rp
+                WHERE rp.report_id = r.id AND rp.parameter_id = p.id
+            );
+        </sql>
+
+        <sql>
+            INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
+            SELECT r.id, p.id, 'R_endDate'
+            FROM stretchy_report r, stretchy_parameter p
+            WHERE r.report_name = 'Fee Type Breakdown Report'
+            AND p.parameter_name = 'endDateSelect'
+            AND NOT EXISTS (
+                SELECT 1 FROM stretchy_report_parameter rp
+                WHERE rp.report_id = r.id AND rp.parameter_id = p.id
+            );
+        </sql>
+
+        <!-- Link parameters to Report 5: Discount Audit Trail -->
+        <sql>
+            INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
+            SELECT r.id, p.id, 'R_startDate'
+            FROM stretchy_report r, stretchy_parameter p
+            WHERE r.report_name = 'Discount Audit Trail'
+            AND p.parameter_name = 'startDateSelect'
+            AND NOT EXISTS (
+                SELECT 1 FROM stretchy_report_parameter rp
+                WHERE rp.report_id = r.id AND rp.parameter_id = p.id
+            );
+        </sql>
+
+        <sql>
+            INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
+            SELECT r.id, p.id, 'R_endDate'
+            FROM stretchy_report r, stretchy_parameter p
+            WHERE r.report_name = 'Discount Audit Trail'
+            AND p.parameter_name = 'endDateSelect'
+            AND NOT EXISTS (
+                SELECT 1 FROM stretchy_report_parameter rp
+                WHERE rp.report_id = r.id AND rp.parameter_id = p.id
+            );
+        </sql>
+
+        <!-- Create accountNumber parameter if it doesn't exist -->
+        <sql dbms="postgresql"><![CDATA[
+            INSERT INTO stretchy_parameter (parameter_name, parameter_variable, parameter_label, "parameter_displayType", "parameter_FormatType", parameter_default, special, "selectOne", "selectAll", parameter_sql, parent_id)
+            SELECT 'accountNumberText', 'accountNumber', 'Account Number', 'text', 'string', '', NULL, NULL, NULL, NULL, NULL
+            WHERE NOT EXISTS (SELECT 1 FROM stretchy_parameter WHERE parameter_name = 'accountNumberText');
+        ]]></sql>
+        <sql dbms="mysql"><![CDATA[
+            INSERT INTO stretchy_parameter (parameter_name, parameter_variable, parameter_label, parameter_displayType, parameter_FormatType, parameter_default, special, selectOne, selectAll, parameter_sql, parent_id)
+            SELECT 'accountNumberText', 'accountNumber', 'Account Number', 'text', 'string', '', NULL, NULL, NULL, NULL, NULL
+            WHERE NOT EXISTS (SELECT 1 FROM stretchy_parameter WHERE parameter_name = 'accountNumberText');
+        ]]></sql>
+
+        <sql>
+            INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
+            SELECT r.id, p.id, 'R_accountNumber'
+            FROM stretchy_report r, stretchy_parameter p
+            WHERE r.report_name = 'Discount Audit Trail'
+            AND p.parameter_name = 'accountNumberText'
+            AND NOT EXISTS (
+                SELECT 1 FROM stretchy_report_parameter rp
+                WHERE rp.report_id = r.id AND rp.parameter_id = p.id
+            );
+        </sql>
+
+        <!-- Create discountType parameter if it doesn't exist -->
+        <sql dbms="postgresql"><![CDATA[
+            INSERT INTO stretchy_parameter (parameter_name, parameter_variable, parameter_label, "parameter_displayType", "parameter_FormatType", parameter_default, special, "selectOne", "selectAll", parameter_sql, parent_id)
+            SELECT 'discountTypeSelect', 'discountType', 'Discount Type', 'select', 'string', '', NULL, 'Y', NULL,
+                   'SELECT DISTINCT rule_type AS id, rule_type AS value FROM m_discount_rule WHERE rule_type IS NOT NULL ORDER BY rule_type', NULL
+            WHERE NOT EXISTS (SELECT 1 FROM stretchy_parameter WHERE parameter_name = 'discountTypeSelect');
+        ]]></sql>
+        <sql dbms="mysql"><![CDATA[
+            INSERT INTO stretchy_parameter (parameter_name, parameter_variable, parameter_label, parameter_displayType, parameter_FormatType, parameter_default, special, selectOne, selectAll, parameter_sql, parent_id)
+            SELECT 'discountTypeSelect', 'discountType', 'Discount Type', 'select', 'string', '', NULL, 'Y', NULL,
+                   'SELECT DISTINCT rule_type AS id, rule_type AS value FROM m_discount_rule WHERE rule_type IS NOT NULL ORDER BY rule_type', NULL
+            WHERE NOT EXISTS (SELECT 1 FROM stretchy_parameter WHERE parameter_name = 'discountTypeSelect');
+        ]]></sql>
+
+        <sql>
+            INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
+            SELECT r.id, p.id, 'R_discountType'
+            FROM stretchy_report r, stretchy_parameter p
+            WHERE r.report_name = 'Discount Audit Trail'
+            AND p.parameter_name = 'discountTypeSelect'
+            AND NOT EXISTS (
+                SELECT 1 FROM stretchy_report_parameter rp
+                WHERE rp.report_id = r.id AND rp.parameter_id = p.id
+            );
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
