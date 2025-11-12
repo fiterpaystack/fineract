@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
 import com.paystack.fineract.client.charge.domain.ClientChargeOverride;
 import com.paystack.fineract.client.charge.domain.ClientChargeOverrideSlab;
 import com.paystack.fineract.client.charge.service.ClientChargeOverrideReadService;
+import com.paystack.fineract.portfolio.discount.service.DiscountApplicationService;
 import com.paystack.fineract.portfolio.discount.service.ProductDiscountService;
 import com.paystack.fineract.portfolio.savings.domain.PaystackSavingsProductAttributesRepository;
 import java.lang.reflect.Method;
@@ -74,12 +75,13 @@ class PaystackSavingsAccountDomainServiceJpaResolverTest {
                 PaystackSavingsProductAttributesRepository.class);
         FeeSplitService feeSplitService = mock(FeeSplitService.class);
         ProductDiscountService productDiscountService = mock(ProductDiscountService.class);
+        DiscountApplicationService discountApplicationService = mock(DiscountApplicationService.class);
 
         service = new PaystackSavingsAccountDomainServiceJpa(savingsAccountRepository, savingsAccountTransactionRepository,
                 applicationCurrencyRepositoryWrapper, journalEntryWritePlatformService, configurationDomainService, context,
                 depositAccountOnHoldTransactionRepository, businessEventNotifierService, noteRepository, null,
                 savingsAccountTransactionSummaryWrapper, savingsAccountChargePaymentWrapperService, clientChargeOverrideReadService,
-                savingsProductAttributesRepository, feeSplitService, productDiscountService,
+                savingsProductAttributesRepository, feeSplitService, productDiscountService, discountApplicationService,
                 mock(com.paystack.fineract.portfolio.savings.service.WithdrawalFrequencyService.class));
     }
 
