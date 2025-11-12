@@ -31,6 +31,7 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.jpa.CriteriaQueryFactory;
 import org.apache.fineract.organisation.office.domain.Office;
@@ -73,10 +74,11 @@ public class SearchingClientRepositoryImpl implements SearchingClientRepository 
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.like(o.get("hierarchy"), hierarchyLikeValue));
 
-            String searchLikeValue = "%" + searchText + "%";
-            predicates.add(cb.or(cb.like(r.get("accountNumber"), searchLikeValue), cb.like(r.get("displayName"), searchLikeValue),
-                    cb.like(r.get("externalId"), searchLikeValue), cb.like(r.get("mobileNo"), searchLikeValue),
-                    cb.like(identity.get("documentKey"), searchLikeValue)));
+            String normalizedSearchText = searchText != null ? searchText.toUpperCase(Locale.ROOT) : "";
+            String searchLikeValue = "%" + normalizedSearchText + "%";
+            predicates.add(cb.or(cb.like(cb.upper(r.get("accountNumber")), searchLikeValue),
+                    cb.like(cb.upper(r.get("displayName")), searchLikeValue), cb.like(cb.upper(r.get("externalId")), searchLikeValue),
+                    cb.like(cb.upper(r.get("mobileNo")), searchLikeValue), cb.like(cb.upper(identity.get("documentKey")), searchLikeValue)));
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
