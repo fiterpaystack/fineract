@@ -56,6 +56,7 @@ final class ContentResources {
             } catch (Exception e) {
                 // If sizeIfKnown() fails or is not available, skip Content-Length header
                 // The client will handle chunked transfer encoding
+                LOG.info("Failed to determine file size for Content-Length header, skipping header. Exception: {}", e.getMessage());
             }
             response.header("Content-Type", fileData.contentType());
         } catch (IOException e) {
