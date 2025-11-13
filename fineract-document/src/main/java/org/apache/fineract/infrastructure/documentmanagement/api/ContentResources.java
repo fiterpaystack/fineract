@@ -46,7 +46,18 @@ final class ContentResources {
             InputStream is = byteSource.openBufferedStream();
             response = Response.ok(is);
             response.header("Content-Disposition", dispositionType + "; filename=\"" + fileName + "\"");
-            response.header("Content-Length", byteSource.sizeIfKnown().or(-1L));
+            // Handle sizeIfKnown() which returns Optional<Long> - use or() for Guava Optional or orElse() for Java
+            // Optional
+            try {
+                var sizeOptional = byteSource.sizeIfKnown();
+                if (sizeOptional.isPresent()) {
+                    response.header("Content-Length", sizeOptional.get());
+                }
+            } catch (Exception e) {
+                // If sizeIfKnown() fails or is not available, skip Content-Length header
+                // The client will handle chunked transfer encoding
+                LOG.info("Failed to determine file size for Content-Length header, skipping header. Exception: {}", e.getMessage());
+            }
             response.header("Content-Type", fileData.contentType());
         } catch (IOException e) {
             LOG.error("resizedImage.getByteSource().openBufferedStream() failed", e);
