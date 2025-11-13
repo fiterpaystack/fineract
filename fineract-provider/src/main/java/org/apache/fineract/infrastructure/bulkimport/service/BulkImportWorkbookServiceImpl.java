@@ -272,7 +272,7 @@ public class BulkImportWorkbookServiceImpl implements BulkImportWorkbookService 
         } catch (EmptyResultDataAccessException e) {
             LOG.error("Import document not found for ID: {}", importDocumentId);
             throw new ResourceNotFoundException("error.msg.import.document.not.found", "Import document not found for ID: {0}",
-                    new Object[] { importDocumentId });
+                    new Object[] { importDocumentId, e });
         }
         return buildResponse(documentData);
     }
@@ -360,7 +360,7 @@ public class BulkImportWorkbookServiceImpl implements BulkImportWorkbookService 
         } catch (Exception e) {
             LOG.error("Failed to fetch document file from {} repository: fileLocation={}", storageType, fileLocation, e);
             throw new ResourceNotFoundException("error.msg.document.file.not.found",
-                    "Document file not found at location: {0}, exception: {1}", new Object[] { fileLocation, e.getMessage() });
+                    "Document file not found at location: {0}, exception: {1}", new Object[] { fileLocation, e.getMessage(), e });
         }
     }
 
@@ -381,7 +381,7 @@ public class BulkImportWorkbookServiceImpl implements BulkImportWorkbookService 
         } catch (IOException e) {
             LOG.error("Failed to open file stream for document from {} storage: fileLocation={}", storageType, fileLocation, e);
             throw new ResourceNotFoundException("error.msg.document.file.not.found",
-                    "Document file not found at location: {0}, exception: {1}", new Object[] { fileLocation, e.getMessage() });
+                    "Document file not found at location: {0}, exception: {1}", new Object[] { fileLocation, e.getMessage(), e });
         }
     }
 
