@@ -30,7 +30,7 @@ public interface ChargeSplitRepository extends JpaRepository<ChargeSplit, Long>,
 
     List<ChargeSplit> findByChargeIdAndActive(Long chargeId, boolean active);
 
-    @Query("SELECT cs FROM ChargeSplit cs WHERE cs.charge.id = :chargeId AND cs.active = true")
+    @Query("SELECT cs FROM ChargeSplit cs LEFT JOIN FETCH cs.glAccount WHERE cs.charge.id = :chargeId AND cs.active = true")
     List<ChargeSplit> findActiveSplitsByChargeId(@Param("chargeId") Long chargeId);
 
     Optional<ChargeSplit> findByChargeIdAndFundId(Long chargeId, Long fundId);

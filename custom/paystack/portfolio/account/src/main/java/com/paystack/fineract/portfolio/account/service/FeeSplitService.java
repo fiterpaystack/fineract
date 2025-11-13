@@ -50,7 +50,7 @@ import org.apache.fineract.portfolio.PortfolioProductType;
 import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.client.domain.ClientChargePaidBy;
 import org.apache.fineract.portfolio.client.domain.ClientTransaction;
-import org.apache.fineract.portfolio.savings.domain.SavingsAccountCharge;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountChargePaidBy;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -141,39 +141,38 @@ public class FeeSplitService {
     private Charge getChargeFromClientTransaction(ClientTransaction clientTransaction) {
         // Get the charge from the client charge paid by collection
         if (clientTransaction.getClientChargePaidByCollection() != null && !clientTransaction.getClientChargePaidByCollection().isEmpty()) {
-            ClientChargePaidBy chargePaidBy = clientTransaction.getClientChargePaidByCollection().iterator().next();
+            Set<ClientChargePaidBy> chargesPaid = clientTransaction.getClientChargePaidByCollection();
+
+            // Validate that we have exactly one charge (expected for charge payment transactions)
+            if (chargesPaid.size() > 1) {
+                log.warn("Client transaction {} has multiple charges paid ({}). Using first charge for fee split processing.",
+                        clientTransaction.getId(), chargesPaid.size());
+            }
+
+            ClientChargePaidBy chargePaidBy = chargesPaid.iterator().next();
             return chargePaidBy.getClientCharge().getCharge();
         }
         return null;
     }
 
     private Charge getChargeFromSavingsTransaction(SavingsAccountTransaction savingsTransaction) {
+        // Get the charge from the savings account charge paid by collection
+        // This is the same pattern used for client transactions and is more reliable
+        // than matching by amount (which can fail due to VAT, rounding, partial payments, etc.)
+        if (savingsTransaction.getSavingsAccountChargesPaid() != null && !savingsTransaction.getSavingsAccountChargesPaid().isEmpty()) {
+            Set<SavingsAccountChargePaidBy> chargesPaid = savingsTransaction.getSavingsAccountChargesPaid();
 
-        // For savings transactions, we need to find the associated charge
-        // We'll look up the charge through the savings account charges
-        try {
-            // Get the savings account from the transaction
-            if (savingsTransaction.getSavingsAccount() != null) {
-
-                // Look for charges that match this transaction
-                // This is a simplified approach - we'll look for charges with the same amount
-                for (SavingsAccountCharge accountCharge : savingsTransaction.getSavingsAccount().charges()) {
-                    BigDecimal chargeAmount = accountCharge.getAmount(savingsTransaction.getCurrency()).getAmount();
-
-                    // Fix: Use type-safe comparison for Money vs BigDecimal
-                    if (chargeAmount.compareTo(savingsTransaction.getAmount()) == 0) {
-                        return accountCharge.getCharge();
-                    }
-                }
-
-                log.warn("No matching charge found for transaction: {}", savingsTransaction.getId());
-            } else {
-                log.warn("No savings account found for transaction: {}", savingsTransaction.getId());
+            // Validate that we have exactly one charge (expected for charge payment transactions)
+            if (chargesPaid.size() > 1) {
+                log.warn("Transaction {} has multiple charges paid ({}). Using first charge for fee split processing.",
+                        savingsTransaction.getId(), chargesPaid.size());
             }
-        } catch (Exception e) {
-            log.error("Error getting charge from savings transaction", e);
+
+            SavingsAccountChargePaidBy chargePaidBy = chargesPaid.iterator().next();
+            return chargePaidBy.getSavingsAccountCharge().getCharge();
         }
 
+        log.warn("No charge paid by found for savings transaction: {}", savingsTransaction.getId());
         return null;
     }
 
@@ -224,6 +223,14 @@ public class FeeSplitService {
     private void processIndividualSplit(ChargeSplit split, BigDecimal totalFeeAmount, FeeSplitAudit audit,
             ClientTransaction clientTransaction) {
         try {
+            // Validate GL account is configured
+            if (split.getGlAccount() == null) {
+                throw new PlatformApiDataValidationException("error.msg.fee.split.gl.account.not.configured",
+                        "GL account not configured for split: " + split.getId(),
+                        List.of(ApiParameterError.parameterError("error.msg.fee.split.gl.account.not.configured",
+                                "GL account not configured for split", "splitId", split.getId())));
+            }
+
             // Calculate split amount
             BigDecimal splitAmount = split.calculateSplitAmount(totalFeeAmount);
 
@@ -237,6 +244,9 @@ public class FeeSplitService {
                 throw new PlatformApiDataValidationException("error.msg.fee.split.charge.not.found", "Charge not found",
                         "clientTransactionId", clientTransaction.getId(), dataValidationErrors);
             }
+
+            log.info("Processing fee split: Charge={}, Split={}, Amount={}, GL Account={}", charge.getId(), split.getId(), splitAmount,
+                    split.getGlAccount() != null ? split.getGlAccount().getGlCode() : "N/A");
 
             // Create balanced journal entries
             List<JournalEntry> journalEntries = createJournalEntriesForSplit(split, splitAmount, clientTransaction, charge);
@@ -261,6 +271,14 @@ public class FeeSplitService {
             SavingsAccountTransaction savingsTransaction) {
 
         try {
+            // Validate GL account is configured
+            if (split.getGlAccount() == null) {
+                throw new PlatformApiDataValidationException("error.msg.fee.split.gl.account.not.configured",
+                        "GL account not configured for split: " + split.getId(),
+                        List.of(ApiParameterError.parameterError("error.msg.fee.split.gl.account.not.configured",
+                                "GL account not configured for split", "splitId", split.getId())));
+            }
+
             // Calculate split amount
             BigDecimal splitAmount = split.calculateSplitAmount(totalFeeAmount);
 
@@ -274,6 +292,9 @@ public class FeeSplitService {
                 throw new PlatformApiDataValidationException("error.msg.fee.split.charge.not.found", "Charge not found",
                         "savingsTransactionId", savingsTransaction.getId(), dataValidationErrors);
             }
+
+            log.info("Processing fee split: Charge={}, Split={}, Amount={}, GL Account={}", charge.getId(), split.getId(), splitAmount,
+                    split.getGlAccount() != null ? split.getGlAccount().getGlCode() : "N/A");
 
             // Create balanced journal entries
             List<JournalEntry> journalEntries = createJournalEntriesForSavingsSplit(split, splitAmount, savingsTransaction, charge);
