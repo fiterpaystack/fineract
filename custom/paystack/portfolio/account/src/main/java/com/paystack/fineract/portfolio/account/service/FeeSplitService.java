@@ -141,7 +141,15 @@ public class FeeSplitService {
     private Charge getChargeFromClientTransaction(ClientTransaction clientTransaction) {
         // Get the charge from the client charge paid by collection
         if (clientTransaction.getClientChargePaidByCollection() != null && !clientTransaction.getClientChargePaidByCollection().isEmpty()) {
-            ClientChargePaidBy chargePaidBy = clientTransaction.getClientChargePaidByCollection().iterator().next();
+            Set<ClientChargePaidBy> chargesPaid = clientTransaction.getClientChargePaidByCollection();
+
+            // Validate that we have exactly one charge (expected for charge payment transactions)
+            if (chargesPaid.size() > 1) {
+                log.warn("Client transaction {} has multiple charges paid ({}). Using first charge for fee split processing.",
+                        clientTransaction.getId(), chargesPaid.size());
+            }
+
+            ClientChargePaidBy chargePaidBy = chargesPaid.iterator().next();
             return chargePaidBy.getClientCharge().getCharge();
         }
         return null;
@@ -152,7 +160,15 @@ public class FeeSplitService {
         // This is the same pattern used for client transactions and is more reliable
         // than matching by amount (which can fail due to VAT, rounding, partial payments, etc.)
         if (savingsTransaction.getSavingsAccountChargesPaid() != null && !savingsTransaction.getSavingsAccountChargesPaid().isEmpty()) {
-            SavingsAccountChargePaidBy chargePaidBy = savingsTransaction.getSavingsAccountChargesPaid().iterator().next();
+            Set<SavingsAccountChargePaidBy> chargesPaid = savingsTransaction.getSavingsAccountChargesPaid();
+
+            // Validate that we have exactly one charge (expected for charge payment transactions)
+            if (chargesPaid.size() > 1) {
+                log.warn("Transaction {} has multiple charges paid ({}). Using first charge for fee split processing.",
+                        savingsTransaction.getId(), chargesPaid.size());
+            }
+
+            SavingsAccountChargePaidBy chargePaidBy = chargesPaid.iterator().next();
             return chargePaidBy.getSavingsAccountCharge().getCharge();
         }
 
@@ -230,7 +246,7 @@ public class FeeSplitService {
             }
 
             log.info("Processing fee split: Charge={}, Split={}, Amount={}, GL Account={}", charge.getId(), split.getId(), splitAmount,
-                    split.getGlAccount().getGlCode());
+                    split.getGlAccount() != null ? split.getGlAccount().getGlCode() : "N/A");
 
             // Create balanced journal entries
             List<JournalEntry> journalEntries = createJournalEntriesForSplit(split, splitAmount, clientTransaction, charge);
@@ -278,7 +294,7 @@ public class FeeSplitService {
             }
 
             log.info("Processing fee split: Charge={}, Split={}, Amount={}, GL Account={}", charge.getId(), split.getId(), splitAmount,
-                    split.getGlAccount().getGlCode());
+                    split.getGlAccount() != null ? split.getGlAccount().getGlCode() : "N/A");
 
             // Create balanced journal entries
             List<JournalEntry> journalEntries = createJournalEntriesForSavingsSplit(split, splitAmount, savingsTransaction, charge);
