@@ -23,6 +23,7 @@ import jakarta.ws.rs.core.Response;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLConnection;
@@ -48,6 +49,7 @@ import org.apache.fineract.infrastructure.documentmanagement.data.DocumentData;
 import org.apache.fineract.infrastructure.documentmanagement.data.FileData;
 import org.apache.fineract.infrastructure.documentmanagement.domain.Document;
 import org.apache.fineract.infrastructure.documentmanagement.domain.DocumentRepository;
+import org.apache.fineract.infrastructure.documentmanagement.domain.StorageType;
 import org.apache.fineract.infrastructure.documentmanagement.service.DocumentWritePlatformService;
 import org.apache.fineract.infrastructure.documentmanagement.service.DocumentWritePlatformServiceJpaRepositoryImpl;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
@@ -60,6 +62,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -262,51 +265,148 @@ public class BulkImportWorkbookServiceImpl implements BulkImportWorkbookService 
         this.securityContext.authenticatedUser();
         final ImportTemplateLocationMapper importTemplateLocationMapper = new ImportTemplateLocationMapper();
         final String sql = "select " + importTemplateLocationMapper.schema();
-        DocumentData documentData = this.jdbcTemplate.queryForObject(sql, importTemplateLocationMapper,
-                new Object[] { Long.parseLong(importDocumentId) }); // NOSONAR
+        DocumentData documentData;
+        try {
+            documentData = this.jdbcTemplate.queryForObject(sql, importTemplateLocationMapper,
+                    new Object[] { Long.parseLong(importDocumentId) }); // NOSONAR
+        } catch (EmptyResultDataAccessException e) {
+            LOG.error("Import document not found for ID: {}", importDocumentId);
+            throw new ResourceNotFoundException("error.msg.import.document.not.found", "Import document not found for ID: {0}",
+                    new Object[] { importDocumentId });
+        }
+        if (documentData == null) {
+            LOG.error("Import document data is null for ID: {}", importDocumentId);
+            throw new ResourceNotFoundException("error.msg.import.document.not.found", "Import document not found for ID: {0}",
+                    new Object[] { importDocumentId });
+        }
         return buildResponse(documentData);
     }
 
     private Response buildResponse(DocumentData documentData) {
-        String fileName = "Output" + documentData.getFileName();
-        String fileLocation = documentData.getLocation();
-        if (fileLocation == null || fileLocation.isBlank()) {
-            throw new ResourceNotFoundException("error.msg.document.location.missing", "Document file location is missing",
-                    new Object[] { documentData.getFileName() });
+        validateDocumentData(documentData);
+
+        String fileName = prepareFileName(documentData);
+        String fileLocation = validateAndGetFileLocation(documentData, fileName);
+
+        LOG.info("Building response for bulk import template: fileName={}, fileLocation={}", fileName, fileLocation);
+
+        StorageType storageType = determineStorageType(documentData);
+
+        if (storageType == StorageType.FILE_SYSTEM) {
+            return buildFileSystemResponse(fileName, fileLocation);
         }
 
-        // Use content repository to fetch file (works for both filesystem and S3)
-        try {
-            final ContentRepository contentRepository;
-            final Integer storageTypeValue = documentData.getStorageType();
-            if (storageTypeValue != null) {
-                // Use the storage type from the document
-                contentRepository = this.contentRepositoryFactory.getRepository(documentData.storageType());
-            } else {
-                // If storage type is null (legacy documents), use the default repository from configuration
-                contentRepository = this.contentRepositoryFactory.getRepository();
-            }
-            final FileData fileData = contentRepository.fetchFile(documentData);
+        return buildStorageResponse(storageType, documentData, fileName, fileLocation);
+    }
 
-            // Build response from FileData
-            final Response.ResponseBuilder response;
-            try {
-                ByteSource byteSource = fileData.getByteSource();
-                InputStream is = byteSource.openBufferedStream();
-                response = Response.ok(is);
-                response.header("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
-                response.header("Content-Length", byteSource.sizeIfKnown().or(-1L));
-                response.header("Content-Type", fileData.contentType() != null ? fileData.contentType() : "application/vnd.ms-excel");
-            } catch (IOException e) {
-                LOG.error("Failed to open file stream for document: {}", fileLocation, e);
-                throw new ResourceNotFoundException("error.msg.document.file.not.found", "Document file not found at location: {0}",
-                        new Object[] { fileLocation, e });
-            }
-            return response.build();
+    private void validateDocumentData(DocumentData documentData) {
+        if (documentData == null) {
+            LOG.error("DocumentData is null, cannot build response");
+            throw new ResourceNotFoundException("error.msg.document.data.missing", "Document data is missing", new Object[0]);
+        }
+    }
+
+    private String prepareFileName(DocumentData documentData) {
+        String fileName = documentData.getFileName();
+        if (fileName == null || fileName.isBlank()) {
+            LOG.error("Document file name is null or blank");
+            throw new ResourceNotFoundException("error.msg.document.filename.missing", "Document file name is missing", new Object[0]);
+        }
+        return "Output" + fileName;
+    }
+
+    private String validateAndGetFileLocation(DocumentData documentData, String fileName) {
+        String fileLocation = documentData.getLocation();
+        if (fileLocation == null || fileLocation.isBlank()) {
+            LOG.error("Document file location is null or blank for fileName: {}", fileName);
+            throw new ResourceNotFoundException("error.msg.document.location.missing", "Document file location is missing",
+                    new Object[] { fileName });
+        }
+        return fileLocation;
+    }
+
+    private StorageType determineStorageType(DocumentData documentData) {
+        final Integer storageTypeValue = documentData.getStorageType();
+        if (storageTypeValue != null) {
+            StorageType storageType = documentData.storageType();
+            LOG.debug("Using storage type from document: {}", storageType);
+            return storageType;
+        }
+        // If storage type is null (legacy documents), get from default repository
+        StorageType storageType = this.contentRepositoryFactory.getRepository().getStorageType();
+        LOG.debug("Storage type not specified in document, using default repository type: {}", storageType);
+        return storageType;
+    }
+
+    private Response buildFileSystemResponse(String fileName, String fileLocation) {
+        LOG.info("Using filesystem storage path for template download: {}", fileLocation);
+        File file = new File(fileLocation);
+        if (!file.exists()) {
+            LOG.error("Template file not found at filesystem location: {}", fileLocation);
+            throw new ResourceNotFoundException("error.msg.document.file.not.found", "Document file not found at location: {0}",
+                    new Object[] { fileLocation });
+        }
+        long fileSize = file.length();
+        LOG.info("Successfully located template file: fileName={}, fileSize={} bytes, path={}", fileName, fileSize, fileLocation);
+        final Response.ResponseBuilder response = Response.ok(file);
+        response.header("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
+        response.header("Content-Type", "application/vnd.ms-excel");
+        LOG.debug("Built response for filesystem template: fileName={}, fileSize={}", fileName, fileSize);
+        return response.build();
+    }
+
+    private Response buildStorageResponse(StorageType storageType, DocumentData documentData, String fileName, String fileLocation) {
+        LOG.info("Using {} storage abstraction layer for template download: {}", storageType, fileLocation);
+        try {
+            final ContentRepository contentRepository = this.contentRepositoryFactory.getRepository(storageType);
+            final FileData fileData = contentRepository.fetchFile(documentData);
+            LOG.debug("Fetched file data from {} repository: fileName={}", storageType, fileName);
+            return buildResponseFromFileData(storageType, fileData, fileName, fileLocation);
         } catch (Exception e) {
-            LOG.error("Failed to fetch document file from repository: {}", fileLocation, e);
+            LOG.error("Failed to fetch document file from {} repository: fileLocation={}", storageType, fileLocation, e);
             throw new ResourceNotFoundException("error.msg.document.file.not.found", "Document file not found at location: {0}",
                     new Object[] { fileLocation, e });
+        }
+    }
+
+    private Response buildResponseFromFileData(StorageType storageType, FileData fileData, String fileName, String fileLocation) {
+        try {
+            ByteSource byteSource = fileData.getByteSource();
+            InputStream is = byteSource.openBufferedStream();
+            Response.ResponseBuilder response = Response.ok(is);
+            response.header("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
+
+            Long contentLength = setContentLengthIfKnown(byteSource, response);
+
+            String contentType = fileData.contentType() != null ? fileData.contentType() : "application/vnd.ms-excel";
+            response.header("Content-Type", contentType);
+            LOG.info("Successfully built response for {} storage template: fileName={}, contentType={}, contentLength={}", storageType,
+                    fileName, contentType, contentLength != null ? contentLength + " bytes" : "unknown");
+            return response.build();
+        } catch (IOException e) {
+            LOG.error("Failed to open file stream for document from {} storage: fileLocation={}", storageType, fileLocation, e);
+            throw new ResourceNotFoundException("error.msg.document.file.not.found", "Document file not found at location: {0}",
+                    new Object[] { fileLocation, e });
+        }
+    }
+
+    private Long setContentLengthIfKnown(ByteSource byteSource, Response.ResponseBuilder response) {
+        try {
+            var sizeOptional = byteSource.sizeIfKnown();
+            if (sizeOptional.isPresent()) {
+                Long contentLength = sizeOptional.get();
+                response.header("Content-Length", contentLength);
+                LOG.debug("Set Content-Length header from sizeIfKnown(): {} bytes", contentLength);
+                return contentLength;
+            }
+            LOG.debug("File size not known, using chunked transfer encoding");
+            return null;
+        } catch (Exception e) {
+            // If sizeIfKnown() fails or is not available, skip Content-Length header
+            // The client will handle chunked transfer encoding
+            LOG.debug("Could not determine file size (expected for some storage types), using chunked transfer encoding: {}",
+                    e.getMessage());
+            return null;
         }
     }
 
