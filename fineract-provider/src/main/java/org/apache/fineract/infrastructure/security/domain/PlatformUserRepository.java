@@ -22,4 +22,6 @@ public interface PlatformUserRepository {
 
     PlatformUser findByUsernameAndDeletedAndEnabled(String username, boolean deleted, boolean enabled);
 
+    PlatformUser findByEmailAndDeletedAndEnabled(String email, boolean deleted, boolean enabled);
+
 }
