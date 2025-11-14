@@ -39,7 +39,7 @@ import org.apache.fineract.infrastructure.security.filter.InsecureTwoFactorAuthe
 import org.apache.fineract.infrastructure.security.filter.TenantAwareTenantIdentifierFilter;
 import org.apache.fineract.infrastructure.security.filter.TwoFactorAuthenticationFilter;
 import org.apache.fineract.infrastructure.security.service.BasicAuthTenantDetailsService;
-import org.apache.fineract.infrastructure.security.service.TenantAwareJpaPlatformUserDetailsService;
+import org.apache.fineract.infrastructure.security.service.KeycloakUserProvisioningService;
 import org.apache.fineract.infrastructure.security.service.TwoFactorService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -75,7 +75,7 @@ import org.springframework.security.web.context.SecurityContextHolderFilter;
 public class OAuth2SecurityConfig {
 
     @Autowired
-    private TenantAwareJpaPlatformUserDetailsService userDetailsService;
+    private KeycloakUserProvisioningService keycloakUserProvisioningService;
 
     @Autowired
     private ServerProperties serverProperties;
@@ -170,12 +170,16 @@ public class OAuth2SecurityConfig {
     private Converter<Jwt, FineractJwtAuthenticationToken> authenticationConverter() {
         return jwt -> {
             try {
-                UserDetails user = userDetailsService.loadUserByUsername(jwt.getSubject());
+                // Use KeycloakUserProvisioningService to find or create user from JWT claims
+                UserDetails user = keycloakUserProvisioningService.findOrCreateUser(jwt);
                 jwtGrantedAuthoritiesConverter.setAuthorityPrefix("");
                 Collection<GrantedAuthority> authorities = jwtGrantedAuthoritiesConverter.convert(jwt);
                 return new FineractJwtAuthenticationToken(jwt, authorities, user);
             } catch (UsernameNotFoundException ex) {
                 throw new OAuth2AuthenticationException(new OAuth2Error(OAuth2ErrorCodes.INVALID_TOKEN), ex);
+            } catch (Exception ex) {
+                throw new OAuth2AuthenticationException(
+                        new OAuth2Error(OAuth2ErrorCodes.INVALID_TOKEN, "Failed to provision user from OAuth2 Provider", null), ex);
             }
         };
     }

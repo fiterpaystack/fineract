@@ -29,10 +29,10 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.validation.Validator;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.springframework.validation.beanvalidation.MessageSourceResourceBundleLocator;
-import yakworks.i18n.icu.ICUBundleMessageSource;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -41,8 +41,8 @@ public class ValidationConfig {
 
     @Bean
     public MessageSource messageSource() {
-        var messageSource = new ICUBundleMessageSource();
-        messageSource.setBasenames("classpath:fineract/validation/messages");
+        var messageSource = new ResourceBundleMessageSource();
+        messageSource.setBasename("fineract/validation/messages");
         messageSource.setCacheSeconds(3600);
         messageSource.setDefaultEncoding("UTF-8");
 

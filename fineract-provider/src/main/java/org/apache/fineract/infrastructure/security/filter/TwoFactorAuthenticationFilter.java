@@ -79,6 +79,15 @@ public class TwoFactorAuthenticationFilter extends GenericFilterBean {
                 return;
             }
 
+            // Bypass 2FA for JWT-authenticated users (Keycloak SSO handles MFA)
+            if (authentication instanceof FineractJwtAuthenticationToken) {
+                List<GrantedAuthority> updatedAuthorities = new ArrayList<>(authentication.getAuthorities());
+                updatedAuthorities.add(new SimpleGrantedAuthority("TWOFACTOR_AUTHENTICATED"));
+                context.setAuthentication(createUpdatedAuthentication(authentication, updatedAuthorities));
+                chain.doFilter(req, res);
+                return;
+            }
+
             if (!user.hasSpecificPermissionTo(TwoFactorConstants.BYPASS_TWO_FACTOR_PERMISSION)) {
                 // User can't bypass two-factor auth, check two-factor access
                 // token
