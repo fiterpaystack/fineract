@@ -36,8 +36,10 @@ import org.apache.fineract.useradministration.domain.Permission;
 import org.apache.fineract.useradministration.domain.PermissionRepository;
 import org.apache.fineract.useradministration.domain.Role;
 import org.apache.fineract.useradministration.domain.RoleRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,6 +55,9 @@ public class KeycloakUserProvisioningService {
     private static final String PAYSTACK_STAFF_ROLE = "Paystack Staff";
     private static final Long DEFAULT_OFFICE_ID = 1L;
 
+    @Value("${fineract.security.oauth.required-realm-role:fineract}")
+    private String requiredRealmRole;
+
     private final AppUserRepository appUserRepository;
     private final OfficeRepository officeRepository;
     private final RoleRepository roleRepository;
@@ -64,9 +69,14 @@ public class KeycloakUserProvisioningService {
      * @param jwt
      *            The JWT token from Keycloak
      * @return PlatformUser (AppUser) for authentication
+     * @throws IllegalArgumentException
+     *             if the user does not have the required 'fineract' realm role
      */
     @Transactional
     public PlatformUser findOrCreateUser(Jwt jwt) {
+        // Step 0: Validate that user has the required 'fineract' realm role
+        validateFineractRealmRole(jwt);
+
         String preferredUsername = jwt.getClaimAsString("preferred_username");
         String email = jwt.getClaimAsString("email");
         String givenName = jwt.getClaimAsString("given_name");
@@ -184,5 +194,47 @@ public class KeycloakUserProvisioningService {
         log.info("Successfully created '{}' role with {} READ permissions", PAYSTACK_STAFF_ROLE, readPermissions.size());
 
         return role;
+    }
+
+    /**
+     * Validates that the JWT token contains the required 'fineract' realm role.
+     *
+     * @param jwt
+     *            The JWT token from Keycloak
+     * @throws UsernameNotFoundException
+     *             if the user does not have the required 'fineract' realm role
+     */
+    private void validateFineractRealmRole(Jwt jwt) {
+        // Extract realm_access.roles from JWT
+        Object realmAccessObj = jwt.getClaim("realm_access");
+
+        if (realmAccessObj == null) {
+            log.warn("JWT token missing 'realm_access' claim. User: {}", jwt.getClaimAsString("preferred_username"));
+            throw new IllegalArgumentException("Access denied: JWT token missing 'realm_access' claim");
+        }
+
+        // realm_access is a Map, we need to get the 'roles' list from it
+        if (realmAccessObj instanceof java.util.Map) {
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Object> realmAccess = (java.util.Map<String, Object>) realmAccessObj;
+            Object rolesObj = realmAccess.get("roles");
+
+            if (rolesObj instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<String> roles = (List<String>) rolesObj;
+
+                if (roles.contains(requiredRealmRole)) {
+                    log.debug("User has required realm role '{}'. User: {}", requiredRealmRole, jwt.getClaimAsString("preferred_username"));
+                    return;
+                }
+
+                log.warn("User does not have required realm role '{}'. User: {}, Available roles: {}", requiredRealmRole,
+                        jwt.getClaimAsString("preferred_username"), roles);
+                throw new UsernameNotFoundException("Access denied: User does not have required realm role '" + requiredRealmRole + "'");
+            }
+        }
+
+        log.warn("JWT token has invalid 'realm_access' structure. User: {}", jwt.getClaimAsString("preferred_username"));
+        throw new IllegalArgumentException("Access denied: Invalid 'realm_access' claim structure in JWT token");
     }
 }
