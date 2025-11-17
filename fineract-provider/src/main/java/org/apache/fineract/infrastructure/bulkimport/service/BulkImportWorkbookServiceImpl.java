@@ -371,37 +371,19 @@ public class BulkImportWorkbookServiceImpl implements BulkImportWorkbookService 
             Response.ResponseBuilder response = Response.ok(is);
             response.header("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
 
-            Long contentLength = setContentLengthIfKnown(byteSource, response);
+            // Skip Content-Length header for S3 storage - Guava 33.x has compatibility issues with sizeIfKnown()
+            // The client will handle chunked transfer encoding automatically
+            LOG.info("Skipping Content-Length header for {} storage (using chunked transfer encoding)", storageType);
 
             String contentType = fileData.contentType() != null ? fileData.contentType() : "application/vnd.ms-excel";
             response.header("Content-Type", contentType);
-            LOG.info("Successfully built response for {} storage template: fileName={}, contentType={}, contentLength={}", storageType,
-                    fileName, contentType, contentLength != null ? contentLength + " bytes" : "unknown");
+            LOG.info("Successfully built response for {} storage template: fileName={}, contentType={}", storageType, fileName,
+                    contentType);
             return response.build();
         } catch (IOException e) {
             LOG.error("Failed to open file stream for document from {} storage: fileLocation={}", storageType, fileLocation, e);
             throw new ResourceNotFoundException("error.msg.document.file.not.found",
                     "Document file not found at location: {0}, exception: {1}", new Object[] { fileLocation, e.getMessage(), e });
-        }
-    }
-
-    private Long setContentLengthIfKnown(ByteSource byteSource, Response.ResponseBuilder response) {
-        try {
-            var sizeOptional = byteSource.sizeIfKnown();
-            if (sizeOptional.isPresent()) {
-                Long contentLength = sizeOptional.get();
-                response.header("Content-Length", contentLength);
-                LOG.debug("Set Content-Length header from sizeIfKnown(): {} bytes", contentLength);
-                return contentLength;
-            }
-            LOG.debug("File size not known, using chunked transfer encoding");
-            return null;
-        } catch (Exception e) {
-            // If sizeIfKnown() fails or is not available, skip Content-Length header
-            // The client will handle chunked transfer encoding
-            LOG.debug("Could not determine file size (expected for some storage types), using chunked transfer encoding: {}",
-                    e.getMessage());
-            return null;
         }
     }
 
