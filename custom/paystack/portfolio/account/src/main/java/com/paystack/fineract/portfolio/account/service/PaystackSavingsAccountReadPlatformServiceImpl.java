@@ -140,7 +140,14 @@ public class PaystackSavingsAccountReadPlatformServiceImpl extends SavingsAccoun
         if (account == null) {
             return;
         }
-        paystackAccountNameService.fetchAccountName(account.getId()).ifPresent(account::setAccountName);
+        // Try to fetch stored account name, fallback to client name if not found
+        String storedName = paystackAccountNameService.fetchAccountName(account.getId()).orElse(null);
+        if (storedName != null) {
+            account.setAccountName(storedName);
+        } else if (account.getClientName() != null) {
+            // Default to client name if no custom name is stored
+            account.setAccountName(account.getClientName());
+        }
     }
 
     private void enrichAccountNames(Collection<SavingsAccountData> accounts) {
@@ -152,6 +159,9 @@ public class PaystackSavingsAccountReadPlatformServiceImpl extends SavingsAccoun
             String resolved = names.get(account.getId());
             if (resolved != null) {
                 account.setAccountName(resolved);
+            } else if (account.getClientName() != null) {
+                // Default to client name if no custom name is stored
+                account.setAccountName(account.getClientName());
             }
         });
     }
