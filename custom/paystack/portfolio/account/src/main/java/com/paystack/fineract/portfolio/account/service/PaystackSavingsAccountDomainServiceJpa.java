@@ -339,7 +339,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
 
         BigDecimal discountedAmount = applyDiscountToChargeAmount(ChargeDiscountContext.of(account, charge, amountToPay, transactionDate));
         Money moneyToPay = org.apache.fineract.organisation.monetary.domain.Money.of(account.getCurrency(), discountedAmount);
-        payChargeWithVatAndSave(account, charge, moneyToPay, transactionDate, refNo, backdatedTxnsAllowedTill, noteText);
+        payChargeWithVatAndSave(account, charge, moneyToPay, amountToPay, transactionDate, refNo, backdatedTxnsAllowedTill, noteText);
         return true;
     }
 
@@ -551,7 +551,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
                     ChargeDiscountContext.of(account, charge, amountToPay, transactionDate));
 
             Money moneyToPay = org.apache.fineract.organisation.monetary.domain.Money.of(account.getCurrency(), discountedAmount);
-            payChargeWithVatAndSave(account, charge, moneyToPay, transactionDate, refNo, backdatedTxnsAllowedTill, noteText);
+            payChargeWithVatAndSave(account, charge, moneyToPay, amountToPay, transactionDate, refNo, backdatedTxnsAllowedTill, noteText);
         }
     }
 
@@ -614,8 +614,8 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         return null;
     }
 
-    private void payChargeWithVatAndSave(SavingsAccount account, SavingsAccountCharge charge, Money amount, LocalDate transactionDate,
-            String refNo, boolean backdatedTxnsAllowedTill, final String noteText) {
+    private void payChargeWithVatAndSave(SavingsAccount account, SavingsAccountCharge charge, Money amount, BigDecimal originalFeeAmount,
+            LocalDate transactionDate, String refNo, boolean backdatedTxnsAllowedTill, final String noteText) {
         ChargePaymentResult result = savingsAccountChargePaymentWrapperService.payChargeWithVat(account, charge, amount, transactionDate,
                 refNo, backdatedTxnsAllowedTill);
 
@@ -646,8 +646,9 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         }
 
         // Now process fee split with saved transactions
+        // Use original fee amount (before discount) for validation, as splits are configured based on original fee
         if (result.getFeeTransaction() != null && charge.getCharge().isEnableFeeSplit()) {
-            feeSplitService.processFeeSplitForSavings(result.getFeeTransaction(), amount.getAmount());
+            feeSplitService.processFeeSplitForSavings(result.getFeeTransaction(), originalFeeAmount);
         }
 
         this.savingsAccountRepository.saveAndFlush(account);
