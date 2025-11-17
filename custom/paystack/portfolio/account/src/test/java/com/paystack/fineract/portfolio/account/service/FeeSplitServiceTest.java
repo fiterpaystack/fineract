@@ -18,9 +18,13 @@
  */
 package com.paystack.fineract.portfolio.account.service;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.paystack.fineract.portfolio.account.domain.ChargeSplit;
 import com.paystack.fineract.portfolio.account.domain.ChargeSplitRepository;
@@ -65,8 +69,6 @@ class FeeSplitServiceTest {
     private Charge charge;
     private ClientTransaction clientTransaction;
     private BigDecimal totalFeeAmount;
-    private List<ChargeSplit> splits;
-
     @BeforeEach
     void setUp() {
         // Setup ThreadLocalContextUtil for business dates
@@ -79,16 +81,6 @@ class FeeSplitServiceTest {
         when(charge.getId()).thenReturn(1L);
         when(charge.isEnableFeeSplit()).thenReturn(true);
 
-        // Create mock splits
-        ChargeSplit split1 = mock(ChargeSplit.class);
-        when(split1.isPercentageSplit()).thenReturn(true);
-        when(split1.getSplitValue()).thenReturn(new BigDecimal("50.00"));
-
-        ChargeSplit split2 = mock(ChargeSplit.class);
-        when(split2.isPercentageSplit()).thenReturn(true);
-        when(split2.getSplitValue()).thenReturn(new BigDecimal("30.00"));
-
-        splits = Arrays.asList(split1, split2);
         totalFeeAmount = new BigDecimal("100.00");
     }
 

@@ -19,7 +19,11 @@
 
 package com.paystack.fineract.portfolio.savings.data;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.paystack.fineract.portfolio.savings.domain.TimePeriod;
 import java.util.Arrays;

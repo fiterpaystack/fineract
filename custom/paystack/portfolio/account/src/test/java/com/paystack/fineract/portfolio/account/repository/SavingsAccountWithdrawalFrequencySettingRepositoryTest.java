@@ -19,8 +19,11 @@
 
 package com.paystack.fineract.portfolio.account.repository;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.paystack.fineract.portfolio.account.domain.SavingsAccountWithdrawalFrequencySetting;
 import com.paystack.fineract.portfolio.savings.domain.TimePeriod;
@@ -28,12 +31,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
  * Unit tests for SavingsAccountWithdrawalFrequencySettingRepository
@@ -47,12 +48,6 @@ class SavingsAccountWithdrawalFrequencySettingRepositoryTest {
     private final Long accountId = 1L;
     private final TimePeriod timePeriod = TimePeriod.WEEKLY;
     private final Boolean isActive = true;
-
-    @BeforeEach
-    void setUp() {
-        // Verify that the repository extends JpaRepository
-        assertTrue(repository instanceof JpaRepository);
-    }
 
     @Test
     void testFindBySavingsAccountIdAndIsActive() {

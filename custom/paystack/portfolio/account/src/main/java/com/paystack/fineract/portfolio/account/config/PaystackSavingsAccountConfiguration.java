@@ -19,6 +19,7 @@
 package com.paystack.fineract.portfolio.account.config;
 
 import com.paystack.fineract.portfolio.account.repository.SavingsAccountWithdrawalFrequencySettingRepository;
+import com.paystack.fineract.portfolio.account.service.PaystackAccountNameService;
 import com.paystack.fineract.portfolio.account.service.PaystackSavingsAccountReadPlatformServiceImpl;
 import com.paystack.fineract.portfolio.savings.repository.SavingsProductWithdrawalFrequencySettingRepository;
 import org.apache.fineract.infrastructure.core.service.PaginationHelper;
@@ -50,8 +51,10 @@ public class PaystackSavingsAccountConfiguration {
             SavingsAccountAssembler savingAccountAssembler, PaginationHelper paginationHelper, ColumnValidator columnValidator,
             DatabaseSpecificSQLGenerator sqlGenerator, SavingsAccountRepositoryWrapper savingsAccountRepositoryWrapper,
             SavingsAccountWithdrawalFrequencySettingRepository accountSettingRepository,
-            SavingsProductWithdrawalFrequencySettingRepository productSettingRepository) {
+            SavingsProductWithdrawalFrequencySettingRepository productSettingRepository,
+            PaystackAccountNameService paystackAccountNameService) {
         return new PaystackSavingsAccountReadPlatformServiceImpl(context, jdbcTemplate, savingAccountAssembler, paginationHelper,
-                columnValidator, sqlGenerator, savingsAccountRepositoryWrapper, accountSettingRepository, productSettingRepository);
+                columnValidator, sqlGenerator, savingsAccountRepositoryWrapper, accountSettingRepository, productSettingRepository,
+                paystackAccountNameService);
     }
 }

@@ -25,15 +25,19 @@ import com.paystack.fineract.portfolio.savings.data.WithdrawalFrequencySettingDa
 import com.paystack.fineract.portfolio.savings.domain.SavingsProductWithdrawalFrequencySetting;
 import com.paystack.fineract.portfolio.savings.domain.TimePeriod;
 import com.paystack.fineract.portfolio.savings.repository.SavingsProductWithdrawalFrequencySettingRepository;
+import java.util.Collection;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.fineract.infrastructure.core.service.Page;
 import org.apache.fineract.infrastructure.core.service.PaginationHelper;
+import org.apache.fineract.infrastructure.core.service.SearchParameters;
 import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.infrastructure.security.utils.ColumnValidator;
+import org.apache.fineract.portfolio.savings.DepositAccountType;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountData;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountAssembler;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepositoryWrapper;
@@ -45,23 +49,25 @@ public class PaystackSavingsAccountReadPlatformServiceImpl extends SavingsAccoun
 
     private final SavingsAccountWithdrawalFrequencySettingRepository accountSettingRepository;
     private final SavingsProductWithdrawalFrequencySettingRepository productSettingRepository;
+    private final PaystackAccountNameService paystackAccountNameService;
 
     public PaystackSavingsAccountReadPlatformServiceImpl(PlatformSecurityContext context, JdbcTemplate jdbcTemplate,
             SavingsAccountAssembler savingAccountAssembler, PaginationHelper paginationHelper, ColumnValidator columnValidator,
             DatabaseSpecificSQLGenerator sqlGenerator, SavingsAccountRepositoryWrapper savingsAccountRepositoryWrapper,
             SavingsAccountWithdrawalFrequencySettingRepository accountSettingRepository,
-            SavingsProductWithdrawalFrequencySettingRepository productSettingRepository) {
+            SavingsProductWithdrawalFrequencySettingRepository productSettingRepository,
+            PaystackAccountNameService paystackAccountNameService) {
         super(context, jdbcTemplate, savingAccountAssembler, paginationHelper, columnValidator, sqlGenerator,
                 savingsAccountRepositoryWrapper);
         this.accountSettingRepository = accountSettingRepository;
         this.productSettingRepository = productSettingRepository;
+        this.paystackAccountNameService = paystackAccountNameService;
     }
-
-    // Inherit all other methods; override only where we enrich the response
 
     @Override
     public SavingsAccountData retrieveOne(Long savingsId) {
         SavingsAccountData account = super.retrieveOne(savingsId);
+        applyAccountName(account);
         try {
             // Account-level settings
             List<SavingsAccountWithdrawalFrequencySetting> accountSettings = accountSettingRepository
@@ -101,5 +107,52 @@ public class PaystackSavingsAccountReadPlatformServiceImpl extends SavingsAccoun
         return account;
     }
 
-    // All other methods use the core implementation via inheritance
+    @Override
+    public Collection<SavingsAccountData> retrieveAllForLookup(final Long clientId) {
+        Collection<SavingsAccountData> accounts = super.retrieveAllForLookup(clientId);
+        enrichAccountNames(accounts);
+        return accounts;
+    }
+
+    @Override
+    public Collection<SavingsAccountData> retrieveActiveForLookup(final Long clientId, DepositAccountType depositAccountType) {
+        Collection<SavingsAccountData> accounts = super.retrieveActiveForLookup(clientId, depositAccountType);
+        enrichAccountNames(accounts);
+        return accounts;
+    }
+
+    @Override
+    public Collection<SavingsAccountData> retrieveActiveForLookup(final Long clientId, DepositAccountType depositAccountType,
+            String currencyCode) {
+        Collection<SavingsAccountData> accounts = super.retrieveActiveForLookup(clientId, depositAccountType, currencyCode);
+        enrichAccountNames(accounts);
+        return accounts;
+    }
+
+    @Override
+    public Page<SavingsAccountData> retrieveAll(SearchParameters searchParameters) {
+        Page<SavingsAccountData> page = super.retrieveAll(searchParameters);
+        enrichAccountNames(page.getPageItems());
+        return page;
+    }
+
+    private void applyAccountName(SavingsAccountData account) {
+        if (account == null) {
+            return;
+        }
+        paystackAccountNameService.fetchAccountName(account.getId()).ifPresent(account::setAccountName);
+    }
+
+    private void enrichAccountNames(Collection<SavingsAccountData> accounts) {
+        if (accounts == null || accounts.isEmpty()) {
+            return;
+        }
+        Map<Long, String> names = paystackAccountNameService.fetchAccountNames(accounts.stream().map(SavingsAccountData::getId).toList());
+        accounts.forEach(account -> {
+            String resolved = names.get(account.getId());
+            if (resolved != null) {
+                account.setAccountName(resolved);
+            }
+        });
+    }
 }
