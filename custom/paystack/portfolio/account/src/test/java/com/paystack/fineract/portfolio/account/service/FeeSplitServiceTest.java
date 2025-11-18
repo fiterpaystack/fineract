@@ -26,14 +26,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.paystack.fineract.portfolio.account.domain.ChargeSplit;
 import com.paystack.fineract.portfolio.account.domain.ChargeSplitRepository;
 import com.paystack.fineract.portfolio.account.domain.FeeSplitAuditRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import org.apache.fineract.infrastructure.businessdate.domain.BusinessDateType;
 import org.apache.fineract.infrastructure.core.domain.ActionContext;
@@ -69,6 +67,7 @@ class FeeSplitServiceTest {
     private Charge charge;
     private ClientTransaction clientTransaction;
     private BigDecimal totalFeeAmount;
+
     @BeforeEach
     void setUp() {
         // Setup ThreadLocalContextUtil for business dates

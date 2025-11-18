@@ -36,7 +36,7 @@
                                               last_modified_by, last_modified_on_utc)
             SELECT sa.id,
                    0,
-                   COALESCE(c.display_name, g.name, sa.account_no),
+                   COALESCE(c.display_name, sa.account_no),
                    COALESCE(sa.created_by, 1),
                    COALESCE(sa.created_on_utc, NOW()),
                    COALESCE(sa.last_modified_by, COALESCE(sa.created_by, 1)),
@@ -44,18 +44,17 @@
             FROM m_savings_account sa
                      LEFT JOIN ps_m_savings_account psa ON psa.savings_account_id = sa.id
                      LEFT JOIN m_client c ON c.id = sa.client_id
-                     LEFT JOIN m_group g ON g.id = sa.group_id
             WHERE psa.savings_account_id IS NULL;
         </sql>
 
         <sql>
             UPDATE ps_m_savings_account psa
-                JOIN m_savings_account sa ON sa.id = psa.savings_account_id
-                LEFT JOIN m_client c ON c.id = sa.client_id
-                LEFT JOIN m_group g ON g.id = sa.group_id
-            SET psa.account_name = COALESCE(c.display_name, g.name, sa.account_no),
-                psa.last_modified_on_utc = NOW()
-            WHERE psa.account_name IS NULL OR TRIM(psa.account_name) = '';
+            SET account_name = COALESCE(c.display_name, sa.account_no),
+                last_modified_on_utc = NOW()
+            FROM m_savings_account sa
+                     LEFT JOIN m_client c ON c.id = sa.client_id
+            WHERE psa.savings_account_id = sa.id
+              AND (psa.account_name IS NULL OR TRIM(psa.account_name) = '');
         </sql>
 
         <rollback>

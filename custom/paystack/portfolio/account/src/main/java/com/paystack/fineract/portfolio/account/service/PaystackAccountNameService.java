@@ -45,7 +45,8 @@ public class PaystackAccountNameService {
 
     /**
      * Upserts the account name for the given savings account. When the provided {@code requestedAccountName} is blank
-     * or null, the client's display name (or group name) is used as the default.
+     * or null, the client's display name is used as the default, falling back to the account number if no client name
+     * is available.
      */
     @Transactional
     public void syncAccountName(Long savingsAccountId, String requestedAccountName) {
