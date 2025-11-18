@@ -32,6 +32,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.fineract.infrastructure.businessdate.domain.BusinessDateType;
 import org.apache.fineract.infrastructure.core.domain.ActionContext;
@@ -107,7 +108,7 @@ class FeeSplitServiceTest {
     void testProcessFeeSplit_WhenNoSplitsFound_ShouldNotProcessSplits() {
         // Given
         when(charge.isEnableFeeSplit()).thenReturn(true);
-        when(splitRepository.findActiveSplitsByChargeId(1L)).thenReturn(Arrays.asList());
+        when(splitRepository.findActiveSplitsByChargeId(1L)).thenReturn(List.of());
         clientTransaction = mock(ClientTransaction.class);
         when(clientTransaction.getId()).thenReturn(1L);
 
