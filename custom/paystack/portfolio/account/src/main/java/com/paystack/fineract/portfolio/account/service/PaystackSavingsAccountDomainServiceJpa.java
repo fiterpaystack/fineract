@@ -275,8 +275,8 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             final String defaultUserMessage = "Withdrawal is not allowed. No withdrawals are allowed until after "
                     + account.getLockedInUntilDate().format(transactionDTO.getFormatter());
             final ApiParameterError error = ApiParameterError.parameterError(
-                    "error.msg.savingsaccount.transaction.withdrawals.blocked.during.lockin.period", defaultUserMessage, PARAM_TRANSACTION_DATE,
-                    transactionDTO.getTransactionDate().format(transactionDTO.getFormatter()),
+                    "error.msg.savingsaccount.transaction.withdrawals.blocked.during.lockin.period", defaultUserMessage,
+                    PARAM_TRANSACTION_DATE, transactionDTO.getTransactionDate().format(transactionDTO.getFormatter()),
                     account.getLockedInUntilDate().format(transactionDTO.getFormatter()));
 
             final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
