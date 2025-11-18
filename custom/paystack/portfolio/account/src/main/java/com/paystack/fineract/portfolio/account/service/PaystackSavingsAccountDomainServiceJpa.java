@@ -81,6 +81,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomainServiceJpa {
 
     private static final Logger log = LoggerFactory.getLogger(PaystackSavingsAccountDomainServiceJpa.class);
+    private static final String PARAM_TRANSACTION_DATE = "transactionDate";
 
     /**
      * ThreadLocal context to store transfer information during account transfer processing. This allows us to detect
@@ -238,7 +239,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
 
             final String defaultUserMessage = "Transaction is not allowed. Account is not active.";
             final ApiParameterError error = ApiParameterError.parameterError("error.msg.savingsaccount.transaction.account.is.not.active",
-                    defaultUserMessage, "transactionDate", transactionDTO.getTransactionDate().format(transactionDTO.getFormatter()));
+                    defaultUserMessage, PARAM_TRANSACTION_DATE, transactionDTO.getTransactionDate().format(transactionDTO.getFormatter()));
 
             final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
             dataValidationErrors.add(error);
@@ -249,7 +250,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         if (DateUtils.isDateInTheFuture(transactionDTO.getTransactionDate())) {
             final String defaultUserMessage = "Transaction date cannot be in the future.";
             final ApiParameterError error = ApiParameterError.parameterError("error.msg.savingsaccount.transaction.in.the.future",
-                    defaultUserMessage, "transactionDate", transactionDTO.getTransactionDate().format(transactionDTO.getFormatter()));
+                    defaultUserMessage, PARAM_TRANSACTION_DATE, transactionDTO.getTransactionDate().format(transactionDTO.getFormatter()));
 
             final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
             dataValidationErrors.add(error);
@@ -262,7 +263,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
                     account.getActivationDate().format(transactionDTO.getFormatter())).toArray();
             final String defaultUserMessage = "Transaction date cannot be before accounts activation date.";
             final ApiParameterError error = ApiParameterError.parameterError("error.msg.savingsaccount.transaction.before.activation.date",
-                    defaultUserMessage, "transactionDate", defaultUserArgs);
+                    defaultUserMessage, PARAM_TRANSACTION_DATE, defaultUserArgs);
 
             final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
             dataValidationErrors.add(error);
@@ -274,7 +275,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             final String defaultUserMessage = "Withdrawal is not allowed. No withdrawals are allowed until after "
                     + account.getLockedInUntilDate().format(transactionDTO.getFormatter());
             final ApiParameterError error = ApiParameterError.parameterError(
-                    "error.msg.savingsaccount.transaction.withdrawals.blocked.during.lockin.period", defaultUserMessage, "transactionDate",
+                    "error.msg.savingsaccount.transaction.withdrawals.blocked.during.lockin.period", defaultUserMessage, PARAM_TRANSACTION_DATE,
                     transactionDTO.getTransactionDate().format(transactionDTO.getFormatter()),
                     account.getLockedInUntilDate().format(transactionDTO.getFormatter()));
 
