@@ -82,6 +82,13 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
 
     private static final Logger log = LoggerFactory.getLogger(PaystackSavingsAccountDomainServiceJpa.class);
 
+    /**
+     * ThreadLocal context to store transfer information during account transfer processing. This allows us to detect
+     * intra-client transfers without modifying method signatures. Since transfers are processed sequentially in the
+     * same thread, we can store the client IDs and check them when processing withdrawals and deposits.
+     */
+    private static final ThreadLocal<TransferContext> TRANSFER_CONTEXT = new ThreadLocal<>();
+
     private final SavingsAccountTransactionSummaryWrapper savingsAccountTransactionSummaryWrapper;
     private final SavingsAccountChargePaymentWrapperService savingsAccountChargePaymentWrapperService;
     private final ClientChargeOverrideReadService clientChargeOverrideReadService;
@@ -92,6 +99,20 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
     private final DiscountApplicationService discountApplicationService;
     private final NoteRepository noteRepository;
     private final WithdrawalFrequencyService withdrawalFrequencyService;
+
+    /**
+     * Set transfer context for the current thread. This should be called before processing account transfers.
+     */
+    public static void setTransferContext(Long fromClientId, Long toClientId) {
+        TRANSFER_CONTEXT.set(new TransferContext(fromClientId, toClientId));
+    }
+
+    /**
+     * Clear transfer context after transfer processing is complete.
+     */
+    public static void clearTransferContext() {
+        TRANSFER_CONTEXT.remove();
+    }
 
     public PaystackSavingsAccountDomainServiceJpa(SavingsAccountRepositoryWrapper savingsAccountRepository,
             SavingsAccountTransactionRepository savingsAccountTransactionRepository,
@@ -170,7 +191,10 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
                 backdatedTxnsAllowedTill, relaxingDaysConfigForPivotDate, refNo.toString(), account, noteText);
         // Create EMT levy immediately after base withdrawal so balance validation considers it
         Money baseWithdrawalAmount = Money.of(account.getCurrency(), transactionAmount);
-        payEmtLevyOnTransaction(account, baseWithdrawalAmount, transactionDate, refNo.toString(), backdatedTxnsAllowedTill, true, noteText);
+        // For account transfers, check if it's an intra-client transfer to exempt EMT Levy
+        Long destinationClientId = transactionBooleanValues.isAccountTransfer() ? getDestinationClientIdForTransfer() : null;
+        payEmtLevyOnTransaction(account, baseWithdrawalAmount, transactionDate, refNo.toString(), backdatedTxnsAllowedTill, true, noteText,
+                destinationClientId);
         final MathContext mc = MathContext.DECIMAL64;
 
         final LocalDate today = DateUtils.getBusinessLocalDate();
@@ -423,8 +447,11 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             payDepositFee(transactionAmount, transactionDate, paymentDetail, backdatedTxnsAllowedTill, deposit.getRefNo(), account,
                     noteText);
             // Then EMT levy last to satisfy ordering: deposit -> fee -> vat -> emt levy
+            // For account transfers, check if it's an intra-client transfer to exempt EMT Levy
+            // For deposits, we check against the source client (fromClientId)
+            Long sourceClientId = isAccountTransfer ? getSourceClientIdForTransfer() : null;
             payEmtLevyOnTransaction(account, Money.of(account.getCurrency(), transactionAmount), transactionDate, deposit.getRefNo(),
-                    backdatedTxnsAllowedTill, false, noteText);
+                    backdatedTxnsAllowedTill, false, noteText, sourceClientId);
 
             final MathContext mc = MathContext.DECIMAL64;
             final LocalDate today = DateUtils.getBusinessLocalDate();
@@ -682,9 +709,23 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
 
     private void payEmtLevyOnTransaction(SavingsAccount account, Money amount, LocalDate transactionDate, String refNo,
             boolean backdatedTxnsAllowedTill, boolean isWithdraw, final String noteText) {
+        payEmtLevyOnTransaction(account, amount, transactionDate, refNo, backdatedTxnsAllowedTill, isWithdraw, noteText, null);
+    }
+
+    private void payEmtLevyOnTransaction(SavingsAccount account, Money amount, LocalDate transactionDate, String refNo,
+            boolean backdatedTxnsAllowedTill, boolean isWithdraw, final String noteText, Long destinationClientId) {
         if (amount == null || !amount.isGreaterThanZero()) {
             return;
         }
+
+        // Exempt EMT Levy for intra-client transfers
+        if (destinationClientId != null && account.clientId() != null && account.clientId().equals(destinationClientId)) {
+            log.info(
+                    "Skipping EMT Levy for intra-client transfer. Account clientId: {}, Destination clientId: {}, Amount: {}, TransactionDate: {}",
+                    account.clientId(), destinationClientId, amount.getAmount(), transactionDate);
+            return;
+        }
+
         var product = account.savingsProduct();
         var attr = savingsProductAttributesRepository.findBySavingsProductId(product.getId()).orElse(null);
         if (attr == null) {
@@ -731,5 +772,23 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             final Note note = Note.savingsTransactionNote(account, levyTxn, noteText);
             this.noteRepository.save(note);
         }
+    }
+
+    /**
+     * Get destination client ID for a withdrawal transaction that's part of an account transfer. This is used to detect
+     * intra-client transfers and exempt EMT Levy.
+     */
+    private Long getDestinationClientIdForTransfer() {
+        TransferContext context = TRANSFER_CONTEXT.get();
+        return context != null ? context.getToClientId() : null;
+    }
+
+    /**
+     * Get source client ID for a deposit transaction that's part of an account transfer. This is used to detect
+     * intra-client transfers and exempt EMT Levy.
+     */
+    private Long getSourceClientIdForTransfer() {
+        TransferContext context = TRANSFER_CONTEXT.get();
+        return context != null ? context.getFromClientId() : null;
     }
 }
