@@ -31,7 +31,7 @@ import com.paystack.fineract.portfolio.account.data.ChargeSplitData;
 import com.paystack.fineract.portfolio.account.domain.ChargeSplit;
 import com.paystack.fineract.portfolio.account.domain.ChargeSplitRepository;
 import java.math.BigDecimal;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import org.apache.fineract.accounting.glaccount.domain.GLAccount;
@@ -140,7 +140,7 @@ class ChargeSplitServiceTest {
     @Test
     void testGetSplitsByChargeId_ShouldReturnSplits() {
         // Given
-        List<ChargeSplit> splits = Arrays.asList(split);
+        List<ChargeSplit> splits = Collections.singletonList(split);
         when(splitRepository.findActiveSplitsByChargeId(1L)).thenReturn(splits);
 
         // When
@@ -155,7 +155,7 @@ class ChargeSplitServiceTest {
     @Test
     void testGetSplitsByFundId_ShouldReturnSplits() {
         // Given
-        List<ChargeSplit> splits = Arrays.asList(split);
+        List<ChargeSplit> splits = Collections.singletonList(split);
         when(splitRepository.findByFundIdAndActive(1L, true)).thenReturn(splits);
 
         // When
