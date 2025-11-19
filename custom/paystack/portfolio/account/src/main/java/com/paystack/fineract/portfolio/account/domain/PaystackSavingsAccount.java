@@ -54,6 +54,9 @@ public class PaystackSavingsAccount {
     @Column(name = "total_vat_amount_derived")
     private BigDecimal totalVatAmountDerived;
 
+    @Column(name = "account_name", length = 160)
+    private String accountName;
+
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId
     @JoinColumn(name = "savings_account_id")

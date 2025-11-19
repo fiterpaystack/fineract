@@ -57,6 +57,7 @@ public class SavingsAccountChargePaymentWrapperService {
     private final SavingsVatPostProcessorService vatService;
     private final SavingsAccountTransactionSummaryWrapper savingsAccountTransactionSummaryWrapper;
     private final PaystackSavingsAccountRepository paystackSavingsAccountRepository;
+    private final PaystackAccountNameService paystackAccountNameService;
 
     /**
      * Pay a charge and automatically apply VAT if configured
@@ -99,6 +100,7 @@ public class SavingsAccountChargePaymentWrapperService {
                 extendedAccount.setTotalVatAmountDerived(vatResult.getVatAmount());
                 extendedAccount.setSavingsAccount(account);
                 extendedAccount.setId(account.getId());
+                extendedAccount.setAccountName(paystackAccountNameService.resolveAccountName(account, null));
                 paystackSavingsAccountRepository.save(extendedAccount);
             }
         } else {

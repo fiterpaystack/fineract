@@ -132,6 +132,18 @@ public class SavingsAccountDataValidator {
             baseDataValidator.reset().parameter(accountNoParamName).value(accountNo).notBlank().notExceedingLengthOf(20);
         }
 
+        if (this.fromApiJsonHelper.parameterExists(SavingsApiConstants.accountNameParamName, element)) {
+            final String accountName = this.fromApiJsonHelper.extractStringNamed(SavingsApiConstants.accountNameParamName, element);
+            baseDataValidator.reset().parameter(SavingsApiConstants.accountNameParamName).value(accountName).ignoreIfNull()
+                    .notExceedingLengthOf(160);
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(SavingsApiConstants.accountNameParamName, element)) {
+            final String accountName = this.fromApiJsonHelper.extractStringNamed(SavingsApiConstants.accountNameParamName, element);
+            baseDataValidator.reset().parameter(SavingsApiConstants.accountNameParamName).value(accountName).ignoreIfNull()
+                    .notExceedingLengthOf(160);
+        }
+
         if (this.fromApiJsonHelper.parameterExists(externalIdParamName, element)) {
             final String externalId = this.fromApiJsonHelper.extractStringNamed(externalIdParamName, element);
             baseDataValidator.reset().parameter(externalIdParamName).value(externalId).notExceedingLengthOf(100);

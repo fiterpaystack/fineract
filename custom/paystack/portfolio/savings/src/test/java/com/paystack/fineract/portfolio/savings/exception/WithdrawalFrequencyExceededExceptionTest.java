@@ -19,7 +19,8 @@
 
 package com.paystack.fineract.portfolio.savings.exception;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -98,9 +99,8 @@ class WithdrawalFrequencyExceededExceptionTest {
 
     @Test
     void testInheritance() {
-        WithdrawalFrequencyExceededException exception = new WithdrawalFrequencyExceededException("Test message");
-
-        assertTrue(exception instanceof org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException);
+        assertTrue(org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException.class
+                .isAssignableFrom(WithdrawalFrequencyExceededException.class));
     }
 
     @Test

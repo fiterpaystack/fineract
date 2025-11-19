@@ -38,6 +38,7 @@ import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
 import org.apache.fineract.portfolio.group.domain.GroupRepository;
 import org.apache.fineract.portfolio.group.domain.GroupRepositoryWrapper;
 import org.apache.fineract.portfolio.note.domain.NoteRepository;
+import org.apache.fineract.portfolio.savings.SavingsApiConstants;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountDataValidator;
 import org.apache.fineract.portfolio.savings.domain.GSIMRepositoy;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountAssembler;
@@ -60,9 +61,10 @@ public class PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryI
         extends SavingsApplicationProcessWritePlatformServiceJpaRepositoryImpl {
 
     private final AccountWithdrawalFrequencyService accountWithdrawalFrequencyService;
+    private final PaystackAccountNameService paystackAccountNameService;
 
     public PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryImpl(
-            AccountWithdrawalFrequencyService accountWithdrawalFrequencyService,
+            AccountWithdrawalFrequencyService accountWithdrawalFrequencyService, PaystackAccountNameService paystackAccountNameService,
             // Parent class dependencies
             PlatformSecurityContext context, SavingsAccountRepositoryWrapper savingAccountRepository,
             SavingsAccountAssembler savingAccountAssembler, SavingsAccountDataValidator savingsAccountDataValidator,
@@ -81,13 +83,16 @@ public class PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryI
                 businessEventNotifierService, entityDatatableChecksWritePlatformService, gsimRepository, groupRepositoryWrapper,
                 gsimWritePlatformService);
         this.accountWithdrawalFrequencyService = accountWithdrawalFrequencyService;
+        this.paystackAccountNameService = paystackAccountNameService;
     }
 
     @Override
     @Transactional
     public CommandProcessingResult submitApplication(JsonCommand command) {
-        CommandProcessingResult result = super.submitApplication(command);
+        CommandProcessingResult result = submitApplicationInternal(command);
         Long accountId = safeSavingsId(result);
+
+        applyAccountName(accountId, command, false);
 
         try {
             List<WithdrawalFrequencySettingData> settings = extractSettings(command);
@@ -106,8 +111,10 @@ public class PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryI
     @Override
     @Transactional
     public CommandProcessingResult modifyApplication(Long savingsId, JsonCommand command) {
-        CommandProcessingResult result = super.modifyApplication(savingsId, command);
+        CommandProcessingResult result = modifyApplicationInternal(savingsId, command);
         Long accountId = safeSavingsId(result);
+
+        applyAccountName(accountId, command, true);
 
         try {
             List<WithdrawalFrequencySettingData> settings = extractSettings(command);
@@ -122,6 +129,14 @@ public class PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryI
         }
 
         return result;
+    }
+
+    protected CommandProcessingResult submitApplicationInternal(JsonCommand command) {
+        return super.submitApplication(command);
+    }
+
+    protected CommandProcessingResult modifyApplicationInternal(Long savingsId, JsonCommand command) {
+        return super.modifyApplication(savingsId, command);
     }
 
     @Override
@@ -220,5 +235,23 @@ public class PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryI
             // If any parsing issue occurs, prefer to ignore and proceed
         }
         return settingsData;
+    }
+
+    private void applyAccountName(Long accountId, JsonCommand command, boolean onlyWhenPresent) {
+        if (accountId == null) {
+            return;
+        }
+
+        boolean hasParameter = command.parameterExists(SavingsApiConstants.accountNameParamName);
+        if (onlyWhenPresent && !hasParameter) {
+            return;
+        }
+
+        try {
+            String requestedName = command.stringValueOfParameterNamed(SavingsApiConstants.accountNameParamName);
+            paystackAccountNameService.syncAccountName(accountId, requestedName);
+        } catch (Exception ex) {
+            log.error("Failed to synchronize account name for savings account {}", accountId, ex);
+        }
     }
 }

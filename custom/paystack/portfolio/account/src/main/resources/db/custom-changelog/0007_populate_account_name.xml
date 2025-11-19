@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="paystack-0007-populate-account-name" author="paystack">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="ps_m_savings_account"/>
+            <columnExists tableName="ps_m_savings_account" columnName="account_name"/>
+        </preConditions>
+
+        <sql>
+            INSERT INTO ps_m_savings_account (savings_account_id, total_vat_amount_derived, account_name, created_by, created_on_utc,
+                                              last_modified_by, last_modified_on_utc)
+            SELECT sa.id,
+                   0,
+                   COALESCE(c.display_name, sa.account_no),
+                   COALESCE(sa.created_by, 1),
+                   COALESCE(sa.created_on_utc, NOW()),
+                   COALESCE(sa.last_modified_by, COALESCE(sa.created_by, 1)),
+                   COALESCE(sa.last_modified_on_utc, NOW())
+            FROM m_savings_account sa
+                     LEFT JOIN ps_m_savings_account psa ON psa.savings_account_id = sa.id
+                     LEFT JOIN m_client c ON c.id = sa.client_id
+            WHERE psa.savings_account_id IS NULL;
+        </sql>
+
+        <sql>
+            UPDATE ps_m_savings_account psa
+            SET account_name = COALESCE(c.display_name, sa.account_no),
+                last_modified_on_utc = NOW()
+            FROM m_savings_account sa
+                     LEFT JOIN m_client c ON c.id = sa.client_id
+            WHERE psa.savings_account_id = sa.id
+              AND (psa.account_name IS NULL OR TRIM(psa.account_name) = '');
+        </sql>
+
+        <rollback>
+            <sql>UPDATE ps_m_savings_account SET account_name = NULL;</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

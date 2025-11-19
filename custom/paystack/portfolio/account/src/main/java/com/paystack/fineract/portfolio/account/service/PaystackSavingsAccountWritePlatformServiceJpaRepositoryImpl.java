@@ -156,6 +156,10 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
 
         updateExistingTransactionsDetails(account, existingTransactionIds, existingReversedTransactionIds);
 
+        // Get original fee amount (before discount) for fee split validation
+        // Splits are configured based on original fee amount, not discounted amount
+        BigDecimal originalFeeAmount = savingsAccountCharge.getAmountOutstanding(account.getCurrency()).getAmount();
+
         ChargePaymentResult chargePaymentResult = savingsAccountChargePaymentWrapperService.payChargeWithVat(account, savingsAccountCharge,
                 amountPaid, transactionDate, formatter, backdatedTxnsAllowedTill, null);
 
@@ -192,8 +196,9 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
         postJournalEntries(account, existingTransactionIds, existingReversedTransactionIds, backdatedTxnsAllowedTill);
 
         // Process fee split if enabled for this charge
+        // Use original fee amount (before discount) for validation, as splits are configured based on original fee
         if (savingsAccountCharge.getCharge().isEnableFeeSplit()) {
-            feeSplitService.processFeeSplitForSavings(chargePaymentResult.getFeeTransaction(), amountPaid);
+            feeSplitService.processFeeSplitForSavings(chargePaymentResult.getFeeTransaction(), originalFeeAmount);
         }
 
         return chargePaymentResult.getFeeTransaction();

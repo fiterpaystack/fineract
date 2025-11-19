@@ -25,6 +25,7 @@ import com.paystack.fineract.portfolio.account.domain.FeeSplitAuditRepository;
 import com.paystack.fineract.portfolio.account.domain.FeeSplitDetail;
 import com.paystack.fineract.portfolio.account.domain.FeeSplitDetailRepository;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -195,7 +196,13 @@ public class FeeSplitService {
                             "Total percentage splits cannot exceed 100%", "splitValue", totalPercentage)));
         }
 
-        if (totalFlatAmount.compareTo(totalFeeAmount) > 0) {
+        // Normalize scales to avoid precision issues when comparing BigDecimal values
+        // Use scale of 6 (matching database precision) and rounding mode HALF_UP
+        BigDecimal normalizedTotalFlatAmount = totalFlatAmount.setScale(6, RoundingMode.HALF_UP);
+        BigDecimal normalizedTotalFeeAmount = totalFeeAmount.setScale(6, RoundingMode.HALF_UP);
+
+        // Allow equality (splits can equal fee amount) and only fail if splits exceed fee
+        if (normalizedTotalFlatAmount.compareTo(normalizedTotalFeeAmount) > 0) {
             throw new PlatformApiDataValidationException("error.msg.fee.split.total.flat.amount.exceeds.fee",
                     "Total flat amount splits cannot exceed total fee amount",
                     List.of(ApiParameterError.parameterError("error.msg.fee.split.total.flat.amount.exceeds.fee",

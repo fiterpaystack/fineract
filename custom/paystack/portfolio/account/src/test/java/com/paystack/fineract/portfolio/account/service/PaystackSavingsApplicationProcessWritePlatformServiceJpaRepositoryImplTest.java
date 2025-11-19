@@ -33,6 +33,7 @@ import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
 import org.apache.fineract.portfolio.group.domain.GroupRepository;
 import org.apache.fineract.portfolio.group.domain.GroupRepositoryWrapper;
 import org.apache.fineract.portfolio.note.domain.NoteRepository;
+import org.apache.fineract.portfolio.savings.SavingsApiConstants;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountDataValidator;
 import org.apache.fineract.portfolio.savings.domain.GSIMRepositoy;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountAssembler;
@@ -44,13 +45,16 @@ import org.apache.fineract.portfolio.savings.service.SavingsAccountApplicationTr
 import org.apache.fineract.portfolio.savings.service.SavingsAccountDomainService;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountWritePlatformService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryImplTest {
+
+    private static final long SAVINGS_ID = 777L;
 
     @Mock
     private AccountWithdrawalFrequencyService accountWithdrawalFrequencyService;
@@ -119,20 +123,66 @@ class PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryImplTest
     private GroupSavingsIndividualMonitoringWritePlatformService gsimWritePlatformService;
 
     @Mock
+    private PaystackAccountNameService paystackAccountNameService;
+
+    @Mock
     private JsonCommand command;
 
-    @InjectMocks
     private PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryImpl sut;
 
     private CommandProcessingResult resultWithSavingsId;
 
     @BeforeEach
     void setUp() {
-        resultWithSavingsId = new CommandProcessingResultBuilder().withSavingsId(777L).build();
+        resultWithSavingsId = new CommandProcessingResultBuilder().withSavingsId(SAVINGS_ID).build();
+        sut = Mockito.spy(new PaystackSavingsApplicationProcessWritePlatformServiceJpaRepositoryImpl(accountWithdrawalFrequencyService,
+                paystackAccountNameService, context, savingAccountRepository, savingAccountAssembler, savingsAccountDataValidator,
+                accountNumberGenerator, clientRepository, groupRepository, savingsProductRepository, noteRepository, staffRepository,
+                savingsAccountApplicationTransitionApiJsonValidator, savingsAccountChargeAssembler, commandProcessingService,
+                savingsAccountDomainService, savingsAccountWritePlatformService, accountNumberFormatRepository,
+                businessEventNotifierService, entityDatatableChecksWritePlatformService, gsimRepository, groupRepositoryWrapper,
+                gsimWritePlatformService));
     }
 
-    // Note: Integration tests for the custom service are complex due to parent class dependencies
-    // The custom logic is already tested through the AccountWithdrawalFrequencyService tests
-    // and the domain model tests. The integration with the parent class would require
-    // extensive mocking of the parent class behavior which is not practical for unit tests.
+    @Test
+    void submitApplicationShouldSyncAccountNameWhenProvided() {
+        Mockito.doReturn(resultWithSavingsId).when(sut).submitApplicationInternal(command);
+        Mockito.when(command.parameterExists(SavingsApiConstants.accountNameParamName)).thenReturn(true);
+        Mockito.when(command.stringValueOfParameterNamed(SavingsApiConstants.accountNameParamName)).thenReturn("Custom Name");
+
+        sut.submitApplication(command);
+
+        Mockito.verify(paystackAccountNameService).syncAccountName(SAVINGS_ID, "Custom Name");
+    }
+
+    @Test
+    void submitApplicationShouldSyncAccountNameWithNullWhenNotProvided() {
+        Mockito.doReturn(resultWithSavingsId).when(sut).submitApplicationInternal(command);
+        Mockito.when(command.parameterExists(SavingsApiConstants.accountNameParamName)).thenReturn(false);
+
+        sut.submitApplication(command);
+
+        Mockito.verify(paystackAccountNameService).syncAccountName(SAVINGS_ID, null);
+    }
+
+    @Test
+    void modifyApplicationShouldSyncAccountNameWhenProvided() {
+        Mockito.doReturn(resultWithSavingsId).when(sut).modifyApplicationInternal(SAVINGS_ID, command);
+        Mockito.when(command.parameterExists(SavingsApiConstants.accountNameParamName)).thenReturn(true);
+        Mockito.when(command.stringValueOfParameterNamed(SavingsApiConstants.accountNameParamName)).thenReturn("Updated Name");
+
+        sut.modifyApplication(SAVINGS_ID, command);
+
+        Mockito.verify(paystackAccountNameService).syncAccountName(SAVINGS_ID, "Updated Name");
+    }
+
+    @Test
+    void modifyApplicationShouldSkipSyncWhenFieldMissing() {
+        Mockito.doReturn(resultWithSavingsId).when(sut).modifyApplicationInternal(SAVINGS_ID, command);
+        Mockito.when(command.parameterExists(SavingsApiConstants.accountNameParamName)).thenReturn(false);
+
+        sut.modifyApplication(SAVINGS_ID, command);
+
+        Mockito.verify(paystackAccountNameService, Mockito.never()).syncAccountName(Mockito.anyLong(), Mockito.any());
+    }
 }
