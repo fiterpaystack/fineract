@@ -709,11 +709,6 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
     }
 
     private void payEmtLevyOnTransaction(SavingsAccount account, Money amount, LocalDate transactionDate, String refNo,
-            boolean backdatedTxnsAllowedTill, boolean isWithdraw, final String noteText) {
-        payEmtLevyOnTransaction(account, amount, transactionDate, refNo, backdatedTxnsAllowedTill, isWithdraw, noteText, null);
-    }
-
-    private void payEmtLevyOnTransaction(SavingsAccount account, Money amount, LocalDate transactionDate, String refNo,
             boolean backdatedTxnsAllowedTill, boolean isWithdraw, final String noteText, Long destinationClientId) {
         if (amount == null || !amount.isGreaterThanZero()) {
             return;
