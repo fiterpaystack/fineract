@@ -724,6 +724,11 @@ public final class SavingsAccountData implements Serializable {
             newAccount.setAdditionalAttributes(account.additionalAttributes);
         }
 
+        // Preserve accountName from the original account
+        if (account.accountName != null) {
+            newAccount.setAccountName(account.accountName);
+        }
+
         return newAccount;
     }
 
@@ -756,6 +761,11 @@ public final class SavingsAccountData implements Serializable {
         // Preserve additionalAttributes from the original account
         if (account.additionalAttributes != null) {
             newAccount.setAdditionalAttributes(account.additionalAttributes);
+        }
+
+        // Preserve accountName from the original account
+        if (account.accountName != null) {
+            newAccount.setAccountName(account.accountName);
         }
 
         return newAccount;
