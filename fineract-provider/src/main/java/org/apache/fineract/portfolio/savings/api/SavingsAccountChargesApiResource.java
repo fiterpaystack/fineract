@@ -20,6 +20,7 @@ package org.apache.fineract.portfolio.savings.api;
 
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.COMMAND_INACTIVATE_CHARGE;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.COMMAND_PAY_CHARGE;
+import static org.apache.fineract.portfolio.savings.SavingsApiConstants.COMMAND_REACTIVATE_CHARGE;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.COMMAND_WAIVE_CHARGE;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.SAVINGS_ACCOUNT_CHARGE_RESOURCE_NAME;
 
@@ -239,9 +240,16 @@ public class SavingsAccountChargesApiResource {
             final CommandProcessingResult result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
 
             json = this.toApiJsonSerializer.serialize(result);
+        } else if (is(commandParam, COMMAND_REACTIVATE_CHARGE)) {
+            final CommandWrapper commandRequest = new CommandWrapperBuilder()
+                    .reactivateSavingsAccountCharge(savingsAccountId, savingsAccountChargeId).withJson(apiRequestBodyAsJson).build();
+
+            final CommandProcessingResult result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
+
+            json = this.toApiJsonSerializer.serialize(result);
         } else {
             throw new UnrecognizedQueryParamException("command", commandParam, COMMAND_PAY_CHARGE, COMMAND_WAIVE_CHARGE,
-                    COMMAND_INACTIVATE_CHARGE);
+                    COMMAND_INACTIVATE_CHARGE, COMMAND_REACTIVATE_CHARGE);
         }
 
         return json;

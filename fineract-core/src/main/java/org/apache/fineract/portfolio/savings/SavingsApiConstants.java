@@ -57,6 +57,7 @@ public class SavingsApiConstants {
     public static final String COMMAND_WAIVE_CHARGE = "waive";
     public static final String COMMAND_PAY_CHARGE = "paycharge";
     public static final String COMMAND_INACTIVATE_CHARGE = "inactivate";
+    public static final String COMMAND_REACTIVATE_CHARGE = "reactivate";
     public static final String COMMAND_HOLD_AMOUNT = "holdAmount";
     public static final String COMMAND_RELEASE_AMOUNT = "releaseAmount";
     public static final String COMMAND_UNBLOCK_ACCOUNT = "unblock";
@@ -176,6 +177,8 @@ public class SavingsApiConstants {
     public static final String lienTransaction = "lienTransaction";
     public static final String chargesPaidByData = "chargesPaidByData";
     public static final String amountPaidParamName = "amountPaid";
+    public static final String reactivationDateParamName = "reactivationDate";
+    public static final String resumeFromNextBillingCycleParamName = "resumeFromNextBillingCycle";
     public static final String chargeOptionsParamName = "chargeOptions";
     public static final String chargePaymentModeParamName = "chargePaymentMode";
 
