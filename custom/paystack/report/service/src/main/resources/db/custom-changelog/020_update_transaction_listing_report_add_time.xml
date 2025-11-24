@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="paystack" id="transaction-listing-add-time">
+        <update tableName="stretchy_report">
+            <column name="report_sql" value="select msat.id as &quot;Transaction ID&quot;, TO_CHAR(msat.transaction_date, 'YYYY-MM-DD') as &quot;Value Date&quot;, TO_CHAR(coalesce(msat.last_modified_on_utc, msat.created_on_utc), 'YYYY-MM-DD HH24:MI:SS') as &quot;Transaction Date&quot;,
+                debit_acc.gl_code as &quot;Debit Account&quot;, debit_acc.&quot;name&quot; as &quot;Debit Acct Title&quot;, credit_acc.gl_code as &quot;Credit Account&quot;, credit_acc.&quot;name&quot; as &quot;Credit Acct Title&quot;,
+                msat.amount as &quot;Transaction Value&quot;, rev.enum_value as &quot;Transaction Type&quot;, case when msat.is_reversed = false then 'Transaction Successful' else 'Transaction Reversed' end as &quot;Status&quot;, mn.note as &quot;Narration&quot;,
+                concat(coalesce(mkr.firstname, coalesce(mkrfrm.firstname, mkrto.firstname)), ' ', coalesce(mkr.lastname, coalesce(mkrfrm.lastname, mkrto.lastname))) as &quot;Maker&quot;,
+                concat(coalesce(chkr.firstname, coalesce(chkrfrm.firstname, chkrto.firstname)), ' ', coalesce(chkr.lastname, coalesce(chkrfrm.lastname, chkrto.lastname))) as &quot;Checker&quot;
+                from m_savings_account_transaction msat
+                join m_savings_account msa on msat.savings_account_id = msa.id
+                left join acc_gl_journal_entry debit on debit.savings_transaction_id = msat.id and debit.type_enum = 2
+                left join acc_gl_account debit_acc on debit.account_id = debit_acc.id
+                left join acc_gl_journal_entry credit on credit.savings_transaction_id = msat.id and credit.type_enum = 1
+                left join acc_gl_account credit_acc on credit.account_id = credit_acc.id
+                left join m_note mn on mn.savings_account_transaction_id = msat.id
+                left join r_enum_value rev on rev.enum_id = msat.transaction_type_enum and rev.enum_name = 'savings_transaction_type_enum'
+                left join m_portfolio_command_source mpcs on mpcs.resource_id = msat.id and mpcs.entity_name = 'SAVINGSACCOUNT' and mpcs.action_name in ('DEPOSIT', 'WITHDRAWAL')
+                left join m_appuser mkr on mpcs.maker_id = mkr.id
+                left join m_appuser chkr on mpcs.checker_id = chkr.id
+                left join m_account_transfer_transaction frmtrn on msat.id = frmtrn.from_savings_transaction_id
+                left join m_portfolio_command_source mpcsfrm on mpcsfrm.resource_id = frmtrn.account_transfer_details_id and mpcsfrm.entity_name = 'ACCOUNTTRANSFER' and mpcsfrm.action_name = 'CREATE'
+                left join m_appuser mkrfrm on mpcsfrm.maker_id = mkrfrm.id
+                left join m_appuser chkrfrm on mpcsfrm.checker_id = chkrfrm.id
+                left join m_account_transfer_transaction totrn on msat.id = totrn.to_savings_transaction_id
+                left join m_portfolio_command_source mpcsto on mpcsto.resource_id = totrn.account_transfer_details_id and mpcsto.entity_name = 'ACCOUNTTRANSFER' and mpcsto.action_name = 'CREATE'
+                left join m_appuser mkrto on mpcsto.maker_id = mkrto.id
+                left join m_appuser chkrto on mpcsto.checker_id = chkrto.id
+                order by msat.transaction_date desc"/>
+            <where>report_name = 'Transaction Listing'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

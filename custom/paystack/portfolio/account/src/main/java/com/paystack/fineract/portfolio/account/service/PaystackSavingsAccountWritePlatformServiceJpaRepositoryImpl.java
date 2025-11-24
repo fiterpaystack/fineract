@@ -29,12 +29,15 @@ import java.math.MathContext;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
+import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
@@ -390,6 +393,106 @@ public class PaystackSavingsAccountWritePlatformServiceJpaRepositoryImpl extends
                 .withGroupId(savingsAccountCharge.savingsAccount().groupId()) //
                 .withSavingsId(savingsAccountCharge.savingsAccount().getId()) //
                 .build();
+    }
+
+    @Transactional
+    public CommandProcessingResult reactivateSavingsAccountCharge(final Long savingsAccountId, final Long savingsAccountChargeId,
+            final JsonCommand command) {
+        this.context.authenticatedUser();
+        final SavingsAccountCharge savingsAccountCharge = this.savingsAccountChargeRepository
+                .findOneWithNotFoundDetection(savingsAccountChargeId, savingsAccountId);
+        final SavingsAccount account = savingsAccountCharge.savingsAccount();
+        this.savingAccountAssembler.assignSavingAccountHelpers(account);
+
+        final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+        final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors)
+                .resource(SAVINGS_ACCOUNT_CHARGE_RESOURCE_NAME);
+
+        if (savingsAccountCharge.isActive()) {
+            baseDataValidator.reset().failWithCodeNoParameterAddedToErrorCode("reactivation.of.charge.requires.inactive.status");
+        }
+
+        final LocalDate businessDate = DateUtils.getBusinessLocalDate();
+        final LocalDate commandReactivateOn = command.localDateValueOfParameterNamed(SavingsApiConstants.reactivationDateParamName);
+        final LocalDate reactivationOnDate = commandReactivateOn != null ? commandReactivateOn : businessDate;
+        final LocalDate requestedDueDate = command.localDateValueOfParameterNamed(SavingsApiConstants.dueAsOfDateParamName);
+        final Boolean resumeNextCycleParam = command
+                .booleanPrimitiveValueOfParameterNamed(SavingsApiConstants.resumeFromNextBillingCycleParamName);
+        final boolean resumeNextBillingCycle = resumeNextCycleParam != null && resumeNextCycleParam;
+
+        final LocalDate resolvedDueDate = resolveDueDateForReactivation(account, savingsAccountCharge, reactivationOnDate, requestedDueDate,
+                resumeNextBillingCycle, baseDataValidator);
+
+        if (!dataValidationErrors.isEmpty()) {
+            throw new PlatformApiDataValidationException(dataValidationErrors);
+        }
+
+        savingsAccountCharge.reactivateCharge();
+        savingsAccountCharge.resetPropertiesForRecurringFees();
+
+        if (resolvedDueDate != null) {
+            savingsAccountCharge.update(null, resolvedDueDate, null, null);
+        }
+
+        return new CommandProcessingResultBuilder() //
+                .withEntityId(savingsAccountCharge.getId()) //
+                .withOfficeId(savingsAccountCharge.savingsAccount().officeId()) //
+                .withClientId(savingsAccountCharge.savingsAccount().clientId()) //
+                .withGroupId(savingsAccountCharge.savingsAccount().groupId()) //
+                .withSavingsId(savingsAccountCharge.savingsAccount().getId()) //
+                .build();
+    }
+
+    private LocalDate resolveDueDateForReactivation(final SavingsAccount account, final SavingsAccountCharge savingsAccountCharge,
+            final LocalDate reactivationOnDate, final LocalDate requestedDueDate, final boolean resumeNextBillingCycle,
+            final DataValidatorBuilder baseDataValidator) {
+
+        if (savingsAccountCharge.isOnSpecifiedDueDate()) {
+            baseDataValidator.reset().parameter(SavingsApiConstants.dueAsOfDateParamName).value(requestedDueDate).notNull();
+            if (requestedDueDate != null) {
+                baseDataValidator.reset().parameter(SavingsApiConstants.dueAsOfDateParamName).value(requestedDueDate)
+                        .validateDateAfter(reactivationOnDate.minusDays(1));
+            }
+            return requestedDueDate;
+        }
+
+        if (savingsAccountCharge.isRecurringFee()) {
+            LocalDate anchorDate = requestedDueDate != null ? requestedDueDate : savingsAccountCharge.getDueDate();
+            if (anchorDate == null || DateUtils.isBefore(anchorDate, reactivationOnDate)) {
+                anchorDate = reactivationOnDate;
+            }
+
+            LocalDate nextDueDate = savingsAccountCharge.getNextDueDateFrom(anchorDate);
+            if (resumeNextBillingCycle || shouldSkipCurrentCycle(account, savingsAccountCharge, nextDueDate)) {
+                nextDueDate = nextDueDate != null ? savingsAccountCharge.getNextDueDateFrom(nextDueDate) : null;
+            }
+            return nextDueDate;
+        }
+
+        if (requestedDueDate != null) {
+            baseDataValidator.reset().parameter(SavingsApiConstants.dueAsOfDateParamName).value(requestedDueDate)
+                    .validateDateAfter(reactivationOnDate.minusDays(1));
+        }
+
+        return requestedDueDate;
+    }
+
+    private boolean shouldSkipCurrentCycle(final SavingsAccount account, final SavingsAccountCharge savingsAccountCharge,
+            final LocalDate candidateDueDate) {
+        if (candidateDueDate == null) {
+            return false;
+        }
+        final Optional<LocalDate> lastPaymentDate = getLastChargePaymentDate(account, savingsAccountCharge);
+        return lastPaymentDate.filter(date -> !DateUtils.isBefore(date, candidateDueDate)).isPresent();
+    }
+
+    private Optional<LocalDate> getLastChargePaymentDate(final SavingsAccount account, final SavingsAccountCharge savingsAccountCharge) {
+        if (account.getTransactions() == null || account.getTransactions().isEmpty()) {
+            return Optional.empty();
+        }
+        return account.getTransactions().stream()
+                .filter(tx -> tx.isPayCharge() && tx.isNotReversed() && tx.isPaymentForCurrentCharge(savingsAccountCharge))
+                .map(SavingsAccountTransaction::getTransactionDate).max(Comparator.naturalOrder());
     }
 
     // Removed obsolete withdrawal frequency endpoints; consolidated via SavingsApplicationProcess decorator
