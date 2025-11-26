@@ -39,6 +39,8 @@ public class PaystackSavingsProductDataValidator extends SavingsProductDataValid
                 // Discount Engine Parameters
                 PaystackSavingsProductAdditionalAttributes.ENABLE_DISCOUNT_ENGINE,
                 PaystackSavingsProductAdditionalAttributes.DISCOUNT_RULES,
+                // Discount policy configuration (top-level flags used by Paystack discount engine)
+                "allRulesRequired", "combinationStrategy",
                 // Withdrawal Frequency Controls
                 "withdrawalFrequencySettings"));
     }

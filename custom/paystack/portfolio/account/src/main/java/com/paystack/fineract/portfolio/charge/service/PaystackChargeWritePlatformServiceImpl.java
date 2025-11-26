@@ -279,11 +279,26 @@ public class PaystackChargeWritePlatformServiceImpl extends ChargeWritePlatformS
             discountRuleService.removeAllDiscountRulesFromCharge(chargeId);
             if (!ruleIds.isEmpty()) {
                 discountRuleService.assignDiscountRulesToCharge(chargeId, ruleIds);
-                for (var p : priorities) {
-                    this.jdbcTemplate.update(
-                            "UPDATE m_discount_rule_charge SET assignment_priority = ? WHERE charge_id = ? AND discount_rule_id = ?",
-                            p.getValue(), chargeId, p.getKey());
+            }
+            for (var p : priorities) {
+                this.jdbcTemplate.update(
+                        "UPDATE m_discount_rule_charge SET assignment_priority = ? WHERE charge_id = ? AND discount_rule_id = ?",
+                        p.getValue(), chargeId, p.getKey());
+            }
+
+            // Optional policy toggles (AND gating and combination strategy) for updates as well
+            Boolean allRulesRequired = command.booleanObjectValueOfParameterNamed("allRulesRequired");
+            String combination = command.stringValueOfParameterNamed("combinationStrategy");
+            if (allRulesRequired != null || (combination != null && !combination.isBlank())) {
+                DiscountCombinationStrategy strategy = DiscountCombinationStrategy.SUM_CAP;
+                if (combination != null && !combination.isBlank()) {
+                    try {
+                        strategy = DiscountCombinationStrategy.valueOf(combination.trim().toUpperCase());
+                    } catch (Exception ignore) {
+                        // default stays SUM_CAP
+                    }
                 }
+                policyService.upsertPolicy(DiscountPolicyEntityType.CHARGE, chargeId, Boolean.TRUE.equals(allRulesRequired), strategy);
             }
 
             log.info("Successfully updated discount rules for charge {}: {}", chargeId, ruleIds);

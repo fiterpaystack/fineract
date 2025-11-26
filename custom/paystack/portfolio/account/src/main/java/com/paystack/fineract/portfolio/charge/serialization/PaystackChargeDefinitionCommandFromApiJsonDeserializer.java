@@ -51,7 +51,7 @@ public class PaystackChargeDefinitionCommandFromApiJsonDeserializer extends Char
                 FEE_ON_MONTH_DAY, FEE_INTERVAL, MONTH_DAY_FORMAT, MIN_CAP, MAX_CAP, FEE_FREQUENCY, ENABLE_FREE_WITHDRAWAL_CHARGE,
                 FREE_WITHDRAWAL_FREQUENCY, RESTART_COUNT_FREQUENCY, COUNT_FREQUENCY_TYPE, PAYMENT_TYPE_ID, ENABLE_PAYMENT_TYPE,
                 ENABLE_FEE_SPLIT, ChargesApiConstants.glAccountIdParamName, ChargesApiConstants.taxGroupIdParamName, CHART, ENABLE_SLABS,
-                "chartSlabs", "stakeholderSplits", "discountRules"));
+                "chartSlabs", "stakeholderSplits", "discountRules", "allRulesRequired", "combinationStrategy"));
     }
 
     @Override
