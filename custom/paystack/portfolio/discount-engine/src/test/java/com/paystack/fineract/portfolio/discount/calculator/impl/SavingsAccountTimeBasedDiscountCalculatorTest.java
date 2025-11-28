@@ -529,8 +529,11 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         @Test
         @DisplayName("Should validate context correctly")
         void shouldValidateContextCorrectly() {
+            calculator.configure(createWeekendParameters(BigDecimal.valueOf(10.0), List.of("SATURDAY", "SUNDAY")));
+
             // Valid context
-            DiscountContext validContext = createContext(LocalDate.now());
+            DiscountContext validContext = createContext(LocalDate.of(2024, 1, 6)); // Saturday aligns with configured
+                                                                                    // WEEKEND rule
             assertThat(calculator.isApplicable(validContext)).isTrue();
 
             // Invalid context - null
