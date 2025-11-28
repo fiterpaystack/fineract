@@ -31,8 +31,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * Integration tests to verify that isApplicable() methods correctly validate business conditions.
- * This ensures AND logic works correctly when allRulesRequired = true.
+ * Integration tests to verify that isApplicable() methods correctly validate business conditions. This ensures AND
+ * logic works correctly when allRulesRequired = true.
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Calculator Applicability Integration Tests")
@@ -72,8 +72,7 @@ class CalculatorApplicabilityIntegrationTest {
 
             // Mock: Account has average balance of 600k (above threshold)
             List<SavingsAccountTransaction> mockTransactions = createMockTransactions(600000.0);
-            when(transactionRepository.findTransactionsForPeriod(any(), any(), any()))
-                    .thenReturn(mockTransactions);
+            when(transactionRepository.findTransactionsForPeriod(any(), any(), any())).thenReturn(mockTransactions);
 
             DiscountContext context = createContext(100L, BigDecimal.valueOf(100.0));
 
@@ -92,8 +91,7 @@ class CalculatorApplicabilityIntegrationTest {
 
             // Mock: Account has average balance of 300k (below threshold)
             List<SavingsAccountTransaction> mockTransactions = createMockTransactions(300000.0);
-            when(transactionRepository.findTransactionsForPeriod(any(), any(), any()))
-                    .thenReturn(mockTransactions);
+            when(transactionRepository.findTransactionsForPeriod(any(), any(), any())).thenReturn(mockTransactions);
 
             DiscountContext context = createContext(100L, BigDecimal.valueOf(100.0));
 
@@ -111,8 +109,7 @@ class CalculatorApplicabilityIntegrationTest {
             balanceCalculator.configure(params);
 
             // Mock: Repository throws exception
-            when(transactionRepository.findTransactionsForPeriod(any(), any(), any()))
-                    .thenThrow(new RuntimeException("Database error"));
+            when(transactionRepository.findTransactionsForPeriod(any(), any(), any())).thenThrow(new RuntimeException("Database error"));
 
             DiscountContext context = createContext(100L, BigDecimal.valueOf(100.0));
 
@@ -137,8 +134,7 @@ class CalculatorApplicabilityIntegrationTest {
             countCalculator.configure(params);
 
             // Mock: Account has 60 transactions (above threshold)
-            when(transactionRepository.countTransactionsForPeriod(eq(100L), any(), any(), anyBoolean(), anyList()))
-                    .thenReturn(60L);
+            when(transactionRepository.countTransactionsForPeriod(eq(100L), any(), any(), anyBoolean(), anyList())).thenReturn(60L);
 
             DiscountContext context = createContext(100L, BigDecimal.valueOf(100.0));
 
@@ -158,8 +154,7 @@ class CalculatorApplicabilityIntegrationTest {
             countCalculator.configure(params);
 
             // Mock: Account has 30 transactions (below threshold)
-            when(transactionRepository.countTransactionsForPeriod(eq(100L), any(), any(), anyBoolean(), anyList()))
-                    .thenReturn(30L);
+            when(transactionRepository.countTransactionsForPeriod(eq(100L), any(), any(), anyBoolean(), anyList())).thenReturn(30L);
 
             DiscountContext context = createContext(100L, BigDecimal.valueOf(100.0));
 
@@ -179,8 +174,7 @@ class CalculatorApplicabilityIntegrationTest {
             countCalculator.configure(params);
 
             // Mock: Account has exactly 50 transactions
-            when(transactionRepository.countTransactionsForPeriod(eq(100L), any(), any(), anyBoolean(), anyList()))
-                    .thenReturn(50L);
+            when(transactionRepository.countTransactionsForPeriod(eq(100L), any(), any(), anyBoolean(), anyList())).thenReturn(50L);
 
             DiscountContext context = createContext(100L, BigDecimal.valueOf(100.0));
 
@@ -206,8 +200,7 @@ class CalculatorApplicabilityIntegrationTest {
 
             // Mock: Account has transactions totaling 250k (above threshold)
             List<SavingsAccountTransaction> mockTransactions = createMockTransactionsForFlow(250000.0, true);
-            when(transactionRepository.findTransactionsForPeriod(eq(100L), any(), any()))
-                    .thenReturn(mockTransactions);
+            when(transactionRepository.findTransactionsForPeriod(eq(100L), any(), any())).thenReturn(mockTransactions);
 
             DiscountContext context = createContext(100L, BigDecimal.valueOf(100.0));
 
@@ -228,8 +221,7 @@ class CalculatorApplicabilityIntegrationTest {
 
             // Mock: Account has transactions totaling 150k (below threshold)
             List<SavingsAccountTransaction> mockTransactions = createMockTransactionsForFlow(150000.0, true);
-            when(transactionRepository.findTransactionsForPeriod(eq(100L), any(), any()))
-                    .thenReturn(mockTransactions);
+            when(transactionRepository.findTransactionsForPeriod(eq(100L), any(), any())).thenReturn(mockTransactions);
 
             DiscountContext context = createContext(100L, BigDecimal.valueOf(100.0));
 
@@ -249,8 +241,7 @@ class CalculatorApplicabilityIntegrationTest {
             flowCalculator.configure(params);
 
             // Mock: No transactions
-            when(transactionRepository.findTransactionsForPeriod(eq(100L), any(), any()))
-                    .thenReturn(new ArrayList<>());
+            when(transactionRepository.findTransactionsForPeriod(eq(100L), any(), any())).thenReturn(new ArrayList<>());
 
             DiscountContext context = createContext(100L, BigDecimal.valueOf(100.0));
 
@@ -393,8 +384,7 @@ class CalculatorApplicabilityIntegrationTest {
             balanceParams.put("discountPercentage", "5");
             balanceCalculator.configure(balanceParams);
             List<SavingsAccountTransaction> balanceTransactions = createMockTransactions(600000.0);
-            when(transactionRepository.findTransactionsForPeriod(any(), any(), any()))
-                    .thenReturn(balanceTransactions);
+            when(transactionRepository.findTransactionsForPeriod(any(), any(), any())).thenReturn(balanceTransactions);
 
             // Setup Count Calculator: 50 transactions threshold
             Map<String, Object> countParams = new HashMap<>();
@@ -403,8 +393,7 @@ class CalculatorApplicabilityIntegrationTest {
             countParams.put("directionType", "ALL");
             countParams.put("discountPercentage", "10");
             countCalculator.configure(countParams);
-            when(transactionRepository.countTransactionsForPeriod(eq(100L), any(), any(), anyBoolean(), anyList()))
-                    .thenReturn(60L);
+            when(transactionRepository.countTransactionsForPeriod(eq(100L), any(), any(), anyBoolean(), anyList())).thenReturn(60L);
 
             // Setup Time Calculator: Weekend
             Map<String, Object> timeParams = new HashMap<>();
@@ -431,8 +420,7 @@ class CalculatorApplicabilityIntegrationTest {
             balanceParams.put("discountPercentage", "5");
             balanceCalculator.configure(balanceParams);
             List<SavingsAccountTransaction> balanceTransactions = createMockTransactions(600000.0);
-            when(transactionRepository.findTransactionsForPeriod(any(), any(), any()))
-                    .thenReturn(balanceTransactions);
+            when(transactionRepository.findTransactionsForPeriod(any(), any(), any())).thenReturn(balanceTransactions);
 
             // Setup Count Calculator: 50 transactions threshold - MET
             Map<String, Object> countParams = new HashMap<>();
@@ -441,8 +429,7 @@ class CalculatorApplicabilityIntegrationTest {
             countParams.put("directionType", "ALL");
             countParams.put("discountPercentage", "10");
             countCalculator.configure(countParams);
-            when(transactionRepository.countTransactionsForPeriod(eq(100L), any(), any(), anyBoolean(), anyList()))
-                    .thenReturn(60L);
+            when(transactionRepository.countTransactionsForPeriod(eq(100L), any(), any(), anyBoolean(), anyList())).thenReturn(60L);
 
             // Setup Time Calculator: Weekend - NOT MET (Monday)
             Map<String, Object> timeParams = new HashMap<>();
@@ -469,8 +456,7 @@ class CalculatorApplicabilityIntegrationTest {
             balanceParams.put("discountPercentage", "5");
             balanceCalculator.configure(balanceParams);
             List<SavingsAccountTransaction> balanceTransactions = createMockTransactions(300000.0);
-            when(transactionRepository.findTransactionsForPeriod(any(), any(), any()))
-                    .thenReturn(balanceTransactions);
+            when(transactionRepository.findTransactionsForPeriod(any(), any(), any())).thenReturn(balanceTransactions);
 
             // Setup Count Calculator: 50 transactions threshold - NOT MET
             Map<String, Object> countParams = new HashMap<>();
@@ -479,8 +465,7 @@ class CalculatorApplicabilityIntegrationTest {
             countParams.put("directionType", "ALL");
             countParams.put("discountPercentage", "10");
             countCalculator.configure(countParams);
-            when(transactionRepository.countTransactionsForPeriod(eq(100L), any(), any(), anyBoolean(), anyList()))
-                    .thenReturn(30L);
+            when(transactionRepository.countTransactionsForPeriod(eq(100L), any(), any(), anyBoolean(), anyList())).thenReturn(30L);
 
             // Setup Time Calculator: Weekend - NOT MET (Monday)
             Map<String, Object> timeParams = new HashMap<>();
@@ -520,7 +505,8 @@ class CalculatorApplicabilityIntegrationTest {
 
     private List<SavingsAccountTransaction> createMockTransactionsForFlow(double amount, boolean isCredit) {
         List<SavingsAccountTransaction> transactions = new ArrayList<>();
-        SavingsAccountTransaction tx = org.mockito.Mockito.mock(SavingsAccountTransaction.class, org.mockito.Mockito.withSettings().lenient());
+        SavingsAccountTransaction tx = org.mockito.Mockito.mock(SavingsAccountTransaction.class,
+                org.mockito.Mockito.withSettings().lenient());
         when(tx.getAmount()).thenReturn(BigDecimal.valueOf(amount));
         when(tx.isCredit()).thenReturn(isCredit);
         when(tx.isDebit()).thenReturn(!isCredit);
@@ -529,4 +515,3 @@ class CalculatorApplicabilityIntegrationTest {
         return transactions;
     }
 }
-

@@ -183,4 +183,3 @@ ORDER BY da.application_date DESC"/>
     </changeSet>
 
 </databaseChangeLog>
-
