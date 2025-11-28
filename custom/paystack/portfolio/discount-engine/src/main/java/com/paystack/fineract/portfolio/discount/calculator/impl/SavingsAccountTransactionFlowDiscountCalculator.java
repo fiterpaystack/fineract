@@ -110,8 +110,24 @@ public class SavingsAccountTransactionFlowDiscountCalculator implements Discount
 
     @Override
     public boolean isApplicable(DiscountContext context) {
-        return context != null && context.getAccountId() != null && context.getTransactionAmount() != null
-                && context.getTransactionAmount().compareTo(BigDecimal.ZERO) > 0;
+        if (context == null || context.getAccountId() == null || context.getTransactionAmount() == null
+                || context.getTransactionAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            return false;
+        }
+
+        // Check if transaction flow threshold is met - this is critical for AND logic validation
+        try {
+            List<SavingsAccountTransaction> transactions = getTransactionsForPeriod(context.getAccountId());
+            if (transactions.isEmpty()) {
+                return false;
+            }
+
+            BigDecimal totalValue = calculateTotalValue(transactions);
+            return totalValue.compareTo(thresholdAmount) >= 0;
+        } catch (Exception e) {
+            log.warn("Error checking transaction flow threshold for account {}: {}", context.getAccountId(), e.getMessage());
+            return false;
+        }
     }
 
     @Override

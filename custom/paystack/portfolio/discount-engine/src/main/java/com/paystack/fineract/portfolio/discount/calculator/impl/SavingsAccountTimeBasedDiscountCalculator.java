@@ -131,8 +131,14 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
 
     @Override
     public boolean isApplicable(DiscountContext context) {
-        return context != null && context.getAccountId() != null && context.getTransactionAmount() != null
-                && context.getTransactionAmount().compareTo(BigDecimal.ZERO) > 0;
+        if (context == null || context.getAccountId() == null || context.getTransactionAmount() == null
+                || context.getTransactionAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            return false;
+        }
+
+        // Check date/time conditions - this is critical for AND logic validation
+        LocalDate transactionDate = getTransactionDate(context);
+        return isTimeRuleApplicable(transactionDate, context);
     }
 
     @Override
@@ -206,8 +212,12 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
      */
     private boolean isDateRangeApplicable(LocalDate transactionDate) {
         // For DATE_RANGE rule type, the date range is already checked in isWithinDateRange()
-        // This method can be used for additional date range logic if needed
-        log.info("transactionDate = {}", transactionDate);
+        // Just verify that we have a valid date range configured
+        if (startDate == null && endDate == null) {
+            log.warn("TIME_BASED CALCULATOR: DATE_RANGE rule type requires at least startDate or endDate to be configured");
+            return false;
+        }
+        // Date range validation is already done in isWithinDateRange() which is called before this
         return true;
     }
 
