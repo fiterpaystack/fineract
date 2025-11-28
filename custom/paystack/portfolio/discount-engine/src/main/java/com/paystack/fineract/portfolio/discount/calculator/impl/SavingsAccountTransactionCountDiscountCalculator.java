@@ -153,8 +153,18 @@ public class SavingsAccountTransactionCountDiscountCalculator implements Discoun
 
     @Override
     public boolean isApplicable(DiscountContext context) {
-        return context != null && context.getAccountId() != null && context.getTransactionAmount() != null
-                && context.getTransactionAmount().compareTo(BigDecimal.ZERO) > 0;
+        if (context == null || context.getAccountId() == null || context.getTransactionAmount() == null
+                || context.getTransactionAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            return false;
+        }
+
+        // Check if transaction count threshold is met - this is critical for AND logic validation
+        try {
+            return hasReachedThreshold(context);
+        } catch (Exception e) {
+            log.warn("Error checking transaction count threshold for account {}: {}", context.getAccountId(), e.getMessage());
+            return false;
+        }
     }
 
     @Override

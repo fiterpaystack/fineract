@@ -110,8 +110,19 @@ public class AccountBalanceBasedDiscountCalculator implements DiscountRuleCalcul
 
     @Override
     public boolean isApplicable(DiscountContext context) {
-        return context != null && context.getAccountId() != null && context.getTransactionAmount() != null
-                && context.getTransactionAmount().compareTo(BigDecimal.ZERO) > 0;
+        if (context == null || context.getAccountId() == null || context.getTransactionAmount() == null
+                || context.getTransactionAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            return false;
+        }
+
+        // Check if balance threshold is met - this is critical for AND logic validation
+        try {
+            BigDecimal avgBalance = calculateAverageDailyBalance(context.getAccountId());
+            return avgBalance.compareTo(minimumAverageBalance) >= 0;
+        } catch (Exception e) {
+            log.warn("Error checking balance threshold for account {}: {}", context.getAccountId(), e.getMessage());
+            return false;
+        }
     }
 
     @Override

@@ -477,6 +477,9 @@ class SavingsAccountTransactionCountDiscountCalculatorTest {
         @Test
         @DisplayName("Should be applicable with valid context")
         void shouldBeApplicableWithValidContext() {
+            configureCalculator(10, "DAILY", "INFLOW", BigDecimal.valueOf(5.0), false);
+            when(transactionRepository.countTransactionsForPeriod(anyLong(), any(LocalDate.class), any(LocalDate.class), anyBoolean(),
+                    any())).thenReturn(15L);
             DiscountContext context = createValidContext();
             assertThat(calculator.isApplicable(context)).isTrue();
         }
