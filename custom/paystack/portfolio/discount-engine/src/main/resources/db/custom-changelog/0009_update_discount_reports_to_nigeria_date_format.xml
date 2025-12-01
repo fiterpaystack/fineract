@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <!-- ============================================ -->
+    <!-- Update Report 3: Rule Utilization Report - Nigeria Date Format -->
+    <!-- ============================================ -->
+    <changeSet id="paystack-discount-0009-update-rule-utilization-nigeria-format-postgresql" author="paystack" dbms="postgresql">
+        <comment>Update Rule Utilization Report to use Nigeria date format (DD/MM/YYYY HH24:MI:SS) for PostgreSQL</comment>
+        <update tableName="stretchy_report">
+            <column name="report_sql" value="SELECT
+    dr.id AS &quot;Rule ID&quot;,
+    dr.name AS &quot;Rule Name&quot;,
+    dr.rule_type AS &quot;Rule Type&quot;,
+    COUNT(da.id) AS &quot;Times Fired&quot;,
+    COALESCE(SUM(da.discount_amount), 0) AS &quot;Total Discount Amount&quot;,
+    COALESCE(ROUND(AVG(da.discount_amount), 2), 0) AS &quot;Average Discount Amount&quot;,
+    CASE WHEN MIN(da.application_date) IS NULL THEN 'N/A' ELSE TO_CHAR(MIN(da.application_date), 'DD/MM/YYYY HH24:MI:SS') END AS &quot;First Application&quot;,
+    CASE WHEN MAX(da.application_date) IS NULL THEN 'N/A' ELSE TO_CHAR(MAX(da.application_date), 'DD/MM/YYYY HH24:MI:SS') END AS &quot;Last Application&quot;,
+    CASE
+        WHEN COUNT(da.id) = 0 THEN 'Never Used'
+        WHEN COUNT(da.id) &lt; 10 THEN 'Low Usage'
+        WHEN COUNT(da.id) &lt; 100 THEN 'Medium Usage'
+        ELSE 'High Usage'
+    END AS &quot;Usage Status&quot;
+FROM m_discount_rule dr
+LEFT JOIN v_discount_application_report da ON dr.id = da.discount_rule_id
+    AND da.application_date::date BETWEEN '${startDate}'::date AND '${endDate}'::date
+WHERE dr.is_active = true
+GROUP BY dr.id, dr.name, dr.rule_type
+ORDER BY COUNT(da.id) DESC, dr.name"/>
+            <where>report_name = 'Rule Utilization Report'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="paystack-discount-0009-update-rule-utilization-nigeria-format-mysql" author="paystack" dbms="mysql">
+        <comment>Update Rule Utilization Report to use Nigeria date format (DD/MM/YYYY HH:MM:SS) for MySQL</comment>
+        <update tableName="stretchy_report">
+            <column name="report_sql" value="SELECT
+    dr.id AS &quot;Rule ID&quot;,
+    dr.name AS &quot;Rule Name&quot;,
+    dr.rule_type AS &quot;Rule Type&quot;,
+    COUNT(da.id) AS &quot;Times Fired&quot;,
+    COALESCE(SUM(da.discount_amount), 0) AS &quot;Total Discount Amount&quot;,
+    COALESCE(ROUND(AVG(da.discount_amount), 2), 0) AS &quot;Average Discount Amount&quot;,
+    CASE WHEN MIN(da.application_date) IS NULL THEN 'N/A' ELSE DATE_FORMAT(MIN(da.application_date), '%d/%m/%Y %H:%i:%s') END AS &quot;First Application&quot;,
+    CASE WHEN MAX(da.application_date) IS NULL THEN 'N/A' ELSE DATE_FORMAT(MAX(da.application_date), '%d/%m/%Y %H:%i:%s') END AS &quot;Last Application&quot;,
+    CASE
+        WHEN COUNT(da.id) = 0 THEN 'Never Used'
+        WHEN COUNT(da.id) &lt; 10 THEN 'Low Usage'
+        WHEN COUNT(da.id) &lt; 100 THEN 'Medium Usage'
+        ELSE 'High Usage'
+    END AS &quot;Usage Status&quot;
+FROM m_discount_rule dr
+LEFT JOIN v_discount_application_report da ON dr.id = da.discount_rule_id
+    AND DATE(da.application_date) BETWEEN DATE('${startDate}') AND DATE('${endDate}')
+WHERE dr.is_active = true
+GROUP BY dr.id, dr.name, dr.rule_type
+ORDER BY COUNT(da.id) DESC, dr.name"/>
+            <where>report_name = 'Rule Utilization Report'</where>
+        </update>
+    </changeSet>
+
+    <!-- ============================================ -->
+    <!-- Update Report 2: Fees Waived Report - Nigeria Date Format for Daily Period -->
+    <!-- ============================================ -->
+    <changeSet id="paystack-discount-0009-update-fees-waived-daily-nigeria-format-postgresql" author="paystack" dbms="postgresql">
+        <comment>Update Fees Waived Report daily period to use Nigeria date format (DD/MM/YYYY) for PostgreSQL</comment>
+        <update tableName="stretchy_report">
+            <column name="report_sql" value="SELECT
+    CASE
+        WHEN '${periodType}' = 'monthly' THEN TO_CHAR(da.application_date, 'YYYY-MM')
+        WHEN '${periodType}' = 'quarterly' THEN TO_CHAR(da.application_date, 'YYYY') || '-Q' || TO_CHAR(da.application_date, 'Q')
+        ELSE TO_CHAR(da.application_date, 'DD/MM/YYYY')
+    END AS &quot;Period&quot;,
+    SUM(da.discount_amount) AS &quot;Total Fees Waived&quot;,
+    COUNT(*) AS &quot;Number of Discounts&quot;,
+    da.fee_type_category AS &quot;Fee Type&quot;,
+    dr.name AS &quot;Discount Rule&quot;
+FROM v_discount_application_report da
+JOIN m_discount_rule dr ON da.discount_rule_id = dr.id
+WHERE da.application_date::date BETWEEN '${startDate}'::date AND '${endDate}'::date
+GROUP BY
+    CASE
+        WHEN '${periodType}' = 'monthly' THEN TO_CHAR(da.application_date, 'YYYY-MM')
+        WHEN '${periodType}' = 'quarterly' THEN TO_CHAR(da.application_date, 'YYYY') || '-Q' || TO_CHAR(da.application_date, 'Q')
+        ELSE TO_CHAR(da.application_date, 'DD/MM/YYYY')
+    END,
+    da.fee_type_category,
+    dr.name
+ORDER BY &quot;Period&quot; DESC, da.fee_type_category"/>
+            <where>report_name = 'Fees Waived Report'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="paystack-discount-0009-update-fees-waived-daily-nigeria-format-mysql" author="paystack" dbms="mysql">
+        <comment>Update Fees Waived Report daily period to use Nigeria date format (DD/MM/YYYY) for MySQL</comment>
+        <update tableName="stretchy_report">
+            <column name="report_sql" value="SELECT
+    CASE
+        WHEN '${periodType}' = 'monthly' THEN DATE_FORMAT(da.application_date, '%Y-%m')
+        WHEN '${periodType}' = 'quarterly' THEN CONCAT(YEAR(da.application_date), '-Q', QUARTER(da.application_date))
+        ELSE DATE_FORMAT(da.application_date, '%d/%m/%Y')
+    END AS &quot;Period&quot;,
+    SUM(da.discount_amount) AS &quot;Total Fees Waived&quot;,
+    COUNT(*) AS &quot;Number of Discounts&quot;,
+    da.fee_type_category AS &quot;Fee Type&quot;,
+    dr.name AS &quot;Discount Rule&quot;
+FROM v_discount_application_report da
+JOIN m_discount_rule dr ON da.discount_rule_id = dr.id
+WHERE DATE(da.application_date) BETWEEN DATE('${startDate}') AND DATE('${endDate}')
+GROUP BY
+    CASE
+        WHEN '${periodType}' = 'monthly' THEN DATE_FORMAT(da.application_date, '%Y-%m')
+        WHEN '${periodType}' = 'quarterly' THEN CONCAT(YEAR(da.application_date), '-Q', QUARTER(da.application_date))
+        ELSE DATE_FORMAT(da.application_date, '%d/%m/%Y')
+    END,
+    da.fee_type_category,
+    dr.name
+ORDER BY &quot;Period&quot; DESC, da.fee_type_category"/>
+            <where>report_name = 'Fees Waived Report'</where>
+        </update>
+    </changeSet>
+
+    <!-- ============================================ -->
+    <!-- Update Report 5: Discount Audit Trail - Nigeria Date Format -->
+    <!-- ============================================ -->
+    <changeSet id="paystack-discount-0009-update-audit-trail-nigeria-format-postgresql" author="paystack" dbms="postgresql">
+        <comment>Update Discount Audit Trail Report to use Nigeria date format (DD/MM/YYYY HH24:MI:SS) for PostgreSQL</comment>
+        <update tableName="stretchy_report">
+            <column name="report_sql" value="SELECT
+    da.id AS &quot;Application ID&quot;,
+    COALESCE(mc.account_no, 'N/A') AS &quot;Customer ID&quot;,
+    da.account_number AS &quot;Account Number&quot;,
+    da.transaction_id AS &quot;Transaction ID&quot;,
+    TO_CHAR(da.application_date, 'DD/MM/YYYY HH24:MI:SS') AS &quot;Timestamp&quot;,
+    da.original_amount AS &quot;Original Fee Amount&quot;,
+    da.discount_amount AS &quot;Discounted Fee Amount&quot;,
+    da.final_amount AS &quot;Final Fee Amount&quot;,
+    da.triggered_conditions AS &quot;Condition(s) Triggered&quot;,
+    da.discount_type AS &quot;Discount Type&quot;,
+    dr.name AS &quot;Discount Rule Name&quot;,
+    dr.rule_type AS &quot;Rule Type&quot;,
+    da.charge_name AS &quot;Charge Name&quot;,
+    da.fee_type_category AS &quot;Fee Type&quot;,
+    COALESCE(da.created_by_username, 'N/A') AS &quot;Created By&quot;,
+    CASE WHEN da.created_on_utc IS NULL THEN 'N/A' ELSE TO_CHAR(da.created_on_utc, 'DD/MM/YYYY HH24:MI:SS') END AS &quot;Created On&quot;,
+    COALESCE(da.last_modified_by_username, 'N/A') AS &quot;Last Modified By&quot;,
+    CASE WHEN da.last_modified_on_utc IS NULL THEN 'N/A' ELSE TO_CHAR(da.last_modified_on_utc, 'DD/MM/YYYY HH24:MI:SS') END AS &quot;Last Modified On&quot;
+FROM v_discount_application_report da
+LEFT JOIN m_client mc ON da.customer_id = mc.id
+LEFT JOIN m_discount_rule dr ON da.discount_rule_id = dr.id
+WHERE da.application_date::date BETWEEN '${startDate}'::date AND '${endDate}'::date
+    AND ('${accountNumber}' = '' OR da.account_number = '${accountNumber}')
+    AND ('${discountType}' = '' OR da.discount_type = '${discountType}')
+ORDER BY da.application_date DESC"/>
+            <where>report_name = 'Discount Audit Trail'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="paystack-discount-0009-update-audit-trail-nigeria-format-mysql" author="paystack" dbms="mysql">
+        <comment>Update Discount Audit Trail Report to use Nigeria date format (DD/MM/YYYY HH:MM:SS) for MySQL</comment>
+        <update tableName="stretchy_report">
+            <column name="report_sql" value="SELECT
+    da.id AS &quot;Application ID&quot;,
+    COALESCE(mc.account_no, 'N/A') AS &quot;Customer ID&quot;,
+    da.account_number AS &quot;Account Number&quot;,
+    da.transaction_id AS &quot;Transaction ID&quot;,
+    DATE_FORMAT(da.application_date, '%d/%m/%Y %H:%i:%s') AS &quot;Timestamp&quot;,
+    da.original_amount AS &quot;Original Fee Amount&quot;,
+    da.discount_amount AS &quot;Discounted Fee Amount&quot;,
+    da.final_amount AS &quot;Final Fee Amount&quot;,
+    da.triggered_conditions AS &quot;Condition(s) Triggered&quot;,
+    da.discount_type AS &quot;Discount Type&quot;,
+    dr.name AS &quot;Discount Rule Name&quot;,
+    dr.rule_type AS &quot;Rule Type&quot;,
+    da.charge_name AS &quot;Charge Name&quot;,
+    da.fee_type_category AS &quot;Fee Type&quot;,
+    COALESCE(da.created_by_username, 'N/A') AS &quot;Created By&quot;,
+    CASE WHEN da.created_on_utc IS NULL THEN 'N/A' ELSE DATE_FORMAT(da.created_on_utc, '%d/%m/%Y %H:%i:%s') END AS &quot;Created On&quot;,
+    COALESCE(da.last_modified_by_username, 'N/A') AS &quot;Last Modified By&quot;,
+    CASE WHEN da.last_modified_on_utc IS NULL THEN 'N/A' ELSE DATE_FORMAT(da.last_modified_on_utc, '%d/%m/%Y %H:%i:%s') END AS &quot;Last Modified On&quot;
+FROM v_discount_application_report da
+LEFT JOIN m_client mc ON da.customer_id = mc.id
+LEFT JOIN m_discount_rule dr ON da.discount_rule_id = dr.id
+WHERE DATE(da.application_date) BETWEEN DATE('${startDate}') AND DATE('${endDate}')
+    AND ('${accountNumber}' = '' OR da.account_number = '${accountNumber}')
+    AND ('${discountType}' = '' OR da.discount_type = '${discountType}')
+ORDER BY da.application_date DESC"/>
+            <where>report_name = 'Discount Audit Trail'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>
+
