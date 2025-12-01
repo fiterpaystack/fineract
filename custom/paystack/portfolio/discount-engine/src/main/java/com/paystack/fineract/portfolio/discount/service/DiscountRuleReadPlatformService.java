@@ -21,7 +21,9 @@ package com.paystack.fineract.portfolio.discount.service;
 
 import com.paystack.fineract.portfolio.discount.data.DiscountRuleData;
 import com.paystack.fineract.portfolio.discount.domain.DiscountRule;
+import com.paystack.fineract.portfolio.discount.repository.DiscountApplicationRepository;
 import com.paystack.fineract.portfolio.discount.repository.DiscountRuleRepository;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class DiscountRuleReadPlatformService {
 
     private final DiscountRuleRepository ruleRepository;
+    private final DiscountApplicationRepository applicationRepository;
 
     /**
      * Retrieve all discount rules
@@ -83,6 +86,14 @@ public class DiscountRuleReadPlatformService {
         data.setLastModifiedOnUtc(rule.getLastModifiedDate().orElse(null));
         data.setCreatedBy(rule.getCreatedBy().orElse(null));
         data.setLastModifiedBy(rule.getLastModifiedBy().orElse(null));
+        
+        // Populate statistics
+        Long applicationCount = applicationRepository.countByDiscountRuleId(rule.getId());
+        data.setApplicationCount(applicationCount);
+        
+        BigDecimal totalDiscountAmount = applicationRepository.getTotalDiscountAmountByRule(rule.getId());
+        data.setTotalDiscountAmount(totalDiscountAmount != null ? totalDiscountAmount : BigDecimal.ZERO);
+        
         return data;
     }
 }

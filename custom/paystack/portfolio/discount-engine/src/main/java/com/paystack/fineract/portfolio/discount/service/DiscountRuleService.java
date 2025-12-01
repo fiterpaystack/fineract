@@ -11,6 +11,7 @@ import com.paystack.fineract.portfolio.discount.domain.policy.DiscountAssignment
 import com.paystack.fineract.portfolio.discount.domain.policy.DiscountCombinationStrategy;
 import com.paystack.fineract.portfolio.discount.domain.policy.DiscountPolicyEntityType;
 import com.paystack.fineract.portfolio.discount.factory.DiscountRuleCalculatorFactory;
+import com.paystack.fineract.portfolio.discount.repository.DiscountApplicationRepository;
 import com.paystack.fineract.portfolio.discount.repository.DiscountRuleRepository;
 import com.paystack.fineract.portfolio.discount.repository.DiscountRuleRepositoryWrapper;
 import java.math.BigDecimal;
@@ -44,6 +45,7 @@ public class DiscountRuleService {
 
     private final DiscountRuleRepositoryWrapper repositoryWrapper;
     private final DiscountRuleRepository discountRuleRepository;
+    private final DiscountApplicationRepository applicationRepository;
     private final ChargeRepository chargeRepository;
     private final SavingsProductRepository savingsProductRepository;
     private final DiscountRuleCalculatorFactory calculatorFactory;
@@ -317,10 +319,25 @@ public class DiscountRuleService {
      * Map raw query result to assignment data
      */
     private DiscountRuleAssignmentData mapToAssignmentData(Object[] row) {
-        return DiscountRuleAssignmentData.builder().ruleId(getLong(row[0])).ruleName(getString(row[1])).ruleDescription(getString(row[2]))
+        Long ruleId = getLong(row[0]);
+        DiscountRuleAssignmentData.DiscountRuleAssignmentDataBuilder builder = DiscountRuleAssignmentData.builder()
+                .ruleId(ruleId).ruleName(getString(row[1])).ruleDescription(getString(row[2]))
                 .active(getBoolean(row[3])).rulePriority(getInteger(row[4])).ruleType(getString(row[5]))
                 .ruleParametersJson(getString(row[6])).createdOnUtc(getOffsetDateTime(row[7])).lastModifiedOnUtc(getOffsetDateTime(row[8]))
-                .createdBy(getLong(row[9])).lastModifiedBy(getLong(row[10])).assignmentPriority(getInteger(row[11])).build();
+                .createdBy(getLong(row[9])).lastModifiedBy(getLong(row[10])).assignmentPriority(getInteger(row[11]));
+        
+        // Populate statistics
+        if (ruleId != null) {
+            Long applicationCount = applicationRepository.countByDiscountRuleId(ruleId);
+            builder.applicationCount(applicationCount);
+            
+            BigDecimal totalDiscountAmount = applicationRepository.getTotalDiscountAmountByRule(ruleId);
+            builder.totalDiscountAmount(totalDiscountAmount != null ? totalDiscountAmount : BigDecimal.ZERO);
+        } else {
+            builder.applicationCount(0L).totalDiscountAmount(BigDecimal.ZERO);
+        }
+        
+        return builder.build();
     }
 
     /**
