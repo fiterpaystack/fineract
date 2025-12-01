@@ -320,23 +320,23 @@ public class DiscountRuleService {
      */
     private DiscountRuleAssignmentData mapToAssignmentData(Object[] row) {
         Long ruleId = getLong(row[0]);
-        DiscountRuleAssignmentData.DiscountRuleAssignmentDataBuilder builder = DiscountRuleAssignmentData.builder()
-                .ruleId(ruleId).ruleName(getString(row[1])).ruleDescription(getString(row[2]))
-                .active(getBoolean(row[3])).rulePriority(getInteger(row[4])).ruleType(getString(row[5]))
-                .ruleParametersJson(getString(row[6])).createdOnUtc(getOffsetDateTime(row[7])).lastModifiedOnUtc(getOffsetDateTime(row[8]))
-                .createdBy(getLong(row[9])).lastModifiedBy(getLong(row[10])).assignmentPriority(getInteger(row[11]));
-        
+        DiscountRuleAssignmentData.DiscountRuleAssignmentDataBuilder builder = DiscountRuleAssignmentData.builder().ruleId(ruleId)
+                .ruleName(getString(row[1])).ruleDescription(getString(row[2])).active(getBoolean(row[3])).rulePriority(getInteger(row[4]))
+                .ruleType(getString(row[5])).ruleParametersJson(getString(row[6])).createdOnUtc(getOffsetDateTime(row[7]))
+                .lastModifiedOnUtc(getOffsetDateTime(row[8])).createdBy(getLong(row[9])).lastModifiedBy(getLong(row[10]))
+                .assignmentPriority(getInteger(row[11]));
+
         // Populate statistics
         if (ruleId != null) {
             Long applicationCount = applicationRepository.countByDiscountRuleId(ruleId);
             builder.applicationCount(applicationCount);
-            
+
             BigDecimal totalDiscountAmount = applicationRepository.getTotalDiscountAmountByRule(ruleId);
             builder.totalDiscountAmount(totalDiscountAmount != null ? totalDiscountAmount : BigDecimal.ZERO);
         } else {
             builder.applicationCount(0L).totalDiscountAmount(BigDecimal.ZERO);
         }
-        
+
         return builder.build();
     }
 

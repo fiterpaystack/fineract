@@ -86,14 +86,14 @@ public class DiscountRuleReadPlatformService {
         data.setLastModifiedOnUtc(rule.getLastModifiedDate().orElse(null));
         data.setCreatedBy(rule.getCreatedBy().orElse(null));
         data.setLastModifiedBy(rule.getLastModifiedBy().orElse(null));
-        
+
         // Populate statistics
         Long applicationCount = applicationRepository.countByDiscountRuleId(rule.getId());
         data.setApplicationCount(applicationCount);
-        
+
         BigDecimal totalDiscountAmount = applicationRepository.getTotalDiscountAmountByRule(rule.getId());
         data.setTotalDiscountAmount(totalDiscountAmount != null ? totalDiscountAmount : BigDecimal.ZERO);
-        
+
         return data;
     }
 }

@@ -25,13 +25,13 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.util.Locale;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -105,7 +105,8 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
         descriptions.put(PARAM_DISCOUNT_PERCENTAGE, "Discount percentage to apply (0 < p <= 100)");
         descriptions.put(PARAM_WEEKEND_DAYS,
                 "Weekend days for WEEKEND rule: [WEEKEND, SATURDAY, SUNDAY] (optional). Use 'WEEKEND' for both Saturday and Sunday.");
-        descriptions.put(PARAM_START_DATE, "Start date for date range constraint (optional, format: dd MMMM yyyy, e.g., '01 December 2025')");
+        descriptions.put(PARAM_START_DATE,
+                "Start date for date range constraint (optional, format: dd MMMM yyyy, e.g., '01 December 2025')");
         descriptions.put(PARAM_END_DATE, "End date for date range constraint (optional, format: dd MMMM yyyy, e.g., '01 December 2025')");
         return descriptions;
     }
@@ -322,8 +323,8 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
     }
 
     /**
-     * Parse date parameter using the standard format: "dd MMMM yyyy" (e.g., "01 December 2025")
-     * Uses DateUtils for consistent date parsing across Fineract
+     * Parse date parameter using the standard format: "dd MMMM yyyy" (e.g., "01 December 2025") Uses DateUtils for
+     * consistent date parsing across Fineract
      */
     private LocalDate parseDateParam(Map<String, Object> parameters, String key) {
         if (!parameters.containsKey(key)) {
@@ -343,7 +344,7 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
             // Standard format: "dd MMMM yyyy" (e.g., "01 December 2025")
             // Also support single-digit day: "d MMMM yyyy" (e.g., "1 December 2025")
             String trimmedDate = dateString.trim();
-            
+
             // Try with two-digit day first (standard format)
             try {
                 return DateUtils.parseLocalDate(trimmedDate, "dd MMMM yyyy", Locale.ENGLISH);
@@ -352,7 +353,9 @@ public class SavingsAccountTimeBasedDiscountCalculator implements DiscountRuleCa
                 return DateUtils.parseLocalDate(trimmedDate, "d MMMM yyyy", Locale.ENGLISH);
             }
         } catch (Exception e) {
-            log.warn("TIME_BASED CALCULATOR: Unable to parse date '{}' for parameter '{}'. Expected format: dd MMMM yyyy (e.g., '01 December 2025')", dateString, key, e);
+            log.warn(
+                    "TIME_BASED CALCULATOR: Unable to parse date '{}' for parameter '{}'. Expected format: dd MMMM yyyy (e.g., '01 December 2025')",
+                    dateString, key, e);
             return null;
         }
     }
