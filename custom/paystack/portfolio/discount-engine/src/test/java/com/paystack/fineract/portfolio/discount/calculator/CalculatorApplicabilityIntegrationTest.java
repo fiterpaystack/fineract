@@ -338,8 +338,8 @@ class CalculatorApplicabilityIntegrationTest {
             // Given: Calculator configured with date range
             Map<String, Object> params = new HashMap<>();
             params.put("timeRuleType", "DATE_RANGE");
-            params.put("startDate", "2024-01-01");
-            params.put("endDate", "2024-12-31");
+            params.put("startDate", "01 January 2024");
+            params.put("endDate", "31 December 2024");
             params.put("discountPercentage", "10");
             timeCalculator.configure(params);
 
@@ -357,8 +357,8 @@ class CalculatorApplicabilityIntegrationTest {
             // Given: Calculator configured with date range
             Map<String, Object> params = new HashMap<>();
             params.put("timeRuleType", "DATE_RANGE");
-            params.put("startDate", "2024-01-01");
-            params.put("endDate", "2024-12-31");
+            params.put("startDate", "01 January 2024");
+            params.put("endDate", "31 December 2024");
             params.put("discountPercentage", "10");
             timeCalculator.configure(params);
 

@@ -45,11 +45,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @DisplayName("SavingsAccountTimeBasedDiscountCalculator Tests")
 class SavingsAccountTimeBasedDiscountCalculatorTest {
 
-    // Test date constants
-    private static final String TEST_START_DATE_JAN = "2024-01-01";
-    private static final String TEST_END_DATE_JAN = "2024-01-31";
-    private static final String TEST_START_DATE_DEC = "2024-12-01";
-    private static final String TEST_END_DATE_DEC = "2024-12-31";
+    // Test date constants (using dd MMMM yyyy format)
+    private static final String TEST_START_DATE_JAN = "01 January 2024";
+    private static final String TEST_END_DATE_JAN = "31 January 2024";
+    private static final String TEST_START_DATE_DEC = "01 December 2024";
+    private static final String TEST_END_DATE_DEC = "31 December 2024";
 
     @Mock
     private HolidayRepositoryWrapper holidayRepositoryWrapper;
@@ -355,7 +355,7 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         @DisplayName("Should apply date range discount within range")
         void shouldApplyDateRangeDiscountWithinRange() {
             // Given
-            Map<String, Object> parameters = createDateRangeParameters(BigDecimal.valueOf(30.0), "2024-11-24", "2024-11-30");
+            Map<String, Object> parameters = createDateRangeParameters(BigDecimal.valueOf(30.0), "24 November 2024", "30 November 2024");
             calculator.configure(parameters);
 
             DiscountContext context = createContext(LocalDate.of(2024, 11, 26)); // Black Friday week
@@ -372,7 +372,7 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         @DisplayName("Should not apply date range discount outside range")
         void shouldNotApplyDateRangeDiscountOutsideRange() {
             // Given
-            Map<String, Object> parameters = createDateRangeParameters(BigDecimal.valueOf(30.0), "2024-11-24", "2024-11-30");
+            Map<String, Object> parameters = createDateRangeParameters(BigDecimal.valueOf(30.0), "24 November 2024", "30 November 2024");
             calculator.configure(parameters);
 
             DiscountContext context = createContext(LocalDate.of(2024, 12, 1)); // After range
@@ -386,10 +386,10 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
         }
 
         @Test
-        @DisplayName("Should apply date range discount with yyyy-MM-dd format")
-        void shouldApplyDateRangeDiscountWithStandardDateFormat() {
+        @DisplayName("Should apply date range discount with dd MMMM yyyy format")
+        void shouldApplyDateRangeDiscountWithNewDateFormat() {
             // Given
-            Map<String, Object> parameters = createDateRangeParameters(BigDecimal.valueOf(25.0), "2024-11-24", "2024-11-30");
+            Map<String, Object> parameters = createDateRangeParameters(BigDecimal.valueOf(25.0), "24 November 2024", "30 November 2024");
             calculator.configure(parameters);
 
             DiscountContext context = createContext(LocalDate.of(2024, 11, 26));
@@ -400,6 +400,40 @@ class SavingsAccountTimeBasedDiscountCalculatorTest {
 
             // Then
             assertThat(discount).isEqualByComparingTo(BigDecimal.valueOf(25.00));
+        }
+
+        @Test
+        @DisplayName("Should apply date range discount with single-digit day format")
+        void shouldApplyDateRangeDiscountWithSingleDigitDayFormat() {
+            // Given
+            Map<String, Object> parameters = createDateRangeParameters(BigDecimal.valueOf(50.0), "1 December 2025", "1 December 2025");
+            calculator.configure(parameters);
+
+            DiscountContext context = createContext(LocalDate.of(2025, 12, 1));
+            BigDecimal originalAmount = BigDecimal.valueOf(100.00);
+
+            // When
+            BigDecimal discount = calculator.calculateDiscount(originalAmount, context);
+
+            // Then
+            assertThat(discount).isEqualByComparingTo(BigDecimal.valueOf(50.00));
+        }
+
+        @Test
+        @DisplayName("Should apply date range discount with two-digit day format (Black Friday format)")
+        void shouldApplyDateRangeDiscountWithTwoDigitDayFormat() {
+            // Given - This matches the actual format used in the API: "01 December 2025"
+            Map<String, Object> parameters = createDateRangeParameters(BigDecimal.valueOf(50.0), "01 December 2025", "01 December 2025");
+            calculator.configure(parameters);
+
+            DiscountContext context = createContext(LocalDate.of(2025, 12, 1));
+            BigDecimal originalAmount = BigDecimal.valueOf(100.00);
+
+            // When
+            BigDecimal discount = calculator.calculateDiscount(originalAmount, context);
+
+            // Then
+            assertThat(discount).isEqualByComparingTo(BigDecimal.valueOf(50.00));
         }
     }
 
