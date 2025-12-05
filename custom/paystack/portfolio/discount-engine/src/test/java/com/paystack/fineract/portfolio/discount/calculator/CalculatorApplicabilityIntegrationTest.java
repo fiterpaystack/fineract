@@ -57,8 +57,7 @@ class CalculatorApplicabilityIntegrationTest {
     void setUp() {
         // Initialize ThreadLocalContextUtil with tenant and business date for DateUtils.getBusinessLocalDate()
         ThreadLocalContextUtil.setTenant(new FineractPlatformTenant(1L, "default", "Default", "UTC", null));
-        ThreadLocalContextUtil.setBusinessDates(
-                new HashMap<>(Map.of(BusinessDateType.BUSINESS_DATE, LocalDate.now())));
+        ThreadLocalContextUtil.setBusinessDates(new HashMap<>(Map.of(BusinessDateType.BUSINESS_DATE, LocalDate.now())));
 
         balanceCalculator = new AccountBalanceBasedDiscountCalculator(transactionRepository);
         countCalculator = new SavingsAccountTransactionCountDiscountCalculator(transactionRepository);
