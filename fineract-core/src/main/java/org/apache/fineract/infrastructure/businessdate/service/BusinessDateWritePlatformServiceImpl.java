@@ -22,7 +22,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.businessdate.data.BusinessDateResponse;
@@ -49,7 +49,7 @@ public class BusinessDateWritePlatformServiceImpl implements BusinessDateWritePl
     private static final int MAX_RETRY_ATTEMPTS = 3;
     private static final int MIN_RETRY_DELAY_MS = 100;
     private static final int MAX_RETRY_DELAY_MS = 1000;
-    private static final Random RANDOM = new Random();
+    private static final int MAX_TOTAL_DELAY_MULTIPLIER = 10; // Cap total delay at 10 seconds
 
     private final BusinessDateRepository repository;
     private final ConfigurationDomainService configurationDomainService;
@@ -79,7 +79,7 @@ public class BusinessDateWritePlatformServiceImpl implements BusinessDateWritePl
 
                 // Idempotency check: if business date is already at or beyond the expected target date
                 // (tenant date + 1), another process may have already updated it. Skip to avoid conflicts.
-                if (businessDateEntity.isPresent() && !DateUtils.isBefore(currentDate, expectedTargetDate)) {
+                if (businessDateEntity.isPresent() && !currentDate.isBefore(expectedTargetDate)) {
                     if (retryAttempt > 0) {
                         log.info(
                                 "{} is already at or beyond target date {} (current: {}). Another process may have updated it. Skipping update.",
@@ -118,8 +118,8 @@ public class BusinessDateWritePlatformServiceImpl implements BusinessDateWritePl
                     // Calculate exponential backoff with jitter: delay = (2^retryAttempt * baseDelay) + random jitter
                     long baseDelay = MIN_RETRY_DELAY_MS;
                     long exponentialDelay = baseDelay * (1L << (retryAttempt - 1)); // 2^(retryAttempt-1)
-                    long jitter = RANDOM.nextLong(MIN_RETRY_DELAY_MS, MAX_RETRY_DELAY_MS + 1);
-                    long delayMs = Math.min(exponentialDelay + jitter, MAX_RETRY_DELAY_MS * 10); // Cap at 10 seconds
+                    long jitter = ThreadLocalRandom.current().nextLong(MIN_RETRY_DELAY_MS, MAX_RETRY_DELAY_MS + 1);
+                    long delayMs = Math.min(exponentialDelay + jitter, MAX_RETRY_DELAY_MS * MAX_TOTAL_DELAY_MULTIPLIER);
 
                     log.warn("Optimistic lock conflict when updating {} (attempt {}/{}). Retrying after {}ms...",
                             businessDateType.getDescription(), retryAttempt, MAX_RETRY_ATTEMPTS, delayMs);
@@ -155,7 +155,8 @@ public class BusinessDateWritePlatformServiceImpl implements BusinessDateWritePl
                                 businessDateType.getDescription(), MAX_RETRY_ATTEMPTS);
                         exceptions.add(e);
                     } else {
-                        long delayMs = MIN_RETRY_DELAY_MS + RANDOM.nextLong(MAX_RETRY_DELAY_MS - MIN_RETRY_DELAY_MS + 1);
+                        long delayMs = MIN_RETRY_DELAY_MS
+                                + ThreadLocalRandom.current().nextLong(MAX_RETRY_DELAY_MS - MIN_RETRY_DELAY_MS + 1);
                         log.warn("Optimistic lock conflict when updating {} (attempt {}/{}). Retrying after {}ms...",
                                 businessDateType.getDescription(), retryAttempt, MAX_RETRY_ATTEMPTS, delayMs);
                         try {
