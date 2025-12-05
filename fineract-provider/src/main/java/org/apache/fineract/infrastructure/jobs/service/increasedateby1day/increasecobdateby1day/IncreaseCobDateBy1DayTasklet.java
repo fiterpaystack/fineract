@@ -38,11 +38,26 @@ public class IncreaseCobDateBy1DayTasklet implements Tasklet {
 
     @Override
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
-        if (configurationDomainService.isBusinessDateEnabled()) {
-            businessDateWritePlatformService.increaseDateByTypeByOneDay(BusinessDateType.COB_DATE);
-        } else {
+        if (!configurationDomainService.isBusinessDateEnabled()) {
+            log.debug("Business date functionality is not enabled. Skipping COB date update.");
             contribution.setExitStatus(ExitStatus.NOOP);
+            return RepeatStatus.FINISHED;
         }
+
+        // If automatic COB date adjustment is enabled, COB_DATE is automatically updated
+        // when BUSINESS_DATE is updated, so this job is redundant and should be skipped
+        // to avoid optimistic locking conflicts
+        if (configurationDomainService.isCOBDateAdjustmentEnabled()) {
+            log.info(
+                    "Automatic COB date adjustment is enabled. COB_DATE is automatically updated when BUSINESS_DATE is updated. "
+                            + "Skipping separate COB date update job to avoid conflicts. "
+                            + "Consider disabling this job if automatic adjustment is permanently enabled.");
+            contribution.setExitStatus(ExitStatus.NOOP);
+            return RepeatStatus.FINISHED;
+        }
+
+        // Only update COB_DATE if automatic adjustment is disabled
+        businessDateWritePlatformService.increaseDateByTypeByOneDay(BusinessDateType.COB_DATE);
         return RepeatStatus.FINISHED;
     }
 }

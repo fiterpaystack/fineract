@@ -68,8 +68,21 @@ class IncreaseCobDateBy1DayTaskletTest {
     }
 
     @Test
-    public void shouldBusinessDateJobBeProcessedWhenBusinessDateIsEnabled() throws Exception {
+    public void shouldCobDateJobBeSkippedWhenAutomaticCobAdjustmentIsEnabled() throws Exception {
         given(configurationDomainService.isBusinessDateEnabled()).willReturn(true);
+        given(configurationDomainService.isCOBDateAdjustmentEnabled()).willReturn(true);
+
+        RepeatStatus repeatStatus = underTest.execute(stepContribution, chunkContext);
+
+        verify(stepContribution, times(1)).setExitStatus(ExitStatus.NOOP);
+        verify(businessDateWritePlatformService, times(0)).increaseDateByTypeByOneDay(BusinessDateType.COB_DATE);
+        assertEquals(RepeatStatus.FINISHED, repeatStatus);
+    }
+
+    @Test
+    public void shouldCobDateJobBeProcessedWhenBusinessDateIsEnabledAndAutomaticAdjustmentIsDisabled() throws Exception {
+        given(configurationDomainService.isBusinessDateEnabled()).willReturn(true);
+        given(configurationDomainService.isCOBDateAdjustmentEnabled()).willReturn(false);
 
         RepeatStatus repeatStatus = underTest.execute(stepContribution, chunkContext);
 
