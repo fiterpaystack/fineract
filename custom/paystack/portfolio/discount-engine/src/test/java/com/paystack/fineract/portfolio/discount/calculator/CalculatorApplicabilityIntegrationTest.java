@@ -20,8 +20,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.fineract.infrastructure.businessdate.domain.BusinessDateType;
+import org.apache.fineract.infrastructure.core.domain.FineractPlatformTenant;
+import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
 import org.apache.fineract.organisation.holiday.domain.HolidayRepositoryWrapper;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -51,10 +55,21 @@ class CalculatorApplicabilityIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        // Initialize ThreadLocalContextUtil with tenant and business date for DateUtils.getBusinessLocalDate()
+        ThreadLocalContextUtil.setTenant(new FineractPlatformTenant(1L, "default", "Default", "UTC", null));
+        ThreadLocalContextUtil.setBusinessDates(
+                new HashMap<>(Map.of(BusinessDateType.BUSINESS_DATE, LocalDate.now())));
+
         balanceCalculator = new AccountBalanceBasedDiscountCalculator(transactionRepository);
         countCalculator = new SavingsAccountTransactionCountDiscountCalculator(transactionRepository);
         flowCalculator = new SavingsAccountTransactionFlowDiscountCalculator(transactionRepository);
         timeCalculator = new SavingsAccountTimeBasedDiscountCalculator(holidayRepositoryWrapper);
+    }
+
+    @AfterEach
+    void tearDown() {
+        // Clean up ThreadLocalContextUtil to avoid test interference
+        ThreadLocalContextUtil.reset();
     }
 
     @Nested
