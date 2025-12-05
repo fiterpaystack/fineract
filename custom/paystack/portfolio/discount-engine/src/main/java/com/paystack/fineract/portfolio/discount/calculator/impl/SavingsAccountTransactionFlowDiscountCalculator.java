@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
 import org.springframework.stereotype.Service;
 
@@ -162,7 +163,7 @@ public class SavingsAccountTransactionFlowDiscountCalculator implements Discount
      */
     private List<SavingsAccountTransaction> getTransactionsForPeriod(Long accountId) {
         LocalDate startDate;
-        LocalDate endDate = LocalDate.now();
+        LocalDate endDate = DateUtils.getBusinessLocalDate();
 
         switch (periodType.toUpperCase()) {
             case "DAILY":

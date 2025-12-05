@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
 import org.springframework.stereotype.Service;
 
@@ -151,9 +152,10 @@ public class AccountBalanceBasedDiscountCalculator implements DiscountRuleCalcul
      * considering each day of the month
      */
     private BigDecimal calculateAverageDailyBalance(Long accountId) {
-        // Get current month start and end dates
-        LocalDate monthStart = LocalDate.now().withDayOfMonth(1);
-        LocalDate monthEnd = LocalDate.now().withDayOfMonth(LocalDate.now().lengthOfMonth());
+        // Get current month start and end dates using business date
+        LocalDate businessDate = DateUtils.getBusinessLocalDate();
+        LocalDate monthStart = businessDate.withDayOfMonth(1);
+        LocalDate monthEnd = businessDate.withDayOfMonth(businessDate.lengthOfMonth());
 
         // Get transactions for the current month (including some from previous month for balance continuity)
         LocalDate extendedStart = monthStart.minusDays(1); // Get one day before to establish starting balance

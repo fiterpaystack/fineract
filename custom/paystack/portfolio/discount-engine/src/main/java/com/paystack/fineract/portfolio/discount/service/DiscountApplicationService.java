@@ -173,6 +173,7 @@ public class DiscountApplicationService {
 
         return switch (chargeTimeType) {
             case 5 -> "TRANSFER"; // WITHDRAWAL_FEE
+            case 17 -> "INFLOW"; // DEPOSIT_FEE
             case 7, 11, 6, 16 -> "MAINTENANCE"; // MONTHLY_FEE, WEEKLY_FEE, ANNUAL_FEE, SAVINGS_NOACTIVITY_FEE
             default -> "OTHER";
         };
