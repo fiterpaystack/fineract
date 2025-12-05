@@ -81,11 +81,12 @@ public class BusinessDateWritePlatformServiceImpl implements BusinessDateWritePl
                 // (tenant date + 1), another process may have already updated it. Skip to avoid conflicts.
                 if (businessDateEntity.isPresent() && !DateUtils.isBefore(currentDate, expectedTargetDate)) {
                     if (retryAttempt > 0) {
-                        log.info("{} is already at or beyond target date {} (current: {}). Another process may have updated it. Skipping update.",
+                        log.info(
+                                "{} is already at or beyond target date {} (current: {}). Another process may have updated it. Skipping update.",
                                 businessDateType.getDescription(), expectedTargetDate, currentDate);
                     } else {
-                        log.debug("{} is already at or beyond target date {}. Skipping update.",
-                                businessDateType.getDescription(), expectedTargetDate);
+                        log.debug("{} is already at or beyond target date {}. Skipping update.", businessDateType.getDescription(),
+                                expectedTargetDate);
                     }
                     return; // Already at or beyond target date, no update needed
                 }
@@ -108,9 +109,10 @@ public class BusinessDateWritePlatformServiceImpl implements BusinessDateWritePl
                     | org.eclipse.persistence.exceptions.OptimisticLockException e) {
                 retryAttempt++;
                 if (retryAttempt >= MAX_RETRY_ATTEMPTS) {
-                    log.error("Failed to increase {} by 1 day after {} retry attempts due to optimistic lock conflict. "
-                            + "Another process may be updating the business date concurrently.", businessDateType.getDescription(),
-                            MAX_RETRY_ATTEMPTS);
+                    log.error(
+                            "Failed to increase {} by 1 day after {} retry attempts due to optimistic lock conflict. "
+                                    + "Another process may be updating the business date concurrently.",
+                            businessDateType.getDescription(), MAX_RETRY_ATTEMPTS);
                     exceptions.add(e);
                 } else {
                     // Calculate exponential backoff with jitter: delay = (2^retryAttempt * baseDelay) + random jitter
@@ -134,21 +136,18 @@ public class BusinessDateWritePlatformServiceImpl implements BusinessDateWritePl
             } catch (final PlatformApiDataValidationException e) {
                 final List<ApiParameterError> errors = e.getErrors();
                 for (final ApiParameterError error : errors) {
-                    log.error("Increasing {} by 1 day failed due to: {}", businessDateType.getDescription(),
-                            error.getDeveloperMessage());
+                    log.error("Increasing {} by 1 day failed due to: {}", businessDateType.getDescription(), error.getDeveloperMessage());
                 }
                 exceptions.add(e);
                 break; // Don't retry validation errors
             } catch (final AbstractPlatformDomainRuleException e) {
-                log.error("Increasing {} by 1 day failed due to: {}", businessDateType.getDescription(),
-                        e.getDefaultUserMessage());
+                log.error("Increasing {} by 1 day failed due to: {}", businessDateType.getDescription(), e.getDefaultUserMessage());
                 exceptions.add(e);
                 break; // Don't retry business rule exceptions
             } catch (Exception e) {
                 // Check if it's an optimistic lock exception wrapped in another exception
                 Throwable cause = e.getCause();
-                if (cause instanceof ObjectOptimisticLockingFailureException
-                        || cause instanceof jakarta.persistence.OptimisticLockException
+                if (cause instanceof ObjectOptimisticLockingFailureException || cause instanceof jakarta.persistence.OptimisticLockException
                         || cause instanceof org.eclipse.persistence.exceptions.OptimisticLockException) {
                     retryAttempt++;
                     if (retryAttempt >= MAX_RETRY_ATTEMPTS) {
@@ -156,8 +155,7 @@ public class BusinessDateWritePlatformServiceImpl implements BusinessDateWritePl
                                 businessDateType.getDescription(), MAX_RETRY_ATTEMPTS);
                         exceptions.add(e);
                     } else {
-                        long delayMs = MIN_RETRY_DELAY_MS
-                                + RANDOM.nextLong(MAX_RETRY_DELAY_MS - MIN_RETRY_DELAY_MS + 1);
+                        long delayMs = MIN_RETRY_DELAY_MS + RANDOM.nextLong(MAX_RETRY_DELAY_MS - MIN_RETRY_DELAY_MS + 1);
                         log.warn("Optimistic lock conflict when updating {} (attempt {}/{}). Retrying after {}ms...",
                                 businessDateType.getDescription(), retryAttempt, MAX_RETRY_ATTEMPTS, delayMs);
                         try {

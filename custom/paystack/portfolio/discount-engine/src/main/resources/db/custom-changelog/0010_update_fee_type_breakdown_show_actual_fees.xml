@@ -29,8 +29,8 @@
         <comment>Update Fee Type Breakdown Report to show actual charge names instead of 'OTHER' for unmapped fee types</comment>
         <update tableName="stretchy_report">
             <column name="report_sql" value="SELECT
-    CASE 
-        WHEN da.fee_type_category = 'OTHER' OR da.fee_type_category IS NULL 
+    CASE
+        WHEN da.fee_type_category = 'OTHER' OR da.fee_type_category IS NULL
         THEN COALESCE(da.charge_name, 'Unknown Fee')
         ELSE da.fee_type_category
     END AS &quot;Fee Type&quot;,
@@ -43,9 +43,9 @@
     COUNT(DISTINCT da.account_number) AS &quot;Unique Accounts&quot;
 FROM v_discount_application_report da
 WHERE da.application_date::date BETWEEN '${startDate}'::date AND '${endDate}'::date
-GROUP BY 
-    CASE 
-        WHEN da.fee_type_category = 'OTHER' OR da.fee_type_category IS NULL 
+GROUP BY
+    CASE
+        WHEN da.fee_type_category = 'OTHER' OR da.fee_type_category IS NULL
         THEN COALESCE(da.charge_name, 'Unknown Fee')
         ELSE da.fee_type_category
     END
@@ -58,8 +58,8 @@ ORDER BY SUM(da.discount_amount) DESC"/>
         <comment>Update Fee Type Breakdown Report to show actual charge names instead of 'OTHER' for unmapped fee types</comment>
         <update tableName="stretchy_report">
             <column name="report_sql" value="SELECT
-    CASE 
-        WHEN da.fee_type_category = 'OTHER' OR da.fee_type_category IS NULL 
+    CASE
+        WHEN da.fee_type_category = 'OTHER' OR da.fee_type_category IS NULL
         THEN COALESCE(da.charge_name, 'Unknown Fee')
         ELSE da.fee_type_category
     END AS &quot;Fee Type&quot;,
@@ -72,9 +72,9 @@ ORDER BY SUM(da.discount_amount) DESC"/>
     COUNT(DISTINCT da.account_number) AS &quot;Unique Accounts&quot;
 FROM v_discount_application_report da
 WHERE DATE(da.application_date) BETWEEN DATE('${startDate}') AND DATE('${endDate}')
-GROUP BY 
-    CASE 
-        WHEN da.fee_type_category = 'OTHER' OR da.fee_type_category IS NULL 
+GROUP BY
+    CASE
+        WHEN da.fee_type_category = 'OTHER' OR da.fee_type_category IS NULL
         THEN COALESCE(da.charge_name, 'Unknown Fee')
         ELSE da.fee_type_category
     END
@@ -84,4 +84,3 @@ ORDER BY SUM(da.discount_amount) DESC"/>
     </changeSet>
 
 </databaseChangeLog>
-

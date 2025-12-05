@@ -48,10 +48,9 @@ public class IncreaseCobDateBy1DayTasklet implements Tasklet {
         // when BUSINESS_DATE is updated, so this job is redundant and should be skipped
         // to avoid optimistic locking conflicts
         if (configurationDomainService.isCOBDateAdjustmentEnabled()) {
-            log.info(
-                    "Automatic COB date adjustment is enabled. COB_DATE is automatically updated when BUSINESS_DATE is updated. "
-                            + "Skipping separate COB date update job to avoid conflicts. "
-                            + "Consider disabling this job if automatic adjustment is permanently enabled.");
+            log.info("Automatic COB date adjustment is enabled. COB_DATE is automatically updated when BUSINESS_DATE is updated. "
+                    + "Skipping separate COB date update job to avoid conflicts. "
+                    + "Consider disabling this job if automatic adjustment is permanently enabled.");
             contribution.setExitStatus(ExitStatus.NOOP);
             return RepeatStatus.FINISHED;
         }
