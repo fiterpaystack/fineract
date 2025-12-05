@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.portfolio.charge.domain.Charge;
@@ -410,7 +411,7 @@ public class DiscountRuleService {
 
         // Calculate discounts for applicable rules
         BigDecimal totalDiscount = BigDecimal.ZERO;
-        LocalDate evaluationDate = LocalDate.now();
+        LocalDate evaluationDate = DateUtils.getBusinessLocalDate();
 
         for (DiscountRule rule : rules) {
             if (rule.isValidForDate(evaluationDate)) {
