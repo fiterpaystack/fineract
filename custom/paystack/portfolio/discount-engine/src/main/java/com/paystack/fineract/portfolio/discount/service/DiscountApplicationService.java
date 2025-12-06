@@ -26,8 +26,10 @@ import java.math.BigDecimal;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.fineract.infrastructure.core.data.EnumOptionData;
 import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.charge.domain.ChargeRepository;
+import org.apache.fineract.portfolio.charge.service.ChargeEnumerations;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepository;
 import org.springframework.stereotype.Service;
@@ -153,30 +155,36 @@ public class DiscountApplicationService {
     }
 
     /**
-     * Categorize fee type based on charge properties
+     * Get human-readable fee type name based on charge properties
+     * Returns human-readable names (e.g., "Withdrawal Fee", "Deposit Fee", "Monthly Fee")
+     * or "Penalty" if the charge is a penalty
+     * Falls back to charge name if charge time type cannot be determined
      */
     private String categorizeFeeType(Charge charge) {
         if (charge == null) {
-            return "OTHER";
+            return "Unknown";
         }
 
-        // Check if it's a penalty
+        // Check if it's a penalty - show as "Penalty"
         if (charge.isPenalty()) {
-            return "PENALTY";
+            return "Penalty";
         }
 
-        // Categorize by charge time type
+        // Get the charge time type and convert to human-readable name
         Integer chargeTimeType = charge.getChargeTimeType();
         if (chargeTimeType == null) {
-            return "OTHER";
+            // Fall back to charge name if available, otherwise "Unknown"
+            return charge.getName() != null ? charge.getName() : "Unknown";
         }
 
-        return switch (chargeTimeType) {
-            case 5 -> "TRANSFER"; // WITHDRAWAL_FEE
-            case 17 -> "INFLOW"; // DEPOSIT_FEE
-            case 7, 11, 6, 16 -> "MAINTENANCE"; // MONTHLY_FEE, WEEKLY_FEE, ANNUAL_FEE, SAVINGS_NOACTIVITY_FEE
-            default -> "OTHER";
-        };
+        // Use ChargeEnumerations to get human-readable name
+        EnumOptionData enumOptionData = ChargeEnumerations.chargeTimeType(chargeTimeType);
+        if (enumOptionData != null && enumOptionData.getValue() != null && !enumOptionData.getValue().equals("Invalid")) {
+            return enumOptionData.getValue(); // Returns human-readable name like "Deposit Fee", "Withdrawal Fee", etc.
+        }
+
+        // Fall back to charge name if enum conversion failed, otherwise "Unknown"
+        return charge.getName() != null ? charge.getName() : "Unknown";
     }
 
     /**

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <!-- ============================================ -->
+    <!-- Update Fee Type Breakdown Report to show actual fee type names -->
+    <!-- Now that categorizeFeeType returns enum names (WITHDRAWAL_FEE, DEPOSIT_FEE, etc.) -->
+    <!-- instead of categories (TRANSFER, MAINTENANCE, OTHER), we can use fee_type_category directly -->
+    <!-- ============================================ -->
+    <changeSet id="paystack-discount-0011-update-fee-type-breakdown-show-names-postgresql" author="paystack" dbms="postgresql">
+        <comment>Update Fee Type Breakdown Report to show actual fee type names (WITHDRAWAL_FEE, DEPOSIT_FEE, etc.) instead of categories</comment>
+        <update tableName="stretchy_report">
+            <column name="report_sql" value="SELECT
+    COALESCE(da.fee_type_category, 'UNKNOWN') AS &quot;Fee Type&quot;,
+    COUNT(*) AS &quot;Number of Discounts&quot;,
+    SUM(da.original_amount) AS &quot;Total Original Fees&quot;,
+    SUM(da.discount_amount) AS &quot;Total Discounts Applied&quot;,
+    SUM(da.final_amount) AS &quot;Total Final Fees&quot;,
+    ROUND(SUM(da.discount_amount) * 100.0 / NULLIF(SUM(da.original_amount), 0), 2) AS &quot;Discount Percentage&quot;,
+    COUNT(DISTINCT da.customer_id) AS &quot;Unique Customers&quot;,
+    COUNT(DISTINCT da.account_number) AS &quot;Unique Accounts&quot;
+FROM v_discount_application_report da
+WHERE da.application_date::date BETWEEN '${startDate}'::date AND '${endDate}'::date
+GROUP BY COALESCE(da.fee_type_category, 'UNKNOWN')
+ORDER BY SUM(da.discount_amount) DESC"/>
+            <column name="description" value="Breakdown of discounts by actual fee type (WITHDRAWAL_FEE, DEPOSIT_FEE, MONTHLY_FEE, PENALTY, etc.)"/>
+            <where>report_name = 'Fee Type Breakdown Report'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="paystack-discount-0011-update-fee-type-breakdown-show-names-mysql" author="paystack" dbms="mysql">
+        <comment>Update Fee Type Breakdown Report to show actual fee type names (WITHDRAWAL_FEE, DEPOSIT_FEE, etc.) instead of categories</comment>
+        <update tableName="stretchy_report">
+            <column name="report_sql" value="SELECT
+    COALESCE(da.fee_type_category, 'UNKNOWN') AS &quot;Fee Type&quot;,
+    COUNT(*) AS &quot;Number of Discounts&quot;,
+    SUM(da.original_amount) AS &quot;Total Original Fees&quot;,
+    SUM(da.discount_amount) AS &quot;Total Discounts Applied&quot;,
+    SUM(da.final_amount) AS &quot;Total Final Fees&quot;,
+    ROUND(SUM(da.discount_amount) * 100.0 / NULLIF(SUM(da.original_amount), 0), 2) AS &quot;Discount Percentage&quot;,
+    COUNT(DISTINCT da.customer_id) AS &quot;Unique Customers&quot;,
+    COUNT(DISTINCT da.account_number) AS &quot;Unique Accounts&quot;
+FROM v_discount_application_report da
+WHERE DATE(da.application_date) BETWEEN DATE('${startDate}') AND DATE('${endDate}')
+GROUP BY COALESCE(da.fee_type_category, 'UNKNOWN')
+ORDER BY SUM(da.discount_amount) DESC"/>
+            <column name="description" value="Breakdown of discounts by actual fee type (WITHDRAWAL_FEE, DEPOSIT_FEE, MONTHLY_FEE, PENALTY, etc.)"/>
+            <where>report_name = 'Fee Type Breakdown Report'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>
+
