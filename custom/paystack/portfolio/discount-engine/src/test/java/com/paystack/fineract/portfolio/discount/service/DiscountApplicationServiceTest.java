@@ -115,7 +115,8 @@ class DiscountApplicationServiceTest {
             assertThat(saved.getAccountNumber()).isEqualTo("ACC001");
             assertThat(saved.getCustomerId()).isEqualTo(300L);
             assertThat(saved.getDiscountType()).isEqualTo("PERCENTAGE");
-            assertThat(saved.getFeeTypeCategory()).isEqualTo("TRANSFER");
+            // categorizeFeeType now returns the human-readable charge name (e.g., "Withdrawal Fee")
+            assertThat(saved.getFeeTypeCategory()).isEqualTo("Withdrawal Fee");
             assertThat(saved.getTriggeredConditions()).isEqualTo("Percentage: 10%");
         }
 
@@ -168,7 +169,8 @@ class DiscountApplicationServiceTest {
             // Then
             verify(discountApplicationRepository).save(captor.capture());
             DiscountApplication saved = captor.getValue();
-            assertThat(saved.getFeeTypeCategory()).isEqualTo("PENALTY");
+            // Penalties are returned in human-readable form
+            assertThat(saved.getFeeTypeCategory()).isEqualTo("Penalty");
         }
 
         @Test
