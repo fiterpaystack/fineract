@@ -155,10 +155,9 @@ public class DiscountApplicationService {
     }
 
     /**
-     * Get human-readable fee type name based on charge properties
-     * Returns human-readable names (e.g., "Withdrawal Fee", "Deposit Fee", "Monthly Fee")
-     * or "Penalty" if the charge is a penalty
-     * Falls back to charge name if charge time type cannot be determined
+     * Get human-readable fee type name based on charge properties Returns human-readable names (e.g., "Withdrawal Fee",
+     * "Deposit Fee", "Monthly Fee") or "Penalty" if the charge is a penalty Falls back to charge name if charge time
+     * type cannot be determined
      */
     private String categorizeFeeType(Charge charge) {
         if (charge == null) {

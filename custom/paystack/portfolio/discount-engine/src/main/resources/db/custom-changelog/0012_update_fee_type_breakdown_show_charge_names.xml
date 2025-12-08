@@ -69,4 +69,3 @@ ORDER BY SUM(da.discount_amount) DESC"/>
     </changeSet>
 
 </databaseChangeLog>
-
