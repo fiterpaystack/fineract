@@ -49,8 +49,8 @@ class HookEventRetryAttemptTest {
         Long durationMs = 100L;
 
         // When
-        HookEventRetryAttempt attempt = HookEventRetryAttempt.newAttempt(
-                eventRecord, attemptNumber, attemptedAt, success, errorMessage, durationMs);
+        HookEventRetryAttempt attempt = HookEventRetryAttempt.newAttempt(eventRecord, attemptNumber, attemptedAt, success, errorMessage,
+                durationMs);
 
         // Then
         assertThat(attempt.getEventRecord()).isEqualTo(eventRecord);
@@ -71,8 +71,8 @@ class HookEventRetryAttemptTest {
         Long durationMs = 5000L;
 
         // When
-        HookEventRetryAttempt attempt = HookEventRetryAttempt.newAttempt(
-                eventRecord, attemptNumber, attemptedAt, success, errorMessage, durationMs);
+        HookEventRetryAttempt attempt = HookEventRetryAttempt.newAttempt(eventRecord, attemptNumber, attemptedAt, success, errorMessage,
+                durationMs);
 
         // Then
         assertThat(attempt.getEventRecord()).isEqualTo(eventRecord);

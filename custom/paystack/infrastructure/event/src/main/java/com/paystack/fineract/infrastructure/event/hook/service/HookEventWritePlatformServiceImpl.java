@@ -49,8 +49,8 @@ public class HookEventWritePlatformServiceImpl implements HookEventWritePlatform
         if (event.getStatus() != HookEventStatus.FAILED) {
             List<ApiParameterError> dataValidationErrors = new ArrayList<>();
             ApiParameterError error = ApiParameterError.parameterError("error.msg.hook.event.invalid.status.for.retry",
-                    "Event must be in FAILED status to retry. Current status: " + event.getStatus(),
-                    "status", event.getStatus().name(), HookEventStatus.FAILED.name());
+                    "Event must be in FAILED status to retry. Current status: " + event.getStatus(), "status", event.getStatus().name(),
+                    HookEventStatus.FAILED.name());
             dataValidationErrors.add(error);
             throw new PlatformApiDataValidationException(dataValidationErrors);
         }

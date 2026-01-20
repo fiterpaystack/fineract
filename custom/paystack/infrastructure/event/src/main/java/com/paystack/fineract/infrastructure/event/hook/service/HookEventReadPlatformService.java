@@ -32,16 +32,19 @@ public interface HookEventReadPlatformService {
     /**
      * Retrieve hook event by event ID.
      *
-     * @param eventId the event ID
+     * @param eventId
+     *            the event ID
      * @return HookEventRecord
-     * @throws com.paystack.fineract.infrastructure.event.hook.exception.HookEventNotFoundException if not found
+     * @throws com.paystack.fineract.infrastructure.event.hook.exception.HookEventNotFoundException
+     *             if not found
      */
     HookEventRecord retrieveOne(String eventId);
 
     /**
      * Retrieve all hook events as data objects, optionally filtered by status.
      *
-     * @param status optional status filter. If null, returns all events.
+     * @param status
+     *            optional status filter. If null, returns all events.
      * @return List of hook event data objects
      */
     List<HookEventData> retrieveAll(HookEventStatus status);
@@ -49,18 +52,22 @@ public interface HookEventReadPlatformService {
     /**
      * Validate and parse status string to enum.
      *
-     * @param statusParam the status string to validate
+     * @param statusParam
+     *            the status string to validate
      * @return HookEventStatus enum
-     * @throws org.apache.fineract.infrastructure.core.exception.UnrecognizedQueryParamException if invalid
+     * @throws org.apache.fineract.infrastructure.core.exception.UnrecognizedQueryParamException
+     *             if invalid
      */
     HookEventStatus validateAndParseStatus(String statusParam);
 
     /**
      * Retrieve all retry attempts for a specific event, ordered by attempt number.
      *
-     * @param eventId the event ID
+     * @param eventId
+     *            the event ID
      * @return List of retry attempt data objects
-     * @throws com.paystack.fineract.infrastructure.event.hook.exception.HookEventNotFoundException if event not found
+     * @throws com.paystack.fineract.infrastructure.event.hook.exception.HookEventNotFoundException
+     *             if event not found
      */
     List<RetryAttemptData> retrieveRetryAttempts(String eventId);
 }

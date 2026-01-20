@@ -27,10 +27,9 @@ import org.springframework.stereotype.Service;
 
 /**
  * Extended hook processor provider that recognizes Kafka template.
- * 
- * This extends the default HookProcessorProvider to add support for
- * the Kafka hook template while delegating to parent logic for other templates
- * (Web, SMS, ElasticSearch, etc.).
+ *
+ * This extends the default HookProcessorProvider to add support for the Kafka hook template while delegating to parent
+ * logic for other templates (Web, SMS, ElasticSearch, etc.).
  */
 @Service
 @Primary

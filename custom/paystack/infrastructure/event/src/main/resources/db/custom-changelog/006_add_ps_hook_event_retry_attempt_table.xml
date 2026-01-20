@@ -30,7 +30,7 @@
             </not>
         </preConditions>
         <comment>Create table for tracking individual retry attempts for hook events</comment>
-        
+
         <createTable tableName="ps_hook_event_retry_attempt">
             <column name="id" type="BIGINT" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
@@ -66,22 +66,22 @@
                 <constraints nullable="true"/>
             </column>
         </createTable>
-        
+
         <addForeignKeyConstraint baseTableName="ps_hook_event_retry_attempt"
                                  baseColumnNames="event_id"
                                  constraintName="fk_retry_attempt_event"
                                  referencedTableName="ps_hook_event_record"
                                  referencedColumnNames="id"
                                  onDelete="CASCADE"/>
-        
+
         <createIndex indexName="idx_retry_attempt_event_id" tableName="ps_hook_event_retry_attempt">
             <column name="event_id"/>
         </createIndex>
-        
+
         <createIndex indexName="idx_retry_attempt_attempted_at" tableName="ps_hook_event_retry_attempt">
             <column name="attempted_at"/>
         </createIndex>
-        
+
         <createIndex indexName="idx_retry_attempt_success" tableName="ps_hook_event_retry_attempt">
             <column name="success"/>
         </createIndex>

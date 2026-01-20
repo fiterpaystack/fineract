@@ -27,16 +27,16 @@ import com.paystack.fineract.infrastructure.event.hook.domain.HookEventStatus;
 import com.paystack.fineract.infrastructure.event.hook.metrics.PaystackKafkaEventMetrics;
 import java.time.LocalDateTime;
 import java.util.List;
-import org.apache.fineract.infrastructure.core.domain.ActionContext;
-import org.apache.fineract.infrastructure.core.domain.FineractPlatformTenant;
-import org.apache.fineract.infrastructure.core.service.DateUtils;
-import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
-import org.apache.fineract.infrastructure.core.service.tenant.TenantDetailsService;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.fineract.infrastructure.core.domain.ActionContext;
+import org.apache.fineract.infrastructure.core.domain.FineractPlatformTenant;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
+import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
+import org.apache.fineract.infrastructure.core.service.tenant.TenantDetailsService;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataAccessException;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -85,8 +85,8 @@ public class HookEventRetryService {
      */
     public void retryEvent(HookEventRecord eventRecord) {
         if (eventRecord.hasExceededMaxRetries()) {
-            log.error("Max retries exceeded for event: eventId={}, retryCount={}, maxRetries={}",
-                    eventRecord.getEventId(), eventRecord.getRetryCount(), eventRecord.getMaxRetries());
+            log.error("Max retries exceeded for event: eventId={}, retryCount={}, maxRetries={}", eventRecord.getEventId(),
+                    eventRecord.getRetryCount(), eventRecord.getMaxRetries());
             handleMaxRetriesExceeded(eventRecord);
             return;
         }
@@ -102,10 +102,8 @@ public class HookEventRetryService {
 
         try {
             // Attempt send
-            CompletableFuture<SendResult<String, String>> future = paystackExternalEventsKafkaTemplate.send(
-                    eventRecord.getTopicName(),
-                    eventRecord.getPartitionKey(),
-                    eventRecord.getPayload());
+            CompletableFuture<SendResult<String, String>> future = paystackExternalEventsKafkaTemplate.send(eventRecord.getTopicName(),
+                    eventRecord.getPartitionKey(), eventRecord.getPayload());
 
             SendResult<String, String> result = future.get(5, TimeUnit.SECONDS);
 
@@ -113,12 +111,7 @@ public class HookEventRetryService {
             long durationMs = (System.nanoTime() - startTimeNanos) / 1_000_000;
 
             // Record successful attempt
-            HookEventRetryAttempt attempt = HookEventRetryAttempt.newAttempt(
-                    eventRecord,
-                    attemptNumber,
-                    attemptStartTime,
-                    true,
-                    null,
+            HookEventRetryAttempt attempt = HookEventRetryAttempt.newAttempt(eventRecord, attemptNumber, attemptStartTime, true, null,
                     durationMs);
             retryAttemptRepository.save(attempt);
 
@@ -128,8 +121,8 @@ public class HookEventRetryService {
             eventRecord.setErrorMessage(null);
             eventRecordRepository.save(eventRecord);
 
-            log.info("Successfully retried hook event: eventId={}, retryCount={}, durationMs={}",
-                    eventRecord.getEventId(), attemptNumber, durationMs);
+            log.info("Successfully retried hook event: eventId={}, retryCount={}, durationMs={}", eventRecord.getEventId(), attemptNumber,
+                    durationMs);
 
             metrics.recordEventRetry(eventRecord.getEntityName(), eventRecord.getActionName(), true);
 
@@ -139,17 +132,12 @@ public class HookEventRetryService {
             String errorMessage = "Retry " + attemptNumber + " failed: " + e.getMessage();
 
             // Record failed attempt
-            HookEventRetryAttempt attempt = HookEventRetryAttempt.newAttempt(
-                    eventRecord,
-                    attemptNumber,
-                    attemptStartTime,
-                    false,
-                    errorMessage,
-                    durationMs);
+            HookEventRetryAttempt attempt = HookEventRetryAttempt.newAttempt(eventRecord, attemptNumber, attemptStartTime, false,
+                    errorMessage, durationMs);
             retryAttemptRepository.save(attempt);
 
-            log.warn("Retry failed for event: eventId={}, retryCount={}, durationMs={}",
-                    eventRecord.getEventId(), attemptNumber, durationMs, e);
+            log.warn("Retry failed for event: eventId={}, retryCount={}, durationMs={}", eventRecord.getEventId(), attemptNumber,
+                    durationMs, e);
 
             eventRecord.setErrorMessage(errorMessage);
             eventRecordRepository.save(eventRecord);
@@ -190,14 +178,14 @@ public class HookEventRetryService {
     }
 
     /**
-     * Batch retry all pending events (scheduled job).
-     * Processes events for all tenants by iterating over each tenant and setting the tenant context.
+     * Batch retry all pending events (scheduled job). Processes events for all tenants by iterating over each tenant
+     * and setting the tenant context.
      */
     @Scheduled(fixedDelayString = "${paystack.events.kafka.hook.retry-interval-ms:60000}")
     public void retryPendingEvents() {
         try {
             List<FineractPlatformTenant> allTenants = tenantDetailsService.findAllTenants();
-            
+
             for (FineractPlatformTenant tenant : allTenants) {
                 boolean contextInitialized = false;
                 try {
@@ -205,19 +193,20 @@ public class HookEventRetryService {
                     contextInitialized = true;
                     ThreadLocalContextUtil.setTenant(tenant);
                     ThreadLocalContextUtil.setActionContext(ActionContext.DEFAULT);
-                    
+
                     // Process pending events for this tenant
                     processPendingEventsForTenant(tenant.getTenantIdentifier());
                 } catch (DataAccessException e) {
                     // Gracefully handle cases where tables don't exist yet (migrations not run)
                     String errorMessage = extractErrorMessage(e);
-                    
-                    if (errorMessage != null && (errorMessage.contains("does not exist") 
+
+                    if (errorMessage != null && (errorMessage.contains("does not exist")
                             || (errorMessage.contains("relation") && errorMessage.contains("ps_hook_event_record")))) {
-                        log.warn("Hook event tables not found for tenant: {} (schema: {}). " +
-                                "Migrations may not have run for this tenant. " +
-                                "Please verify migrations have executed for tenant '{}' in database '{}'. " +
-                                "See MIGRATION_DIAGNOSTICS.md for troubleshooting steps.",
+                        log.warn(
+                                "Hook event tables not found for tenant: {} (schema: {}). "
+                                        + "Migrations may not have run for this tenant. "
+                                        + "Please verify migrations have executed for tenant '{}' in database '{}'. "
+                                        + "See MIGRATION_DIAGNOSTICS.md for troubleshooting steps.",
                                 tenant.getTenantIdentifier(),
                                 tenant.getConnection() != null ? tenant.getConnection().getSchemaName() : "unknown",
                                 tenant.getTenantIdentifier(),
@@ -231,12 +220,11 @@ public class HookEventRetryService {
                     // Catch any other unexpected exceptions
                     String errorMessage = extractErrorMessage(e);
                     if (errorMessage != null && errorMessage.contains("does not exist")) {
-                        log.debug("Hook event tables not yet created for tenant: {}. Migrations may still be running.", 
+                        log.debug("Hook event tables not yet created for tenant: {}. Migrations may still be running.",
                                 tenant.getTenantIdentifier());
                         continue; // Skip this tenant and continue with next
                     }
-                    log.error("Unexpected error processing pending hook events for tenant: {}", 
-                            tenant.getTenantIdentifier(), e);
+                    log.error("Unexpected error processing pending hook events for tenant: {}", tenant.getTenantIdentifier(), e);
                     // Continue with next tenant instead of failing entire job
                 } finally {
                     if (contextInitialized) {
@@ -250,21 +238,19 @@ public class HookEventRetryService {
             // Don't re-throw to prevent scheduled task failure
         }
     }
-    
+
     /**
      * Process pending events for a specific tenant.
      */
     private void processPendingEventsForTenant(String tenantIdentifier) {
         try {
-            List<HookEventRecord> pendingEvents = eventRecordRepository
-                    .findByStatusAndRetryCountLessThanMax(HookEventStatus.PENDING);
+            List<HookEventRecord> pendingEvents = eventRecordRepository.findByStatusAndRetryCountLessThanMax(HookEventStatus.PENDING);
 
             if (pendingEvents.isEmpty()) {
                 return;
             }
 
-            log.debug("Processing {} pending hook events for retry in tenant: {}", 
-                    pendingEvents.size(), tenantIdentifier);
+            log.debug("Processing {} pending hook events for retry in tenant: {}", pendingEvents.size(), tenantIdentifier);
 
             for (HookEventRecord event : pendingEvents) {
                 retryEvent(event);
@@ -274,7 +260,7 @@ public class HookEventRetryService {
             throw e;
         }
     }
-    
+
     /**
      * Extract error message from exception chain.
      */

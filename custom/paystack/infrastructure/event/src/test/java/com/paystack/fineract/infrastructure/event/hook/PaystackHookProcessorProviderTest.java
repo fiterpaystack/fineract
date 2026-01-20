@@ -26,7 +26,6 @@ import static org.mockito.Mockito.when;
 import org.apache.fineract.infrastructure.hooks.domain.Hook;
 import org.apache.fineract.infrastructure.hooks.domain.HookTemplate;
 import org.apache.fineract.infrastructure.hooks.processor.HookProcessor;
-import org.apache.fineract.infrastructure.hooks.processor.HookProcessorProvider;
 import org.apache.fineract.infrastructure.hooks.processor.WebHookProcessor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

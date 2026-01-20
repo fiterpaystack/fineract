@@ -33,12 +33,9 @@ import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
 
 /**
  * Entity for tracking individual retry attempts for hook events.
- * 
- * This provides a complete audit trail of all retry attempts, including:
- * - When each attempt was made
- * - Whether it succeeded or failed
- * - Error message if it failed
- * - Duration of the attempt
+ *
+ * This provides a complete audit trail of all retry attempts, including: - When each attempt was made - Whether it
+ * succeeded or failed - Error message if it failed - Duration of the attempt
  */
 @Entity
 @Table(name = "ps_hook_event_retry_attempt")
@@ -84,8 +81,8 @@ public class HookEventRetryAttempt extends AbstractPersistableCustom<Long> {
     /**
      * Create a new retry attempt record.
      */
-    public static HookEventRetryAttempt newAttempt(HookEventRecord eventRecord, Integer attemptNumber,
-            LocalDateTime attemptedAt, boolean success, String errorMessage, Long durationMs) {
+    public static HookEventRetryAttempt newAttempt(HookEventRecord eventRecord, Integer attemptNumber, LocalDateTime attemptedAt,
+            boolean success, String errorMessage, Long durationMs) {
         HookEventRetryAttempt attempt = new HookEventRetryAttempt();
         attempt.setEventRecord(eventRecord);
         attempt.setAttemptNumber(attemptNumber);

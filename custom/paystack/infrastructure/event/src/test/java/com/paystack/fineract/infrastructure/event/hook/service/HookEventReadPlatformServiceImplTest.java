@@ -20,10 +20,10 @@ package com.paystack.fineract.infrastructure.event.hook.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.ArgumentMatchers.anyString;
 
 import com.paystack.fineract.infrastructure.event.hook.data.RetryAttemptData;
 import com.paystack.fineract.infrastructure.event.hook.domain.HookEventRecord;
@@ -164,8 +164,7 @@ class HookEventReadPlatformServiceImplTest {
     @Test
     void shouldThrowExceptionForInvalidStatus() {
         // When/Then
-        assertThatThrownBy(() -> readPlatformService.validateAndParseStatus("INVALID"))
-                .isInstanceOf(UnrecognizedQueryParamException.class);
+        assertThatThrownBy(() -> readPlatformService.validateAndParseStatus("INVALID")).isInstanceOf(UnrecognizedQueryParamException.class);
     }
 
     @Test
@@ -230,15 +229,10 @@ class HookEventReadPlatformServiceImplTest {
         return eventRecord;
     }
 
-    private HookEventRetryAttempt createRetryAttempt(Long id, HookEventRecord hookEventRecord, Integer attemptNumber,
-            boolean success, String errorMessage, Long durationMs) {
-        HookEventRetryAttempt retryAttempt = HookEventRetryAttempt.newAttempt(
-                hookEventRecord,
-                attemptNumber,
-                DateUtils.getAuditLocalDateTime(),
-                success,
-                errorMessage,
-                durationMs);
+    private HookEventRetryAttempt createRetryAttempt(Long id, HookEventRecord hookEventRecord, Integer attemptNumber, boolean success,
+            String errorMessage, Long durationMs) {
+        HookEventRetryAttempt retryAttempt = HookEventRetryAttempt.newAttempt(hookEventRecord, attemptNumber,
+                DateUtils.getAuditLocalDateTime(), success, errorMessage, durationMs);
         retryAttempt.setId(id);
         return retryAttempt;
     }

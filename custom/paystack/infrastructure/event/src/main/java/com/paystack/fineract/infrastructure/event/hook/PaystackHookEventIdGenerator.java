@@ -33,11 +33,11 @@ import org.springframework.stereotype.Component;
 
 /**
  * Generates stable, deterministic event IDs for hook-based Kafka events.
- * 
+ *
  * Format: {entityName}_{actionName}_{aggregateRootId}_{businessDate}_{hash}
- * 
- * This ensures the same event generates the same ID across retries, enabling
- * downstream duplicate detection (requirement #4).
+ *
+ * This ensures the same event generates the same ID across retries, enabling downstream duplicate detection
+ * (requirement #4).
  */
 @Component
 @RequiredArgsConstructor
@@ -48,35 +48,35 @@ public class PaystackHookEventIdGenerator {
 
     /**
      * Generate a stable event ID for a hook event.
-     * 
-     * @param entityName The entity name (e.g., "CLIENT", "SAVINGSACCOUNT")
-     * @param actionName The action name (e.g., "CREATE", "ACTIVATE")
-     * @param payload The event payload (JSON string)
-     * @param context The Fineract context
+     *
+     * @param entityName
+     *            The entity name (e.g., "CLIENT", "SAVINGSACCOUNT")
+     * @param actionName
+     *            The action name (e.g., "CREATE", "ACTIVATE")
+     * @param payload
+     *            The event payload (JSON string)
+     * @param context
+     *            The Fineract context
      * @return Stable event ID
      */
     public String generate(String entityName, String actionName, String payload, FineractContext context) {
         try {
             // Extract aggregate root ID from payload (clientId or accountId)
             String aggregateRootId = extractAggregateRootId(payload);
-            
+
             // Get business date
             LocalDate businessDate = DateUtils.getBusinessLocalDate();
-            
+
             // Generate stable hash from event characteristics
             String eventDataHash = generateEventDataHash(entityName, actionName, aggregateRootId, businessDate, payload);
-            
+
             // Build event ID
-            String eventId = String.format("%s_%s_%s_%s_%s",
-                entityName,
-                actionName,
-                aggregateRootId != null ? aggregateRootId : "null",
-                businessDate,
-                eventDataHash);
-            
+            String eventId = String.format("%s_%s_%s_%s_%s", entityName, actionName, aggregateRootId != null ? aggregateRootId : "null",
+                    businessDate, eventDataHash);
+
             log.debug("Generated event ID: {} for entity: {}, action: {}", eventId, entityName, actionName);
             return eventId;
-            
+
         } catch (Exception e) {
             log.error("Failed to generate event ID, using fallback", e);
             // Fallback to hash-based ID if generation fails (still stable)
@@ -85,11 +85,8 @@ public class PaystackHookEventIdGenerator {
             String input = String.format("%s_%s_%s_%s", entityName, actionName, businessDate, payloadHash);
             int hash = input.hashCode();
             String hashStr = String.valueOf(Math.abs(hash));
-            return String.format("%s_%s_%s_%s",
-                entityName,
-                actionName,
-                businessDate,
-                hashStr.length() > HASH_LENGTH ? hashStr.substring(0, HASH_LENGTH) : hashStr);
+            return String.format("%s_%s_%s_%s", entityName, actionName, businessDate,
+                    hashStr.length() > HASH_LENGTH ? hashStr.substring(0, HASH_LENGTH) : hashStr);
         }
     }
 
@@ -102,7 +99,7 @@ public class PaystackHookEventIdGenerator {
         }
         try {
             JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
-            
+
             // Check for clientId in response
             if (json.has("response")) {
                 JsonObject response = json.getAsJsonObject("response");
@@ -113,7 +110,7 @@ public class PaystackHookEventIdGenerator {
                     return response.get("resourceId").getAsString();
                 }
             }
-            
+
             // Check for clientId in request
             if (json.has("request")) {
                 JsonObject request = json.getAsJsonObject("request");
@@ -121,7 +118,7 @@ public class PaystackHookEventIdGenerator {
                     return request.get("clientId").getAsString();
                 }
             }
-            
+
             // Check at root level
             if (json.has("clientId") && !json.get("clientId").isJsonNull()) {
                 return json.get("clientId").getAsString();
@@ -132,41 +129,34 @@ public class PaystackHookEventIdGenerator {
             if (json.has("resourceId") && !json.get("resourceId").isJsonNull()) {
                 return json.get("resourceId").getAsString();
             }
-            
+
         } catch (Exception e) {
             log.debug("Could not extract aggregate root ID from payload", e);
         }
-        
+
         return "unknown";
     }
 
     /**
-     * Generate stable hash from event characteristics.
-     * Same event on same day generates same hash.
+     * Generate stable hash from event characteristics. Same event on same day generates same hash.
      */
-    private String generateEventDataHash(String entityName, String actionName, String aggregateRootId,
-                                        LocalDate businessDate, String payload) {
+    private String generateEventDataHash(String entityName, String actionName, String aggregateRootId, LocalDate businessDate,
+            String payload) {
         try {
             // Create hash input from event characteristics
-            String payloadPart = (payload != null && !payload.isBlank()) 
-                ? (payload.length() > 100 ? payload.substring(0, 100) : payload)
-                : "null";
-            String input = String.format("%s_%s_%s_%s_%s",
-                entityName,
-                actionName,
-                aggregateRootId != null ? aggregateRootId : "null",
-                businessDate,
-                payloadPart);
-            
+            String payloadPart = (payload != null && !payload.isBlank()) ? (payload.length() > 100 ? payload.substring(0, 100) : payload)
+                    : "null";
+            String input = String.format("%s_%s_%s_%s_%s", entityName, actionName, aggregateRootId != null ? aggregateRootId : "null",
+                    businessDate, payloadPart);
+
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
             return Base64.getEncoder().encodeToString(hash).substring(0, HASH_LENGTH);
-            
+
         } catch (NoSuchAlgorithmException e) {
             log.error("SHA-256 algorithm not available", e);
             // Fallback to simple hash
-            String input = String.format("%s_%s_%s_%s",
-                entityName, actionName, aggregateRootId, businessDate);
+            String input = String.format("%s_%s_%s_%s", entityName, actionName, aggregateRootId, businessDate);
             int hash = input.hashCode();
             String hashStr = String.valueOf(Math.abs(hash));
             return hashStr.length() > HASH_LENGTH ? hashStr.substring(0, HASH_LENGTH) : hashStr;

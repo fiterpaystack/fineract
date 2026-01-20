@@ -43,8 +43,7 @@ public class HookEventReadPlatformServiceImpl implements HookEventReadPlatformSe
 
     @Override
     public HookEventRecord retrieveOne(String eventId) {
-        return eventRecordRepository.findByEventId(eventId)
-                .orElseThrow(() -> new HookEventNotFoundException(eventId));
+        return eventRecordRepository.findByEventId(eventId).orElseThrow(() -> new HookEventNotFoundException(eventId));
     }
 
     @Override
@@ -66,8 +65,7 @@ public class HookEventReadPlatformServiceImpl implements HookEventReadPlatformSe
         try {
             return HookEventStatus.valueOf(statusParam.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new UnrecognizedQueryParamException("status", statusParam,
-                    new Object[] { "PENDING", "SENT", "FAILED", "DLQ" });
+            throw new UnrecognizedQueryParamException("status", statusParam, new Object[] { "PENDING", "SENT", "FAILED", "DLQ" });
         }
     }
 

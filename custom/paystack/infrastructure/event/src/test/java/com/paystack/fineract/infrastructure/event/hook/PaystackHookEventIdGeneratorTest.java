@@ -206,7 +206,7 @@ class PaystackHookEventIdGeneratorTest {
 
     private FineractContext createFineractContext() {
         FineractPlatformTenant tenant = new FineractPlatformTenant(1L, "default", "Default", "UTC", null);
-        return FineractContext.builder().tenantContext(tenant).contextHolder(null).authTokenContext(null)
-                .businessDateContext(null).actionContext(null).build();
+        return FineractContext.builder().tenantContext(tenant).contextHolder(null).authTokenContext(null).businessDateContext(null)
+                .actionContext(null).build();
     }
 }

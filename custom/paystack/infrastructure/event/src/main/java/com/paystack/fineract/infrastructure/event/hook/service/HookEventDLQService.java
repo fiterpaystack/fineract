@@ -26,9 +26,9 @@ import com.paystack.fineract.infrastructure.event.hook.domain.HookEventStatus;
 import com.paystack.fineract.infrastructure.event.hook.metrics.PaystackKafkaEventMetrics;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.fineract.infrastructure.core.service.DateUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
@@ -58,8 +58,7 @@ public class HookEventDLQService {
             dlqMessage.put("failureReason", eventRecord.getErrorMessage());
             dlqMessage.put("retryCount", eventRecord.getRetryCount());
             dlqMessage.put("maxRetries", eventRecord.getMaxRetries());
-            dlqMessage.put("failedAt", eventRecord.getFailedAt() != null 
-                    ? eventRecord.getFailedAt().toString() 
+            dlqMessage.put("failedAt", eventRecord.getFailedAt() != null ? eventRecord.getFailedAt().toString()
                     : DateUtils.getAuditLocalDateTime().toString());
             dlqMessage.put("hookId", eventRecord.getHookId());
             dlqMessage.put("entityName", eventRecord.getEntityName());
@@ -78,11 +77,10 @@ public class HookEventDLQService {
             eventRecord.setStatus(HookEventStatus.DLQ);
             eventRecordRepository.save(eventRecord);
 
-            log.warn("Event sent to DLQ: eventId={}, topic={}, entity={}, action={}",
-                    eventRecord.getEventId(), dlqTopic, eventRecord.getEntityName(), eventRecord.getActionName());
+            log.warn("Event sent to DLQ: eventId={}, topic={}, entity={}, action={}", eventRecord.getEventId(), dlqTopic,
+                    eventRecord.getEntityName(), eventRecord.getActionName());
 
-            metrics.recordDLQEvent(eventRecord.getEntityName(), eventRecord.getActionName(),
-                    eventRecord.getErrorMessage());
+            metrics.recordDLQEvent(eventRecord.getEntityName(), eventRecord.getActionName(), eventRecord.getErrorMessage());
 
         } catch (Exception e) {
             log.error("Failed to send event to DLQ: eventId={}", eventRecord.getEventId(), e);

@@ -64,21 +64,17 @@ public class HookEventApiResource {
 
     /**
      * Handle commands on hook events (retry single event or retry all failed).
-     * 
-     * Commands:
-     * - retry: Retry a single failed event
-     * - retryAllFailed: Retry all failed events
+     *
+     * Commands: - retry: Retry a single failed event - retryAllFailed: Retry all failed events
      */
     @POST
     @Path("/{eventId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Retry Hook Event", description = "Manually retry a failed hook event by event ID. Use command=retry")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Event retry initiated"),
+    @ApiResponses({ @ApiResponse(responseCode = "200", description = "Event retry initiated"),
             @ApiResponse(responseCode = "404", description = "Event not found"),
-            @ApiResponse(responseCode = "400", description = "Event not in FAILED status or invalid command")
-    })
+            @ApiResponse(responseCode = "400", description = "Event not in FAILED status or invalid command") })
     public Response handleCommand(@PathParam("eventId") @Parameter(description = "Event ID") final String eventId,
             @QueryParam("command") @Parameter(description = "command") final String commandParam,
             @Parameter(hidden = true) final String apiRequestBodyAsJson) {
@@ -106,9 +102,7 @@ public class HookEventApiResource {
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Retry All Failed Events", description = "Manually retry all failed hook events. Use command=retryAllFailed")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Retry operation completed")
-    })
+    @ApiResponses({ @ApiResponse(responseCode = "200", description = "Retry operation completed") })
     public Response retryAllFailed(@QueryParam("command") @Parameter(description = "command") final String commandParam,
             @Parameter(hidden = true) final String apiRequestBodyAsJson) {
         this.context.authenticatedUser().validateHasPermissionTo(RESOURCE_NAME_FOR_PERMISSIONS, List.of("RETRY"));
@@ -135,17 +129,17 @@ public class HookEventApiResource {
 
     /**
      * Get hook events with optional status filter.
-     * 
-     * @param statusParam Optional status filter (PENDING, SENT, FAILED, DLQ). If not provided, returns all events.
+     *
+     * @param statusParam
+     *            Optional status filter (PENDING, SENT, FAILED, DLQ). If not provided, returns all events.
      */
     @GET
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "List Hook Events", description = "Retrieve hook events with optional status filter. Use status query parameter to filter by PENDING, SENT, FAILED, or DLQ")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "List of hook events")
-    })
-    public Response getHookEvents(@QueryParam("status") @Parameter(description = "Filter by status (PENDING, SENT, FAILED, DLQ)") final String statusParam) {
+    @ApiResponses({ @ApiResponse(responseCode = "200", description = "List of hook events") })
+    public Response getHookEvents(
+            @QueryParam("status") @Parameter(description = "Filter by status (PENDING, SENT, FAILED, DLQ)") final String statusParam) {
         this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
 
         // Validate and parse status (throws UnrecognizedQueryParamException if invalid)
@@ -170,10 +164,8 @@ public class HookEventApiResource {
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Get Retry Attempts", description = "Retrieve all retry attempts for a specific hook event")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "List of retry attempts"),
-            @ApiResponse(responseCode = "404", description = "Event not found")
-    })
+    @ApiResponses({ @ApiResponse(responseCode = "200", description = "List of retry attempts"),
+            @ApiResponse(responseCode = "404", description = "Event not found") })
     public Response getRetryAttempts(@PathParam("eventId") @Parameter(description = "Event ID") final String eventId) {
         this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
 

@@ -31,12 +31,12 @@
             </sqlCheck>
         </preConditions>
         <comment>Add Kafka hook template and schema fields</comment>
-        
+
         <!-- Add Kafka template to m_hook_templates -->
         <insert tableName="m_hook_templates">
             <column name="name" value="Kafka"/>
         </insert>
-        
+
         <!-- Add Topic Name field to m_hook_schema (required) -->
         <insert tableName="m_hook_schema">
             <column name="hook_template_id" valueComputed="(SELECT id FROM m_hook_templates WHERE name = 'Kafka')"/>
@@ -45,7 +45,7 @@
             <column name="placeholder" value="fineract-client-account-events"/>
             <column name="optional" valueBoolean="false"/>
         </insert>
-        
+
         <!-- Add Partition Key Strategy field to m_hook_schema (optional) -->
         <insert tableName="m_hook_schema">
             <column name="hook_template_id" valueComputed="(SELECT id FROM m_hook_templates WHERE name = 'Kafka')"/>

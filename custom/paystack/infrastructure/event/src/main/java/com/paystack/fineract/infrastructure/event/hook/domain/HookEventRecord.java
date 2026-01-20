@@ -116,7 +116,6 @@ public class HookEventRecord extends AbstractPersistableCustom<Long> {
      * Check if max retries have been exceeded.
      */
     public boolean hasExceededMaxRetries() {
-        return this.retryCount != null && this.maxRetries != null
-                && this.retryCount >= this.maxRetries;
+        return this.retryCount != null && this.maxRetries != null && this.retryCount >= this.maxRetries;
     }
 }

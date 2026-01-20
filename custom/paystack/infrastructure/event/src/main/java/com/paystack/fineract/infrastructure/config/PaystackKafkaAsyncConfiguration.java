@@ -51,8 +51,7 @@ public class PaystackKafkaAsyncConfiguration {
         PaystackEventProperties.AsyncProperties asyncProps = eventProperties.getExternal().getProducer().getKafka();
 
         ThreadPoolExecutor executor = new ThreadPoolExecutor(asyncProps.getCorePoolSize(), asyncProps.getMaxPoolSize(),
-                asyncProps.getKeepAliveSeconds(), TimeUnit.SECONDS, new LinkedBlockingQueue<>(asyncProps.getQueueCapacity()),
-                r -> {
+                asyncProps.getKeepAliveSeconds(), TimeUnit.SECONDS, new LinkedBlockingQueue<>(asyncProps.getQueueCapacity()), r -> {
                     Thread thread = new Thread(r);
                     thread.setName(asyncProps.getThreadNamePrefix() + System.currentTimeMillis());
                     thread.setDaemon(true);

@@ -27,26 +27,25 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * Configuration for Kafka hook event processing.
- * This configuration is always enabled to support hook event retry functionality.
+ * Configuration for Kafka hook event processing. This configuration is always enabled to support hook event retry
+ * functionality.
  */
 @AutoConfiguration
 @EnableScheduling
 public class PaystackHookEventConfiguration {
 
     /**
-     * Creates a dedicated thread pool executor for Kafka hook event retry processing.
-     * This executor is used by HookEventRetryService for asynchronous retry operations.
+     * Creates a dedicated thread pool executor for Kafka hook event retry processing. This executor is used by
+     * HookEventRetryService for asynchronous retry operations.
      */
     @Bean(name = "kafkaHookRetryExecutor")
     public Executor kafkaHookRetryExecutor() {
-        ThreadPoolExecutor executor = new ThreadPoolExecutor(3, 10, 60, TimeUnit.SECONDS,
-                new LinkedBlockingQueue<>(50), r -> {
-                    Thread thread = new Thread(r);
-                    thread.setName("paystack-kafka-hook-retry-" + System.currentTimeMillis());
-                    thread.setDaemon(true);
-                    return thread;
-                }, new ThreadPoolExecutor.CallerRunsPolicy());
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(3, 10, 60, TimeUnit.SECONDS, new LinkedBlockingQueue<>(50), r -> {
+            Thread thread = new Thread(r);
+            thread.setName("paystack-kafka-hook-retry-" + System.currentTimeMillis());
+            thread.setDaemon(true);
+            return thread;
+        }, new ThreadPoolExecutor.CallerRunsPolicy());
 
         executor.allowCoreThreadTimeOut(true);
         return executor;

@@ -25,7 +25,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -41,16 +40,15 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import org.apache.fineract.infrastructure.core.domain.FineractPlatformTenant;
-import org.apache.fineract.infrastructure.core.service.DateUtils;
-import org.apache.fineract.infrastructure.core.service.tenant.TenantDetailsService;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeoutException;
+import org.apache.fineract.infrastructure.core.domain.FineractPlatformTenant;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
+import org.apache.fineract.infrastructure.core.service.tenant.TenantDetailsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -108,16 +106,8 @@ class HookEventRetryServiceTest {
         when(eventProperties.getKafka()).thenReturn(kafkaProperties);
 
         // Manually construct service since @Qualifier doesn't work well with @InjectMocks
-        retryService = new HookEventRetryService(
-                eventRecordRepository,
-                retryAttemptRepository,
-                kafkaTemplate,
-                dlqService,
-                metrics,
-                eventProperties,
-                tenantDetailsService,
-                kafkaHookRetryExecutor
-        );
+        retryService = new HookEventRetryService(eventRecordRepository, retryAttemptRepository, kafkaTemplate, dlqService, metrics,
+                eventProperties, tenantDetailsService, kafkaHookRetryExecutor);
     }
 
     @Test
@@ -141,8 +131,7 @@ class HookEventRetryServiceTest {
         retryService.retryEvent(pendingEvent);
 
         // Then
-        verify(kafkaTemplate).send(eq(pendingEvent.getTopicName()), eq(pendingEvent.getPartitionKey()),
-                eq(pendingEvent.getPayload()));
+        verify(kafkaTemplate).send(eq(pendingEvent.getTopicName()), eq(pendingEvent.getPartitionKey()), eq(pendingEvent.getPayload()));
         verify(eventRecordRepository, org.mockito.Mockito.atLeastOnce()).save(any(HookEventRecord.class));
         verify(retryAttemptRepository).save(any());
         verify(metrics).recordEventRetry(pendingEvent.getEntityName(), pendingEvent.getActionName(), true);
@@ -227,8 +216,7 @@ class HookEventRetryServiceTest {
         when(tenantDetailsService.findAllTenants()).thenReturn(Arrays.asList(tenant));
         HookEventRecord event2 = createEventRecord(4L, "event-4", HookEventStatus.PENDING, 0);
         List<HookEventRecord> pendingEvents = Arrays.asList(pendingEvent, event2);
-        when(eventRecordRepository.findByStatusAndRetryCountLessThanMax(HookEventStatus.PENDING))
-                .thenReturn(pendingEvents);
+        when(eventRecordRepository.findByStatusAndRetryCountLessThanMax(HookEventStatus.PENDING)).thenReturn(pendingEvents);
         @SuppressWarnings("unchecked")
         CompletableFuture<SendResult<String, String>> future = mock(CompletableFuture.class);
         SendResult<String, String> sendResult = mock(SendResult.class);
@@ -275,11 +263,13 @@ class HookEventRetryServiceTest {
         // Then
         verify(retryAttemptRepository).save(argThat(attempt -> {
             HookEventRetryAttempt a = (HookEventRetryAttempt) attempt;
-            return a.getEventRecord().getId().equals(pendingEvent.getId())
-                    && a.getAttemptNumber().equals(2) // pendingEvent starts with retryCount=1, increments to 2
-                    && a.getSuccess() == true
-                    && a.getErrorMessage() == null
-                    && a.getDurationMs() != null;
+            return a.getEventRecord().getId().equals(pendingEvent.getId()) && a.getAttemptNumber().equals(2) // pendingEvent
+                                                                                                             // starts
+                                                                                                             // with
+                                                                                                             // retryCount=1,
+                                                                                                             // increments
+                                                                                                             // to 2
+                    && a.getSuccess() == true && a.getErrorMessage() == null && a.getDurationMs() != null;
         }));
     }
 
@@ -299,11 +289,13 @@ class HookEventRetryServiceTest {
         // Then
         verify(retryAttemptRepository).save(argThat(attempt -> {
             HookEventRetryAttempt a = (HookEventRetryAttempt) attempt;
-            return a.getEventRecord().getId().equals(pendingEvent.getId())
-                    && a.getAttemptNumber().equals(2) // pendingEvent starts with retryCount=1, increments to 2
-                    && a.getSuccess() == false
-                    && a.getErrorMessage() != null
-                    && a.getErrorMessage().contains("Kafka timeout")
+            return a.getEventRecord().getId().equals(pendingEvent.getId()) && a.getAttemptNumber().equals(2) // pendingEvent
+                                                                                                             // starts
+                                                                                                             // with
+                                                                                                             // retryCount=1,
+                                                                                                             // increments
+                                                                                                             // to 2
+                    && a.getSuccess() == false && a.getErrorMessage() != null && a.getErrorMessage().contains("Kafka timeout")
                     && a.getDurationMs() != null;
         }));
     }
@@ -313,8 +305,7 @@ class HookEventRetryServiceTest {
         // Given
         FineractPlatformTenant tenant = createMockTenant("default");
         when(tenantDetailsService.findAllTenants()).thenReturn(Arrays.asList(tenant));
-        when(eventRecordRepository.findByStatusAndRetryCountLessThanMax(HookEventStatus.PENDING))
-                .thenReturn(Collections.emptyList());
+        when(eventRecordRepository.findByStatusAndRetryCountLessThanMax(HookEventStatus.PENDING)).thenReturn(Collections.emptyList());
 
         // When
         retryService.retryPendingEvents();
@@ -325,7 +316,7 @@ class HookEventRetryServiceTest {
         verify(kafkaTemplate, never()).send(anyString(), anyString(), anyString());
         verify(eventRecordRepository, never()).save(any());
     }
-    
+
     private FineractPlatformTenant createMockTenant(String tenantIdentifier) {
         FineractPlatformTenant tenant = mock(FineractPlatformTenant.class);
         when(tenant.getTenantIdentifier()).thenReturn(tenantIdentifier);

@@ -46,8 +46,7 @@ class RetryAttemptDataTest {
     void shouldMapSuccessfulAttemptToData() {
         // Given
         LocalDateTime attemptedAt = DateUtils.getAuditLocalDateTime();
-        retryAttempt = HookEventRetryAttempt.newAttempt(
-                eventRecord, 1, attemptedAt, true, null, 100L);
+        retryAttempt = HookEventRetryAttempt.newAttempt(eventRecord, 1, attemptedAt, true, null, 100L);
         retryAttempt.setId(10L);
 
         // When
@@ -66,8 +65,7 @@ class RetryAttemptDataTest {
     void shouldMapFailedAttemptToData() {
         // Given
         LocalDateTime attemptedAt = DateUtils.getAuditLocalDateTime();
-        retryAttempt = HookEventRetryAttempt.newAttempt(
-                eventRecord, 2, attemptedAt, false, "Timeout error", 5000L);
+        retryAttempt = HookEventRetryAttempt.newAttempt(eventRecord, 2, attemptedAt, false, "Timeout error", 5000L);
         retryAttempt.setId(20L);
 
         // When

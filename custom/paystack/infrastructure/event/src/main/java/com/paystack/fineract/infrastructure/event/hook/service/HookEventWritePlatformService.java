@@ -28,10 +28,13 @@ public interface HookEventWritePlatformService {
     /**
      * Retry a single failed hook event.
      *
-     * @param eventId the event ID to retry
+     * @param eventId
+     *            the event ID to retry
      * @return HookEventRecord after retry attempt
-     * @throws com.paystack.fineract.infrastructure.event.hook.exception.HookEventNotFoundException if not found
-     * @throws org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException if event not in FAILED status
+     * @throws com.paystack.fineract.infrastructure.event.hook.exception.HookEventNotFoundException
+     *             if not found
+     * @throws org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException
+     *             if event not in FAILED status
      */
     HookEventRecord retryEvent(String eventId);
 

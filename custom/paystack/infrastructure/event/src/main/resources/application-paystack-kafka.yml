@@ -61,20 +61,20 @@ paystack:
       # Enable stable idempotency key generation (deterministic keys)
       # This ensures idempotency keys remain unchanged across retries
       stable-idempotency-enabled: ${PAYSTACK_STABLE_IDEMPOTENCY_ENABLED:true}
-      
+
       # Hook-specific configuration
       hook:
         # Maximum number of retries for failed hook events
         max-retries: ${PAYSTACK_KAFKA_HOOK_MAX_RETRIES:3}
-        
+
         # Initial retry delay in milliseconds (exponential backoff starts here)
         retry-initial-delay-ms: ${PAYSTACK_KAFKA_HOOK_RETRY_INITIAL_DELAY_MS:1000}
-        
+
         # Maximum retry delay in milliseconds (caps exponential backoff)
         retry-max-delay-ms: ${PAYSTACK_KAFKA_HOOK_RETRY_MAX_DELAY_MS:30000}
-        
+
         # Interval in milliseconds for scheduled retry job
         retry-interval-ms: ${PAYSTACK_KAFKA_HOOK_RETRY_INTERVAL_MS:60000}
-        
+
         # Dead Letter Queue topic name for failed events
         dlq-topic: ${PAYSTACK_KAFKA_HOOK_DLQ_TOPIC:fineract-client-account-events-dlq}

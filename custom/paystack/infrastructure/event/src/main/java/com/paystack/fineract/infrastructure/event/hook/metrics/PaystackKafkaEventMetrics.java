@@ -45,19 +45,12 @@ public class PaystackKafkaEventMetrics {
      * Record event production (success or failure).
      */
     public void recordEventProduced(String entityName, String actionName, boolean success, Duration duration) {
-        Counter.builder("fineract.kafka.hook.events.produced.total")
-                .tag(TAG_ENTITY_NAME, entityName)
-                .tag(TAG_ACTION_NAME, actionName)
-                .tag(TAG_STATUS, success ? "success" : "failure")
-                .register(meterRegistry)
-                .increment();
+        Counter.builder("fineract.kafka.hook.events.produced.total").tag(TAG_ENTITY_NAME, entityName).tag(TAG_ACTION_NAME, actionName)
+                .tag(TAG_STATUS, success ? "success" : "failure").register(meterRegistry).increment();
 
         if (success && duration != null) {
-            Timer.builder("fineract.kafka.hook.events.produced.duration")
-                    .tag(TAG_ENTITY_NAME, entityName)
-                    .tag(TAG_ACTION_NAME, actionName)
-                    .register(meterRegistry)
-                    .record(duration);
+            Timer.builder("fineract.kafka.hook.events.produced.duration").tag(TAG_ENTITY_NAME, entityName).tag(TAG_ACTION_NAME, actionName)
+                    .register(meterRegistry).record(duration);
         }
     }
 
@@ -65,24 +58,16 @@ public class PaystackKafkaEventMetrics {
      * Record event retry (success or failure).
      */
     public void recordEventRetry(String entityName, String actionName, boolean success) {
-        Counter.builder("fineract.kafka.hook.events.retry.total")
-                .tag(TAG_ENTITY_NAME, entityName)
-                .tag(TAG_ACTION_NAME, actionName)
-                .tag(TAG_STATUS, success ? "success" : "failure")
-                .register(meterRegistry)
-                .increment();
+        Counter.builder("fineract.kafka.hook.events.retry.total").tag(TAG_ENTITY_NAME, entityName).tag(TAG_ACTION_NAME, actionName)
+                .tag(TAG_STATUS, success ? "success" : "failure").register(meterRegistry).increment();
     }
 
     /**
      * Record DLQ event.
      */
     public void recordDLQEvent(String entityName, String actionName, String failureReason) {
-        Counter.builder("fineract.kafka.hook.events.dlq.total")
-                .tag(TAG_ENTITY_NAME, entityName)
-                .tag(TAG_ACTION_NAME, actionName)
-                .tag(TAG_FAILURE_REASON, failureReason != null ? failureReason : "unknown")
-                .register(meterRegistry)
-                .increment();
+        Counter.builder("fineract.kafka.hook.events.dlq.total").tag(TAG_ENTITY_NAME, entityName).tag(TAG_ACTION_NAME, actionName)
+                .tag(TAG_FAILURE_REASON, failureReason != null ? failureReason : "unknown").register(meterRegistry).increment();
 
         log.warn("Event sent to DLQ: entity={}, action={}, reason={}", entityName, actionName, failureReason);
     }

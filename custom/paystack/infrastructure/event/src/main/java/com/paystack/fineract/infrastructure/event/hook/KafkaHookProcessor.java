@@ -28,12 +28,12 @@ import com.paystack.fineract.infrastructure.event.hook.metrics.PaystackKafkaEven
 import com.paystack.fineract.infrastructure.event.hook.service.HookEventRetryService;
 import java.time.Duration;
 import java.util.Set;
-import org.apache.fineract.infrastructure.core.service.DateUtils;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.domain.FineractContext;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.hooks.domain.Hook;
 import org.apache.fineract.infrastructure.hooks.domain.HookConfiguration;
 import org.apache.fineract.infrastructure.hooks.processor.HookProcessor;
@@ -43,10 +43,9 @@ import org.springframework.stereotype.Service;
 
 /**
  * Kafka hook processor that publishes hook events to Kafka topics.
- * 
- * Configuration fields:
- * - "Topic Name" (required): Kafka topic to publish to
- * - "Partition Key Strategy" (optional): How to generate partition key (aggregateRootId, entityId, roundRobin)
+ *
+ * Configuration fields: - "Topic Name" (required): Kafka topic to publish to - "Partition Key Strategy" (optional): How
+ * to generate partition key (aggregateRootId, entityId, roundRobin)
  */
 @Service("kafkaHookProcessor")
 @RequiredArgsConstructor
@@ -65,8 +64,8 @@ public class KafkaHookProcessor implements HookProcessor {
     private final PaystackEventProperties eventProperties;
 
     @Override
-    public void process(final Hook hook, final String payload, final String entityName,
-            final String actionName, final FineractContext context) throws Exception {
+    public void process(final Hook hook, final String payload, final String entityName, final String actionName,
+            final FineractContext context) throws Exception {
 
         long startTime = System.nanoTime();
         String eventId = null;
@@ -96,28 +95,27 @@ public class KafkaHookProcessor implements HookProcessor {
             enrichedPayload = enrichPayloadWithMetadata(payload, eventId, entityName, actionName, context);
 
             // Publish to Kafka (with producer-level retry already configured)
-            CompletableFuture<SendResult<String, String>> future = paystackExternalEventsKafkaTemplate
-                    .send(topicName, partitionKey, enrichedPayload);
+            CompletableFuture<SendResult<String, String>> future = paystackExternalEventsKafkaTemplate.send(topicName, partitionKey,
+                    enrichedPayload);
 
             // Wait for result with timeout (5 seconds)
             SendResult<String, String> result = future.get(5, TimeUnit.SECONDS);
 
             Duration duration = Duration.ofNanos(System.nanoTime() - startTime);
-            log.debug("Successfully published Kafka hook event: eventId={}, topic={}, partitionKey={}, entity={}, action={}",
-                    eventId, topicName, partitionKey, entityName, actionName);
+            log.debug("Successfully published Kafka hook event: eventId={}, topic={}, partitionKey={}, entity={}, action={}", eventId,
+                    topicName, partitionKey, entityName, actionName);
 
             metrics.recordEventProduced(entityName, actionName, true, duration);
 
         } catch (Exception e) {
             Duration duration = Duration.ofNanos(System.nanoTime() - startTime);
-            log.warn("Failed to publish Kafka hook event synchronously: entity={}, action={}, hookId={}, eventId={}",
-                    entityName, actionName, hook.getId(), eventId, e);
+            log.warn("Failed to publish Kafka hook event synchronously: entity={}, action={}, hookId={}, eventId={}", entityName,
+                    actionName, hook.getId(), eventId, e);
 
             // Persist event for retry
             if (eventId != null && topicName != null && enrichedPayload != null) {
-                HookEventRecord eventRecord = createEventRecord(
-                        eventId, hook, topicName, partitionKey, enrichedPayload,
-                        entityName, actionName, context, e);
+                HookEventRecord eventRecord = createEventRecord(eventId, hook, topicName, partitionKey, enrichedPayload, entityName,
+                        actionName, context, e);
                 eventRecordRepository.save(eventRecord);
 
                 // Trigger async retry
@@ -134,8 +132,8 @@ public class KafkaHookProcessor implements HookProcessor {
     /**
      * Create event record for persistence and retry.
      */
-    private HookEventRecord createEventRecord(String eventId, Hook hook, String topicName, String partitionKey,
-            String payload, String entityName, String actionName, FineractContext context, Exception error) {
+    private HookEventRecord createEventRecord(String eventId, Hook hook, String topicName, String partitionKey, String payload,
+            String entityName, String actionName, FineractContext context, Exception error) {
         HookEventRecord eventRecord = new HookEventRecord();
         eventRecord.setEventId(eventId);
         eventRecord.setHookId(hook.getId());
@@ -158,10 +156,7 @@ public class KafkaHookProcessor implements HookProcessor {
      */
     private String extractConfigValue(Hook hook, String fieldName) {
         Set<HookConfiguration> config = hook.getConfig();
-        return config.stream()
-                .filter(conf -> conf.getFieldName().equals(fieldName))
-                .findFirst()
-                .map(HookConfiguration::getFieldValue)
+        return config.stream().filter(conf -> conf.getFieldName().equals(fieldName)).findFirst().map(HookConfiguration::getFieldValue)
                 .orElse(null);
     }
 
@@ -253,8 +248,8 @@ public class KafkaHookProcessor implements HookProcessor {
     /**
      * Enrich payload with metadata (eventId, timestamp, tenant, eventType).
      */
-    private String enrichPayloadWithMetadata(String payload, String eventId, String entityName,
-            String actionName, FineractContext context) {
+    private String enrichPayloadWithMetadata(String payload, String eventId, String entityName, String actionName,
+            FineractContext context) {
         try {
             JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
 

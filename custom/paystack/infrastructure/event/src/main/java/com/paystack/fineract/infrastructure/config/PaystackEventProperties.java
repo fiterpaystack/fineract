@@ -40,6 +40,7 @@ public class PaystackEventProperties {
 
     @Data
     public static class ExternalProducerProperties {
+
         /**
          * Producer configuration.
          */
@@ -48,6 +49,7 @@ public class PaystackEventProperties {
 
     @Data
     public static class ProducerProperties {
+
         /**
          * Kafka async processing configuration.
          */
@@ -56,9 +58,10 @@ public class PaystackEventProperties {
 
     @Data
     public static class KafkaProperties {
+
         /**
-         * Enable stable idempotency key generation (deterministic keys).
-         * This ensures idempotency keys remain unchanged across retries.
+         * Enable stable idempotency key generation (deterministic keys). This ensures idempotency keys remain unchanged
+         * across retries.
          */
         private boolean stableIdempotencyEnabled = true;
 
@@ -70,6 +73,7 @@ public class PaystackEventProperties {
 
     @Data
     public static class AsyncProperties {
+
         /**
          * Core pool size for async Kafka notification processing thread pool.
          */
@@ -103,6 +107,7 @@ public class PaystackEventProperties {
 
     @Data
     public static class HookProperties {
+
         /**
          * Maximum number of retries for failed hook events.
          */

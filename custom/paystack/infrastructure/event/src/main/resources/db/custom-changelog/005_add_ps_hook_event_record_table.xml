@@ -30,7 +30,7 @@
             </not>
         </preConditions>
         <comment>Create table for hook event records to support retry and DLQ functionality</comment>
-        
+
         <createTable tableName="ps_hook_event_record">
             <column name="id" type="BIGINT" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
@@ -84,19 +84,19 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        
+
         <createIndex indexName="idx_ps_hook_event_record_event_id" tableName="ps_hook_event_record">
             <column name="event_id"/>
         </createIndex>
-        
+
         <createIndex indexName="idx_ps_hook_event_record_status" tableName="ps_hook_event_record">
             <column name="status"/>
         </createIndex>
-        
+
         <createIndex indexName="idx_ps_hook_event_record_hook_id" tableName="ps_hook_event_record">
             <column name="hook_id"/>
         </createIndex>
-        
+
         <createIndex indexName="idx_ps_hook_event_record_tenant" tableName="ps_hook_event_record">
             <column name="tenant_identifier"/>
         </createIndex>
