@@ -15,7 +15,9 @@ dependencies {
             'com.fasterxml.jackson.core:jackson-annotations',
             'org.xerial.snappy:snappy-java:1.1.8.4',
             'jakarta.ws.rs:jakarta.ws.rs-api',
-            'io.swagger.core.v3:swagger-annotations-jakarta'
+            'io.swagger.core.v3:swagger-annotations-jakarta',
+            'io.micrometer:micrometer-core',
+            'com.google.code.gson:gson'
             )
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

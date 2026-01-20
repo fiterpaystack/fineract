@@ -67,8 +67,11 @@ public class PaystackExternalEventKafkaConfiguration {
         // Idempotence for exactly-once semantics
         props.putIfAbsent(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
 
-        // Transactional properties for reliability
-        props.putIfAbsent(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "paystack-kafka-producer");
+        // Note: TRANSACTIONAL_ID_CONFIG is NOT set because:
+        // 1. Hooks are invoked from event listeners without transaction context
+        // 2. Idempotence (ENABLE_IDEMPOTENCE_CONFIG) provides exactly-once semantics
+        // 3. We have our own retry mechanism and DLQ for reliability
+        // 4. Kafka transactions are not needed for this use case
 
         return new DefaultKafkaProducerFactory<>(props);
     }

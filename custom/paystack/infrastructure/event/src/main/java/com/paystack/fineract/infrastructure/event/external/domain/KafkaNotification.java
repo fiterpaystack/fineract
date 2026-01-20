@@ -27,6 +27,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -81,7 +82,7 @@ public class KafkaNotification extends AbstractPersistableCustom<Long> {
         this.account = account;
         this.pndReason = pndReason;
         this.transactionDetails = transactionDetails;
-        this.createdDate = LocalDateTime.now();
+        this.createdDate = DateUtils.getAuditLocalDateTime();
         this.status = KafkaNotificationStatus.PENDING;
         this.numberOfRetries = 0;
     }

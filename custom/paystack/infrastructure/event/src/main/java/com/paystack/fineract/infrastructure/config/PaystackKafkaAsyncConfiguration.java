@@ -22,49 +22,39 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Configuration for asynchronous Kafka notification processing.
  */
 @AutoConfiguration
 @EnableAsync
+@EnableScheduling
 @ComponentScan(basePackages = "com.paystack.fineract.infrastructure.event")
 @ConditionalOnProperty(value = "fineract.events.external.producer.kafka.enabled", havingValue = "true")
+@RequiredArgsConstructor
 public class PaystackKafkaAsyncConfiguration {
 
-    @Value("${paystack.events.external.producer.kafka.async.core-pool-size:5}")
-    private int corePoolSize;
-
-    @Value("${paystack.events.external.producer.kafka.async.max-pool-size:20}")
-    private int maxPoolSize;
-
-    @Value("${paystack.events.external.producer.kafka.async.queue-capacity:100}")
-    private int queueCapacity;
-
-    @Value("${paystack.events.external.producer.kafka.async.keep-alive-seconds:60}")
-    private int keepAliveSeconds;
-
-    @Value("${paystack.events.external.producer.kafka.async.thread-name-prefix:paystack-kafka-notification-}")
-    private String threadNamePrefix;
-
-    @Value("${paystack.events.external.producer.kafka.async.max-retries:3}")
-    private int maxRetries;
+    private final PaystackEventProperties eventProperties;
 
     /**
      * Creates a dedicated thread pool executor for Kafka notification processing.
      */
     @Bean(name = "kafkaNotificationExecutor")
     public Executor kafkaNotificationExecutor() {
-        ThreadPoolExecutor executor = new ThreadPoolExecutor(corePoolSize, maxPoolSize, keepAliveSeconds, TimeUnit.SECONDS,
-                new LinkedBlockingQueue<>(queueCapacity), r -> {
+        PaystackEventProperties.AsyncProperties asyncProps = eventProperties.getExternal().getProducer().getKafka();
+
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(asyncProps.getCorePoolSize(), asyncProps.getMaxPoolSize(),
+                asyncProps.getKeepAliveSeconds(), TimeUnit.SECONDS, new LinkedBlockingQueue<>(asyncProps.getQueueCapacity()),
+                r -> {
                     Thread thread = new Thread(r);
-                    thread.setName(threadNamePrefix + System.currentTimeMillis());
+                    thread.setName(asyncProps.getThreadNamePrefix() + System.currentTimeMillis());
                     thread.setDaemon(true);
                     return thread;
                 }, new ThreadPoolExecutor.CallerRunsPolicy() // Fallback to caller thread if queue is full
@@ -81,6 +71,6 @@ public class PaystackKafkaAsyncConfiguration {
      */
     @Bean(name = "kafkaNotificationMaxRetries")
     public Integer kafkaNotificationMaxRetries() {
-        return maxRetries;
+        return eventProperties.getExternal().getProducer().getKafka().getMaxRetries();
     }
 }
