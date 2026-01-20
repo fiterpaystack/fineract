@@ -104,7 +104,7 @@ public class HookEventRetryService {
             log.info("Successfully retried hook event: eventId={}, retryCount={}, durationMs={}", eventRecord.getEventId(), attemptNumber,
                     durationMs);
 
-            metrics.recordEventRetry(eventRecord.getEntityName(), eventRecord.getActionName(), true);
+            metrics.recordEventRetry(eventRecord.getEntityName(), eventRecord.getActionName(), true, durationMs);
 
         } catch (InterruptedException e) {
             // Restore interruption status
@@ -131,7 +131,7 @@ public class HookEventRetryService {
             // If not exceeded, event remains PENDING and will be picked up by scheduled job
             // when the retry interval has elapsed (no immediate retry scheduling)
 
-            metrics.recordEventRetry(eventRecord.getEntityName(), eventRecord.getActionName(), false);
+            metrics.recordEventRetry(eventRecord.getEntityName(), eventRecord.getActionName(), false, durationMs);
         } catch (Exception e) {
             // Calculate duration
             long durationMs = (System.nanoTime() - startTimeNanos) / 1_000_000;
@@ -155,7 +155,7 @@ public class HookEventRetryService {
             // If not exceeded, event remains PENDING and will be picked up by scheduled job
             // when the retry interval has elapsed (no immediate retry scheduling)
 
-            metrics.recordEventRetry(eventRecord.getEntityName(), eventRecord.getActionName(), false);
+            metrics.recordEventRetry(eventRecord.getEntityName(), eventRecord.getActionName(), false, durationMs);
         }
     }
 

@@ -134,7 +134,7 @@ class HookEventRetryServiceTest {
         verify(kafkaTemplate).send(eq(pendingEvent.getTopicName()), eq(pendingEvent.getPartitionKey()), eq(pendingEvent.getPayload()));
         verify(eventRecordRepository, org.mockito.Mockito.atLeastOnce()).save(any(HookEventRecord.class));
         verify(retryAttemptRepository).save(any());
-        verify(metrics).recordEventRetry(pendingEvent.getEntityName(), pendingEvent.getActionName(), true);
+        verify(metrics).recordEventRetry(pendingEvent.getEntityName(), pendingEvent.getActionName(), true, anyLong());
         verify(dlqService, never()).sendToDLQ(any());
     }
 
@@ -185,7 +185,7 @@ class HookEventRetryServiceTest {
         assertThat(pendingEvent.getRetryCount()).isEqualTo(initialRetryCount + 1);
         verify(eventRecordRepository, org.mockito.Mockito.atLeastOnce()).save(any(HookEventRecord.class));
         verify(retryAttemptRepository).save(any());
-        verify(metrics).recordEventRetry(pendingEvent.getEntityName(), pendingEvent.getActionName(), false);
+        verify(metrics).recordEventRetry(pendingEvent.getEntityName(), pendingEvent.getActionName(), false, anyLong());
     }
 
     @Test
@@ -206,7 +206,7 @@ class HookEventRetryServiceTest {
         // Should not attempt to send to Kafka since max retries already exceeded
         verify(kafkaTemplate, never()).send(anyString(), anyString(), anyString());
         // Should not record retry metrics since we're not actually retrying
-        verify(metrics, never()).recordEventRetry(anyString(), anyString(), anyBoolean());
+        verify(metrics, never()).recordEventRetry(anyString(), anyString(), anyBoolean(), anyLong());
     }
 
     @Test

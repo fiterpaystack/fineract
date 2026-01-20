@@ -55,11 +55,23 @@ public class PaystackKafkaEventMetrics {
     }
 
     /**
-     * Record event retry (success or failure).
+     * Record event retry (success or failure) with optional duration.
+     *
+     * @param entityName the entity name
+     * @param actionName the action name
+     * @param success whether the retry was successful
+     * @param durationMs duration in milliseconds (optional, can be null)
      */
-    public void recordEventRetry(String entityName, String actionName, boolean success) {
+    public void recordEventRetry(String entityName, String actionName, boolean success, Long durationMs) {
         Counter.builder("fineract.kafka.hook.events.retry.total").tag(TAG_ENTITY_NAME, entityName).tag(TAG_ACTION_NAME, actionName)
                 .tag(TAG_STATUS, success ? "success" : "failure").register(meterRegistry).increment();
+
+        if (durationMs != null) {
+            Duration duration = Duration.ofMillis(durationMs);
+            Timer.builder("fineract.kafka.hook.events.retry.duration").tag(TAG_ENTITY_NAME, entityName)
+                    .tag(TAG_ACTION_NAME, actionName).tag(TAG_STATUS, success ? "success" : "failure")
+                    .register(meterRegistry).record(duration);
+        }
     }
 
     /**
