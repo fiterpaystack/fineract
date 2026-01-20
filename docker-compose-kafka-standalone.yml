@@ -1,0 +1,97 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements. See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership. The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under this License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+# Standalone Kafka Docker Compose for Local Development
+# This file provides a simple Kafka setup for testing the hook event system
+#
+# Usage:
+#   docker-compose -f docker-compose-kafka-standalone.yml up -d
+#   docker-compose -f docker-compose-kafka-standalone.yml up -d --profile ui  # With Kafka UI
+#   docker-compose -f docker-compose-kafka-standalone.yml down
+#
+# Kafka will be available at:
+#   - Broker: localhost:9092
+#   - Kafka UI (if enabled): http://localhost:8080
+
+services:
+  kafka:
+    image: "apache/kafka:3.7.0"
+    container_name: paystack-kafka
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      # KRaft mode (Kafka without Zookeeper) - simpler setup
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: controller,broker
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      # Advertised listeners - important for external access
+      # PLAINTEXT://host.docker.internal:9092 - for app containers using host.docker.internal
+      # EXTERNAL://localhost:9092 - for host machine access
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://host.docker.internal:9092,EXTERNAL://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      # Auto-create topics
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      # Log retention
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_RETENTION_BYTES: 1073741824
+      # Default partitions for auto-created topics
+      KAFKA_NUM_PARTITIONS: 3
+      # Replication factor (1 for single broker)
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - kafka-network
+
+  # Optional: Kafka UI for easier topic/message management
+  kafka-ui:
+    image: "provectuslabs/kafka-ui:latest"
+    container_name: paystack-kafka-ui
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: ""
+      DYNAMIC_CONFIG_ENABLED: "true"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - kafka-network
+    profiles:
+      - ui  # Only start with: docker-compose --profile ui up
+
+volumes:
+  kafka-data:
+    driver: local
+
+networks:
+  kafka-network:
+    driver: bridge

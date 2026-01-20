@@ -34,10 +34,16 @@ import org.springframework.stereotype.Component;
 /**
  * Generates stable, deterministic event IDs for hook-based Kafka events.
  *
- * Format: {entityName}_{actionName}_{aggregateRootId}_{businessDate}_{hash}
+ * Format: {entityName}_{actionName}_{uniqueId}_{businessDate}_{hash}
+ *
+ * Unique ID priority:
+ * 1. resourceId (transaction ID) - for transaction events (e.g., DEPOSIT, WITHDRAWAL)
+ * 2. savingsId/accountId - for account-level events
+ * 3. clientId - for client-level events (fallback)
  *
  * This ensures the same event generates the same ID across retries, enabling downstream duplicate detection
- * (requirement #4).
+ * (requirement #4). Each transaction gets a unique eventId even if multiple transactions occur on the same
+ * account/client on the same day.
  */
 @Component
 @RequiredArgsConstructor
@@ -61,7 +67,7 @@ public class PaystackHookEventIdGenerator {
      */
     public String generate(String entityName, String actionName, String payload, FineractContext context) {
         try {
-            // Extract aggregate root ID from payload (clientId or accountId)
+            // Extract unique identifier from payload (resourceId/transactionId for transactions, or accountId/clientId as fallback)
             String aggregateRootId = extractAggregateRootId(payload);
 
             // Get business date
@@ -91,7 +97,12 @@ public class PaystackHookEventIdGenerator {
     }
 
     /**
-     * Extract aggregate root ID (clientId or accountId) from payload.
+     * Extract aggregate root ID (resourceId/transactionId for uniqueness, or clientId/accountId as fallback) from payload.
+     * 
+     * Priority:
+     * 1. resourceId (transaction ID) - unique per transaction (e.g., deposit, withdrawal)
+     * 2. savingsId/accountId - unique per account
+     * 3. clientId - unique per client (fallback for non-transaction events)
      */
     private String extractAggregateRootId(String payload) {
         if (payload == null || payload.isBlank()) {
@@ -100,18 +111,35 @@ public class PaystackHookEventIdGenerator {
         try {
             JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
 
-            // Check for clientId in response
+            // Priority 1: Check for resourceId in response (transaction ID - unique per transaction)
             if (json.has("response")) {
                 JsonObject response = json.getAsJsonObject("response");
-                if (response.has("clientId") && !response.get("clientId").isJsonNull()) {
-                    return response.get("clientId").getAsString();
-                }
+                // resourceId is the transaction ID (unique per deposit/withdrawal)
                 if (response.has("resourceId") && !response.get("resourceId").isJsonNull()) {
                     return response.get("resourceId").getAsString();
                 }
+                // savingsId is the account ID (unique per account)
+                if (response.has("savingsId") && !response.get("savingsId").isJsonNull()) {
+                    return response.get("savingsId").getAsString();
+                }
+                // clientId as fallback
+                if (response.has("clientId") && !response.get("clientId").isJsonNull()) {
+                    return response.get("clientId").getAsString();
+                }
             }
 
-            // Check for clientId in request
+            // Priority 2: Check at root level
+            if (json.has("resourceId") && !json.get("resourceId").isJsonNull()) {
+                return json.get("resourceId").getAsString();
+            }
+            if (json.has("savingsId") && !json.get("savingsId").isJsonNull()) {
+                return json.get("savingsId").getAsString();
+            }
+            if (json.has("accountId") && !json.get("accountId").isJsonNull()) {
+                return json.get("accountId").getAsString();
+            }
+
+            // Priority 3: Check for clientId in request
             if (json.has("request")) {
                 JsonObject request = json.getAsJsonObject("request");
                 if (request.has("clientId") && !request.get("clientId").isJsonNull()) {
@@ -119,15 +147,9 @@ public class PaystackHookEventIdGenerator {
                 }
             }
 
-            // Check at root level
+            // Priority 4: Check clientId at root level (fallback)
             if (json.has("clientId") && !json.get("clientId").isJsonNull()) {
                 return json.get("clientId").getAsString();
-            }
-            if (json.has("accountId") && !json.get("accountId").isJsonNull()) {
-                return json.get("accountId").getAsString();
-            }
-            if (json.has("resourceId") && !json.get("resourceId").isJsonNull()) {
-                return json.get("resourceId").getAsString();
             }
 
         } catch (Exception e) {
