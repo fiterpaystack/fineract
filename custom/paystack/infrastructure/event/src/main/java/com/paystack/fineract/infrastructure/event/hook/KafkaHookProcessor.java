@@ -37,6 +37,7 @@ import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.hooks.domain.Hook;
 import org.apache.fineract.infrastructure.hooks.domain.HookConfiguration;
 import org.apache.fineract.infrastructure.hooks.processor.HookProcessor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
@@ -102,7 +103,8 @@ public class KafkaHookProcessor implements HookProcessor {
             SendResult<String, String> result = future.get(5, TimeUnit.SECONDS);
 
             Duration duration = Duration.ofNanos(System.nanoTime() - startTime);
-            log.debug("Successfully published Kafka hook event: eventId={}, topic={}, partitionKey={}, entity={}, action={}", eventId,
+            log.debug("Successfully published Kafka hook event: eventId={}, topic={}, partitionKey={}, entity={}, action={}. "
+                    + "Note: No DB record created for successful publishes (DB only tracks failed events for retry).", eventId,
                     topicName, partitionKey, entityName, actionName);
 
             metrics.recordEventProduced(entityName, actionName, true, duration);
@@ -112,14 +114,49 @@ public class KafkaHookProcessor implements HookProcessor {
             log.warn("Failed to publish Kafka hook event synchronously: entity={}, action={}, hookId={}, eventId={}", entityName,
                     actionName, hook.getId(), eventId, e);
 
-            // Persist event for retry
+            // Persist event for retry (with duplicate detection)
+            // IMPORTANT: Events are ONLY saved to DB when Kafka publish fails.
+            // Successful publishes do NOT create DB records (DB is only for retry/DLQ tracking).
+            // The eventId has a unique constraint to prevent duplicate records.
             if (eventId != null && topicName != null && enrichedPayload != null) {
-                HookEventRecord eventRecord = createEventRecord(eventId, hook, topicName, partitionKey, enrichedPayload, entityName,
-                        actionName, context, e);
-                eventRecordRepository.save(eventRecord);
-
-                // Trigger async retry
-                retryService.scheduleRetry(eventRecord);
+                try {
+                    // Check if event already exists (duplicate detection)
+                    HookEventRecord existingRecord = eventRecordRepository.findByEventId(eventId).orElse(null);
+                    
+                    if (existingRecord != null) {
+                        log.info("Event record already exists in DB for eventId={}, status={}. "
+                                + "Skipping duplicate save. This can happen if the same event failed multiple times. "
+                                + "Event will be automatically retried by scheduled job when eligible.", eventId,
+                                existingRecord.getStatus());
+                        // Event remains in PENDING/FAILED status and will be picked up by scheduled job
+                        // when the retry interval has elapsed (no immediate retry scheduling)
+                    } else {
+                        // Create new event record for retry
+                        log.info("Saving event record to DB for retry: eventId={}, entity={}, action={}", eventId, entityName, actionName);
+                        HookEventRecord eventRecord = createEventRecord(eventId, hook, topicName, partitionKey, enrichedPayload, entityName,
+                                actionName, context, e);
+                        
+                        try {
+                            eventRecordRepository.save(eventRecord);
+                            log.info("Event record saved successfully: eventId={}, status={}. "
+                                    + "Event will be automatically retried by scheduled job when eligible (based on retry interval).",
+                                    eventId, eventRecord.getStatus());
+                            // No immediate retry scheduling - event will be picked up by scheduled job
+                            // when the configured retry interval has elapsed
+                        } catch (DataIntegrityViolationException dive) {
+                            // Handle race condition: another thread might have saved the same eventId concurrently
+                            final String finalEventId = eventId; // Make effectively final for lambda
+                            log.warn("Duplicate eventId detected during save (race condition): eventId={}. "
+                                    + "Another thread may have saved this event. Event will be automatically retried by scheduled job when eligible.",
+                                    finalEventId);
+                            // Event will be picked up by scheduled job automatically (no need to schedule retry)
+                        }
+                    }
+                } catch (Exception saveException) {
+                    log.error("Failed to persist event record for retry: eventId={}, entity={}, action={}. "
+                            + "Event will not be retried automatically.", eventId, entityName, actionName, saveException);
+                    // Don't throw - we don't want to fail the command
+                }
             }
 
             metrics.recordEventProduced(entityName, actionName, false, duration);
@@ -180,24 +217,49 @@ public class KafkaHookProcessor implements HookProcessor {
     }
 
     /**
-     * Extract aggregate root ID (clientId or accountId) from payload.
+     * Extract aggregate root ID for Kafka partition key.
+     * 
+     * Priority for partition key:
+     * 1. resourceId (transaction ID) - unique per transaction (e.g., DEPOSIT, WITHDRAWAL)
+     * 2. savingsId/accountId - unique per account
+     * 3. clientId - unique per client (fallback for non-transaction events)
+     * 
+     * Note: Using resourceId ensures each transaction gets a unique partition key,
+     * which is important for transaction-level event uniqueness and idempotency.
      */
     private String extractAggregateRootId(String payload) {
         try {
             JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
 
-            // Check response first (most reliable)
+            // Priority 1: Check for resourceId in response (transaction ID - unique per transaction)
             if (json.has("response")) {
                 JsonObject response = json.getAsJsonObject("response");
-                if (response.has("clientId") && !response.get("clientId").isJsonNull()) {
-                    return response.get("clientId").getAsString();
-                }
+                // resourceId is the transaction ID (unique per deposit/withdrawal)
                 if (response.has("resourceId") && !response.get("resourceId").isJsonNull()) {
                     return response.get("resourceId").getAsString();
                 }
+                // savingsId is the account ID (unique per account)
+                if (response.has("savingsId") && !response.get("savingsId").isJsonNull()) {
+                    return response.get("savingsId").getAsString();
+                }
+                // clientId as fallback
+                if (response.has("clientId") && !response.get("clientId").isJsonNull()) {
+                    return response.get("clientId").getAsString();
+                }
             }
 
-            // Check request
+            // Priority 2: Check at root level
+            if (json.has("resourceId") && !json.get("resourceId").isJsonNull()) {
+                return json.get("resourceId").getAsString();
+            }
+            if (json.has("savingsId") && !json.get("savingsId").isJsonNull()) {
+                return json.get("savingsId").getAsString();
+            }
+            if (json.has("accountId") && !json.get("accountId").isJsonNull()) {
+                return json.get("accountId").getAsString();
+            }
+
+            // Priority 3: Check for clientId in request
             if (json.has("request")) {
                 JsonObject request = json.getAsJsonObject("request");
                 if (request.has("clientId") && !request.get("clientId").isJsonNull()) {
@@ -205,12 +267,9 @@ public class KafkaHookProcessor implements HookProcessor {
                 }
             }
 
-            // Check root level
+            // Priority 4: Check clientId at root level (fallback)
             if (json.has("clientId") && !json.get("clientId").isJsonNull()) {
                 return json.get("clientId").getAsString();
-            }
-            if (json.has("accountId") && !json.get("accountId").isJsonNull()) {
-                return json.get("accountId").getAsString();
             }
 
         } catch (Exception e) {

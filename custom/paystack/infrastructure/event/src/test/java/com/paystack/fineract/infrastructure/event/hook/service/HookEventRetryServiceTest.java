@@ -100,8 +100,8 @@ class HookEventRetryServiceTest {
         PaystackEventProperties.KafkaProperties kafkaProperties = new PaystackEventProperties.KafkaProperties();
         PaystackEventProperties.HookProperties hookProperties = new PaystackEventProperties.HookProperties();
         hookProperties.setMaxRetries(3);
-        hookProperties.setRetryInitialDelayMs(1000L);
-        hookProperties.setRetryMaxDelayMs(30000L);
+        hookProperties.setRetryIntervalValue(5L);
+        hookProperties.setRetryIntervalUnit(com.paystack.fineract.infrastructure.config.RetryIntervalUnit.MINUTE);
         kafkaProperties.setHook(hookProperties);
         when(eventProperties.getKafka()).thenReturn(kafkaProperties);
 

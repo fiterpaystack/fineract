@@ -114,19 +114,22 @@ public class PaystackEventProperties {
         private Integer maxRetries = 3;
 
         /**
-         * Initial retry delay in milliseconds (exponential backoff starts here).
+         * Retry interval value (e.g., 5 for "5 minutes").
+         * Default: 5
          */
-        private Long retryInitialDelayMs = 1000L;
+        private long retryIntervalValue = 5L;
 
         /**
-         * Maximum retry delay in milliseconds (caps exponential backoff).
+         * Retry interval unit (SECOND, MINUTE, HOUR, DAY).
+         * Default: MINUTE
          */
-        private Long retryMaxDelayMs = 30000L;
+        private RetryIntervalUnit retryIntervalUnit = RetryIntervalUnit.MINUTE;
 
         /**
-         * Interval in milliseconds for scheduled retry job.
+         * Interval in milliseconds for scheduled retry job (how often the job runs to check for eligible events).
+         * Default: 60000 (1 minute)
          */
-        private Long retryIntervalMs = 60000L;
+        private long retryCheckIntervalMs = 60000L;
 
         /**
          * Dead Letter Queue topic name for failed events.

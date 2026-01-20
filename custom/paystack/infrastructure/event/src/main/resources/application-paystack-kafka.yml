@@ -67,14 +67,15 @@ paystack:
         # Maximum number of retries for failed hook events
         max-retries: ${PAYSTACK_KAFKA_HOOK_MAX_RETRIES:3}
 
-        # Initial retry delay in milliseconds (exponential backoff starts here)
-        retry-initial-delay-ms: ${PAYSTACK_KAFKA_HOOK_RETRY_INITIAL_DELAY_MS:1000}
+        # Retry interval configuration (time-based retries)
+        # Value: numeric value for the interval (e.g., 5 for "5 minutes")
+        retry-interval-value: ${PAYSTACK_KAFKA_HOOK_RETRY_INTERVAL_VALUE:5}
+        # Unit: SECONDS, MINUTES, HOURS, or DAYS
+        retry-interval-unit: ${PAYSTACK_KAFKA_HOOK_RETRY_INTERVAL_UNIT:MINUTE}
 
-        # Maximum retry delay in milliseconds (caps exponential backoff)
-        retry-max-delay-ms: ${PAYSTACK_KAFKA_HOOK_RETRY_MAX_DELAY_MS:30000}
-
-        # Interval in milliseconds for scheduled retry job
-        retry-interval-ms: ${PAYSTACK_KAFKA_HOOK_RETRY_INTERVAL_MS:60000}
+        # Interval in milliseconds for scheduled retry job (how often the job runs to check for eligible events)
+        # Default: 60000 (1 minute) - job checks every minute for events ready to retry
+        retry-check-interval-ms: ${PAYSTACK_KAFKA_HOOK_RETRY_CHECK_INTERVAL_MS:60000}
 
         # Dead Letter Queue topic name for failed events
         dlq-topic: ${PAYSTACK_KAFKA_HOOK_DLQ_TOPIC:fineract-client-account-events-dlq}
