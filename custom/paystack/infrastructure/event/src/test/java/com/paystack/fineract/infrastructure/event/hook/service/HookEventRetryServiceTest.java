@@ -21,10 +21,12 @@ package com.paystack.fineract.infrastructure.event.hook.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -41,7 +43,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
 import java.util.concurrent.TimeoutException;
 import org.apache.fineract.infrastructure.core.domain.FineractPlatformTenant;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
@@ -84,9 +85,6 @@ class HookEventRetryServiceTest {
     @Mock
     private TenantDetailsService tenantDetailsService;
 
-    @Mock
-    private Executor kafkaHookRetryExecutor;
-
     private HookEventRetryService retryService;
 
     private HookEventRecord pendingEvent;
@@ -107,7 +105,7 @@ class HookEventRetryServiceTest {
 
         // Manually construct service since @Qualifier doesn't work well with @InjectMocks
         retryService = new HookEventRetryService(eventRecordRepository, retryAttemptRepository, kafkaTemplate, dlqService, metrics,
-                eventProperties, tenantDetailsService, kafkaHookRetryExecutor);
+                eventProperties, tenantDetailsService);
     }
 
     @Test
