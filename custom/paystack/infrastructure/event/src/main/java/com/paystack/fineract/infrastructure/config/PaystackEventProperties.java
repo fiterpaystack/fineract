@@ -114,14 +114,12 @@ public class PaystackEventProperties {
         private Integer maxRetries = 3;
 
         /**
-         * Retry interval value (e.g., 5 for "5 minutes").
-         * Default: 5
+         * Retry interval value (e.g., 5 for "5 minutes"). Default: 5
          */
         private long retryIntervalValue = 5L;
 
         /**
-         * Retry interval unit (SECOND, MINUTE, HOUR, DAY).
-         * Default: MINUTE
+         * Retry interval unit (SECOND, MINUTE, HOUR, DAY). Default: MINUTE
          */
         private RetryIntervalUnit retryIntervalUnit = RetryIntervalUnit.MINUTE;
 

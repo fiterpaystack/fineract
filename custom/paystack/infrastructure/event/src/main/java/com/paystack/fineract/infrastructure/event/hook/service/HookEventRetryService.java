@@ -179,17 +179,16 @@ public class HookEventRetryService {
     private Duration getRetryIntervalDuration() {
         PaystackEventProperties.HookProperties hookProps = eventProperties.getKafka().getHook();
         long value = hookProps.getRetryIntervalValue();
-        RetryIntervalUnit unit = hookProps.getRetryIntervalUnit() != null ? hookProps.getRetryIntervalUnit()
-                : RetryIntervalUnit.MINUTE;
+        RetryIntervalUnit unit = hookProps.getRetryIntervalUnit() != null ? hookProps.getRetryIntervalUnit() : RetryIntervalUnit.MINUTE;
         return unit.toDuration(value);
     }
 
     /**
      * Batch retry all pending events (scheduled job). Processes events for all tenants by iterating over each tenant
      * and setting the tenant context.
-     * 
-     * Only retries events that are eligible based on the configured retry interval (time-based).
-     * An event is eligible if enough time has passed since the last retry (or since creation if never retried).
+     *
+     * Only retries events that are eligible based on the configured retry interval (time-based). An event is eligible
+     * if enough time has passed since the last retry (or since creation if never retried).
      */
     @Scheduled(fixedDelayString = "${paystack.events.kafka.hook.retry-check-interval-ms:60000}")
     public void retryPendingEvents() {
@@ -245,8 +244,7 @@ public class HookEventRetryService {
      */
     private void handleGeneralException(FineractPlatformTenant tenant, Exception e) {
         if (isTableMissingError(e)) {
-            log.debug("Hook event tables not yet created for tenant: {}. Migrations may still be running.",
-                    tenant.getTenantIdentifier());
+            log.debug("Hook event tables not yet created for tenant: {}. Migrations may still be running.", tenant.getTenantIdentifier());
             return;
         }
         log.error("Unexpected error processing pending hook events for tenant: {}", tenant.getTenantIdentifier(), e);
@@ -270,16 +268,15 @@ public class HookEventRetryService {
     private void logTableMissingWarning(FineractPlatformTenant tenant) {
         String schemaName = tenant.getConnection() != null ? tenant.getConnection().getSchemaName() : "unknown";
         log.warn(
-                "Hook event tables not found for tenant: {} (schema: {}). "
-                        + "Migrations may not have run for this tenant. "
+                "Hook event tables not found for tenant: {} (schema: {}). " + "Migrations may not have run for this tenant. "
                         + "Please verify migrations have executed for tenant '{}' in database '{}'. "
                         + "See MIGRATION_DIAGNOSTICS.md for troubleshooting steps.",
                 tenant.getTenantIdentifier(), schemaName, tenant.getTenantIdentifier(), schemaName);
     }
 
     /**
-     * Process pending events for a specific tenant.
-     * Only processes events that are eligible for retry based on the configured time interval.
+     * Process pending events for a specific tenant. Only processes events that are eligible for retry based on the
+     * configured time interval.
      */
     private void processPendingEventsForTenant(String tenantIdentifier) {
         // Calculate cutoff time: events with lastRetryAt (or createdAt if never retried) before this time are eligible
@@ -294,8 +291,8 @@ public class HookEventRetryService {
             return;
         }
 
-        log.info("Processing {} eligible hook events for retry in tenant: {} (retry interval: {}, cutoff time: {})",
-                eligibleEvents.size(), tenantIdentifier, retryInterval, cutoffTime);
+        log.info("Processing {} eligible hook events for retry in tenant: {} (retry interval: {}, cutoff time: {})", eligibleEvents.size(),
+                tenantIdentifier, retryInterval, cutoffTime);
 
         for (HookEventRecord event : eligibleEvents) {
             retryEvent(event);

@@ -36,10 +36,8 @@ import org.springframework.stereotype.Component;
  *
  * Format: {entityName}_{actionName}_{uniqueId}_{businessDate}_{hash}
  *
- * Unique ID priority:
- * 1. resourceId (transaction ID) - for transaction events (e.g., DEPOSIT, WITHDRAWAL)
- * 2. savingsId/accountId - for account-level events
- * 3. clientId - for client-level events (fallback)
+ * Unique ID priority: 1. resourceId (transaction ID) - for transaction events (e.g., DEPOSIT, WITHDRAWAL) 2.
+ * savingsId/accountId - for account-level events 3. clientId - for client-level events (fallback)
  *
  * This ensures the same event generates the same ID across retries, enabling downstream duplicate detection
  * (requirement #4). Each transaction gets a unique eventId even if multiple transactions occur on the same
@@ -67,7 +65,8 @@ public class PaystackHookEventIdGenerator {
      */
     public String generate(String entityName, String actionName, String payload, FineractContext context) {
         try {
-            // Extract unique identifier from payload (resourceId/transactionId for transactions, or accountId/clientId as fallback)
+            // Extract unique identifier from payload (resourceId/transactionId for transactions, or accountId/clientId
+            // as fallback)
             String aggregateRootId = extractAggregateRootId(payload);
 
             // Get business date
@@ -97,12 +96,11 @@ public class PaystackHookEventIdGenerator {
     }
 
     /**
-     * Extract aggregate root ID (resourceId/transactionId for uniqueness, or clientId/accountId as fallback) from payload.
-     * 
-     * Priority:
-     * 1. resourceId (transaction ID) - unique per transaction (e.g., deposit, withdrawal)
-     * 2. savingsId/accountId - unique per account
-     * 3. clientId - unique per client (fallback for non-transaction events)
+     * Extract aggregate root ID (resourceId/transactionId for uniqueness, or clientId/accountId as fallback) from
+     * payload.
+     *
+     * Priority: 1. resourceId (transaction ID) - unique per transaction (e.g., deposit, withdrawal) 2.
+     * savingsId/accountId - unique per account 3. clientId - unique per client (fallback for non-transaction events)
      */
     private String extractAggregateRootId(String payload) {
         if (payload == null || payload.isBlank()) {

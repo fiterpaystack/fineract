@@ -22,14 +22,11 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 
 /**
- * Units for retry interval configuration.
- * Supports SECONDS, MINUTES, HOURS, and DAYS.
+ * Units for retry interval configuration. Supports SECONDS, MINUTES, HOURS, and DAYS.
  */
 public enum RetryIntervalUnit {
-    SECOND(ChronoUnit.SECONDS),
-    MINUTE(ChronoUnit.MINUTES),
-    HOUR(ChronoUnit.HOURS),
-    DAY(ChronoUnit.DAYS);
+
+    SECOND(ChronoUnit.SECONDS), MINUTE(ChronoUnit.MINUTES), HOUR(ChronoUnit.HOURS), DAY(ChronoUnit.DAYS);
 
     private final ChronoUnit chronoUnit;
 
@@ -40,7 +37,8 @@ public enum RetryIntervalUnit {
     /**
      * Convert value and unit to Duration.
      *
-     * @param value the numeric value
+     * @param value
+     *            the numeric value
      * @return Duration representing the interval
      */
     public Duration toDuration(long value) {

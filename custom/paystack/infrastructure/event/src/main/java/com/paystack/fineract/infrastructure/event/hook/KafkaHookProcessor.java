@@ -103,9 +103,10 @@ public class KafkaHookProcessor implements HookProcessor {
             SendResult<String, String> result = future.get(5, TimeUnit.SECONDS);
 
             Duration duration = Duration.ofNanos(System.nanoTime() - startTime);
-            log.debug("Successfully published Kafka hook event: eventId={}, topic={}, partitionKey={}, entity={}, action={}. "
-                    + "Note: No DB record created for successful publishes (DB only tracks failed events for retry).", eventId,
-                    topicName, partitionKey, entityName, actionName);
+            log.debug(
+                    "Successfully published Kafka hook event: eventId={}, topic={}, partitionKey={}, entity={}, action={}. "
+                            + "Note: No DB record created for successful publishes (DB only tracks failed events for retry).",
+                    eventId, topicName, partitionKey, entityName, actionName);
 
             metrics.recordEventProduced(entityName, actionName, true, duration);
 
@@ -122,12 +123,13 @@ public class KafkaHookProcessor implements HookProcessor {
                 try {
                     // Check if event already exists (duplicate detection)
                     HookEventRecord existingRecord = eventRecordRepository.findByEventId(eventId).orElse(null);
-                    
+
                     if (existingRecord != null) {
-                        log.info("Event record already exists in DB for eventId={}, status={}. "
-                                + "Skipping duplicate save. This can happen if the same event failed multiple times. "
-                                + "Event will be automatically retried by scheduled job when eligible.", eventId,
-                                existingRecord.getStatus());
+                        log.info(
+                                "Event record already exists in DB for eventId={}, status={}. "
+                                        + "Skipping duplicate save. This can happen if the same event failed multiple times. "
+                                        + "Event will be automatically retried by scheduled job when eligible.",
+                                eventId, existingRecord.getStatus());
                         // Event remains in PENDING/FAILED status and will be picked up by scheduled job
                         // when the retry interval has elapsed (no immediate retry scheduling)
                     } else {
@@ -135,7 +137,7 @@ public class KafkaHookProcessor implements HookProcessor {
                         log.info("Saving event record to DB for retry: eventId={}, entity={}, action={}", eventId, entityName, actionName);
                         HookEventRecord eventRecord = createEventRecord(eventId, hook, topicName, partitionKey, enrichedPayload, entityName,
                                 actionName, context, e);
-                        
+
                         try {
                             eventRecordRepository.save(eventRecord);
                             log.info("Event record saved successfully: eventId={}, status={}. "
@@ -218,14 +220,12 @@ public class KafkaHookProcessor implements HookProcessor {
 
     /**
      * Extract aggregate root ID for Kafka partition key.
-     * 
-     * Priority for partition key:
-     * 1. resourceId (transaction ID) - unique per transaction (e.g., DEPOSIT, WITHDRAWAL)
-     * 2. savingsId/accountId - unique per account
-     * 3. clientId - unique per client (fallback for non-transaction events)
-     * 
-     * Note: Using resourceId ensures each transaction gets a unique partition key,
-     * which is important for transaction-level event uniqueness and idempotency.
+     *
+     * Priority for partition key: 1. resourceId (transaction ID) - unique per transaction (e.g., DEPOSIT, WITHDRAWAL)
+     * 2. savingsId/accountId - unique per account 3. clientId - unique per client (fallback for non-transaction events)
+     *
+     * Note: Using resourceId ensures each transaction gets a unique partition key, which is important for
+     * transaction-level event uniqueness and idempotency.
      */
     private String extractAggregateRootId(String payload) {
         try {

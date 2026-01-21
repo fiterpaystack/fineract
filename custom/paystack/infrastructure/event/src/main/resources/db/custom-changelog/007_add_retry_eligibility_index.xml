@@ -35,7 +35,7 @@
         <!-- Composite index for retry eligibility query optimization -->
         <!-- This index supports the findEligibleForRetry query which filters by:
              status, retry_count < max_retries, and COALESCE(last_retry_at, created_at) <= cutoff_time
-             
+
              Index order is optimized for the query:
              1. status - most selective filter (typically PENDING)
              2. retry_count - used in retry_count < max_retries comparison

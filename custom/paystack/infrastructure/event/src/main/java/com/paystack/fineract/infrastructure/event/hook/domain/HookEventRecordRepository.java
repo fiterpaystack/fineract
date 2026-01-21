@@ -60,26 +60,25 @@ public interface HookEventRecordRepository extends JpaRepository<HookEventRecord
     List<HookEventRecord> findByTenantIdentifier(String tenantIdentifier);
 
     /**
-     * Find pending events eligible for retry based on time interval.
-     * An event is eligible if:
-     * - Status is PENDING
-     * - retryCount < maxRetries
-     * - COALESCE(lastRetryAt, createdAt) <= cutoffTime
+     * Find pending events eligible for retry based on time interval. An event is eligible if: - Status is PENDING -
+     * retryCount < maxRetries - COALESCE(lastRetryAt, createdAt) <= cutoffTime
      *
-     * Performance optimization: Uses COALESCE to avoid OR condition, enabling better index usage.
-     * The query uses COALESCE(lastRetryAt, createdAt) which returns lastRetryAt if not null,
-     * otherwise createdAt. This allows the database to use indexes more efficiently.
+     * Performance optimization: Uses COALESCE to avoid OR condition, enabling better index usage. The query uses
+     * COALESCE(lastRetryAt, createdAt) which returns lastRetryAt if not null, otherwise createdAt. This allows the
+     * database to use indexes more efficiently.
      *
-     * @param status the status to filter by (typically PENDING)
-     * @param cutoffTime the cutoff time - events with lastRetryAt (or createdAt if never retried) before this time are eligible
+     * @param status
+     *            the status to filter by (typically PENDING)
+     * @param cutoffTime
+     *            the cutoff time - events with lastRetryAt (or createdAt if never retried) before this time are
+     *            eligible
      * @return List of eligible events for retry
      */
     @Query("""
-            SELECT e FROM HookEventRecord e 
-            WHERE e.status = :status 
+            SELECT e FROM HookEventRecord e
+            WHERE e.status = :status
             AND e.retryCount < e.maxRetries
             AND COALESCE(e.lastRetryAt, e.createdAt) <= :cutoffTime
             """)
-    List<HookEventRecord> findEligibleForRetry(@Param("status") HookEventStatus status,
-            @Param("cutoffTime") LocalDateTime cutoffTime);
+    List<HookEventRecord> findEligibleForRetry(@Param("status") HookEventStatus status, @Param("cutoffTime") LocalDateTime cutoffTime);
 }
