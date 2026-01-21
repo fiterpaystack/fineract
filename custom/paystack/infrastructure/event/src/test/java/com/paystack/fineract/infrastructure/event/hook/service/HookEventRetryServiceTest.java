@@ -88,12 +88,10 @@ class HookEventRetryServiceTest {
     private HookEventRetryService retryService;
 
     private HookEventRecord pendingEvent;
-    private HookEventRecord failedEvent;
 
     @BeforeEach
     void setUp() {
         pendingEvent = createEventRecord(1L, "event-1", HookEventStatus.PENDING, 1);
-        failedEvent = createEventRecord(2L, "event-2", HookEventStatus.FAILED, 3);
 
         PaystackEventProperties.KafkaProperties kafkaProperties = new PaystackEventProperties.KafkaProperties();
         PaystackEventProperties.HookProperties hookProperties = new PaystackEventProperties.HookProperties();
