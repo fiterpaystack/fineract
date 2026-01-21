@@ -23,6 +23,8 @@ import com.paystack.fineract.infrastructure.event.hook.data.RetryAttemptData;
 import com.paystack.fineract.infrastructure.event.hook.domain.HookEventRecord;
 import com.paystack.fineract.infrastructure.event.hook.domain.HookEventStatus;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 /**
  * Service interface for reading hook event operations.
@@ -41,13 +43,15 @@ public interface HookEventReadPlatformService {
     HookEventRecord retrieveOne(String eventId);
 
     /**
-     * Retrieve all hook events as data objects, optionally filtered by status.
+     * Retrieve all hook events as data objects with pagination, optionally filtered by status.
      *
      * @param status
      *            optional status filter. If null, returns all events.
-     * @return List of hook event data objects
+     * @param pageable
+     *            pagination parameters
+     * @return Page of hook event data objects
      */
-    List<HookEventData> retrieveAll(HookEventStatus status);
+    Page<HookEventData> retrieveAll(HookEventStatus status, Pageable pageable);
 
     /**
      * Validate and parse status string to enum.

@@ -42,8 +42,11 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.fineract.infrastructure.core.api.jersey.Pagination;
 import org.apache.fineract.infrastructure.core.exception.UnrecognizedQueryParamException;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 /**
@@ -128,32 +131,31 @@ public class HookEventApiResource {
     }
 
     /**
-     * Get hook events with optional status filter.
+     * Get hook events with optional status filter and pagination.
      *
      * @param statusParam
      *            Optional status filter (PENDING, SENT, FAILED, DLQ). If not provided, returns all events.
+     * @param pageable
+     *            Pagination parameters (page, size, sort). Default page size is 50, maximum is 1000.
      */
     @GET
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "List Hook Events", description = "Retrieve hook events with optional status filter. Use status query parameter to filter by PENDING, SENT, FAILED, or DLQ")
-    @ApiResponses({ @ApiResponse(responseCode = "200", description = "List of hook events") })
-    public Response getHookEvents(
-            @QueryParam("status") @Parameter(description = "Filter by status (PENDING, SENT, FAILED, DLQ)") final String statusParam) {
+    @Operation(summary = "List Hook Events", description = "Retrieve hook events with optional status filter and pagination. Use status query parameter to filter by PENDING, SENT, FAILED, or DLQ. Use page, size, and sort query parameters for pagination.")
+    @ApiResponses({ @ApiResponse(responseCode = "200", description = "Paginated list of hook events") })
+    public Page<HookEventData> getHookEvents(
+            @QueryParam("status") @Parameter(description = "Filter by status (PENDING, SENT, FAILED, DLQ)") final String statusParam,
+            @QueryParam("page") @Parameter(description = "Page number (0-based)") final Integer page,
+            @QueryParam("size") @Parameter(description = "Page size") final Integer size,
+            @QueryParam("sort") @Parameter(description = "Sort criteria (e.g., createdAt,desc)") final String sort,
+            @Parameter(hidden = true) @Pagination(size = 50, maximumSize = 1000) final Pageable pageable) {
         this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
 
         // Validate and parse status (throws UnrecognizedQueryParamException if invalid)
         HookEventStatus status = readPlatformService.validateAndParseStatus(statusParam);
 
-        // Delegate to service layer
-        List<HookEventData> events = readPlatformService.retrieveAll(status);
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("total", events.size());
-        response.put("status", statusParam != null ? statusParam.toUpperCase() : "ALL");
-        response.put("events", events);
-
-        return Response.ok(response).build();
+        // Delegate to service layer with pagination
+        return readPlatformService.retrieveAll(status, pageable);
     }
 
     /**

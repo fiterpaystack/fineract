@@ -29,6 +29,8 @@ import com.paystack.fineract.infrastructure.event.hook.exception.HookEventNotFou
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.exception.UnrecognizedQueryParamException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 /**
@@ -47,14 +49,14 @@ public class HookEventReadPlatformServiceImpl implements HookEventReadPlatformSe
     }
 
     @Override
-    public List<HookEventData> retrieveAll(HookEventStatus status) {
-        List<HookEventRecord> records;
+    public Page<HookEventData> retrieveAll(HookEventStatus status, Pageable pageable) {
+        Page<HookEventRecord> records;
         if (status != null) {
-            records = eventRecordRepository.findByStatus(status);
+            records = eventRecordRepository.findByStatus(status, pageable);
         } else {
-            records = eventRecordRepository.findAll();
+            records = eventRecordRepository.findAll(pageable);
         }
-        return records.stream().map(HookEventData::new).toList();
+        return records.map(HookEventData::new);
     }
 
     @Override

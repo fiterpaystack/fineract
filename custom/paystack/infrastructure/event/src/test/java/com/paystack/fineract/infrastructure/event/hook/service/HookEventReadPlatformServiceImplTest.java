@@ -25,6 +25,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.paystack.fineract.infrastructure.event.hook.data.HookEventData;
 import com.paystack.fineract.infrastructure.event.hook.data.RetryAttemptData;
 import com.paystack.fineract.infrastructure.event.hook.domain.HookEventRecord;
 import com.paystack.fineract.infrastructure.event.hook.domain.HookEventRecordRepository;
@@ -43,6 +44,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 /**
  * Unit tests for HookEventReadPlatformServiceImpl.
@@ -98,31 +103,37 @@ class HookEventReadPlatformServiceImplTest {
     void shouldRetrieveAllEventsWhenStatusIsNull() {
         // Given
         List<HookEventRecord> allEvents = Arrays.asList(event1, event2, event3);
-        when(eventRecordRepository.findAll()).thenReturn(allEvents);
+        Pageable pageable = PageRequest.of(0, 50);
+        Page<HookEventRecord> page = new PageImpl<>(allEvents, pageable, allEvents.size());
+        when(eventRecordRepository.findAll(pageable)).thenReturn(page);
 
         // When
-        var result = readPlatformService.retrieveAll(null);
+        Page<HookEventData> result = readPlatformService.retrieveAll(null, pageable);
 
         // Then
-        assertThat(result).hasSize(3);
-        assertThat(result.get(0).getEventId()).isEqualTo("event-1");
-        assertThat(result.get(1).getEventId()).isEqualTo("event-2");
-        assertThat(result.get(2).getEventId()).isEqualTo("event-3");
+        assertThat(result.getContent()).hasSize(3);
+        assertThat(result.getContent().get(0).getEventId()).isEqualTo("event-1");
+        assertThat(result.getContent().get(1).getEventId()).isEqualTo("event-2");
+        assertThat(result.getContent().get(2).getEventId()).isEqualTo("event-3");
+        assertThat(result.getTotalElements()).isEqualTo(3);
     }
 
     @Test
     void shouldRetrieveEventsByStatus() {
         // Given
         List<HookEventRecord> failedEvents = Arrays.asList(event3);
-        when(eventRecordRepository.findByStatus(HookEventStatus.FAILED)).thenReturn(failedEvents);
+        Pageable pageable = PageRequest.of(0, 50);
+        Page<HookEventRecord> page = new PageImpl<>(failedEvents, pageable, failedEvents.size());
+        when(eventRecordRepository.findByStatus(HookEventStatus.FAILED, pageable)).thenReturn(page);
 
         // When
-        var result = readPlatformService.retrieveAll(HookEventStatus.FAILED);
+        Page<HookEventData> result = readPlatformService.retrieveAll(HookEventStatus.FAILED, pageable);
 
         // Then
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getEventId()).isEqualTo("event-3");
-        assertThat(result.get(0).getStatus()).isEqualTo(HookEventStatus.FAILED);
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getEventId()).isEqualTo("event-3");
+        assertThat(result.getContent().get(0).getStatus()).isEqualTo(HookEventStatus.FAILED);
+        assertThat(result.getTotalElements()).isEqualTo(1);
     }
 
     @Test
