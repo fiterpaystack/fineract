@@ -51,15 +51,20 @@ public class HookEventDLQService {
      */
     public void sendToDLQ(HookEventRecord eventRecord) {
         try {
-            // Create DLQ message
+            // Create DLQ message with all required fields
             Map<String, Object> dlqMessage = new HashMap<>();
             dlqMessage.put("originalEvent", parseJson(eventRecord.getPayload()));
             dlqMessage.put("eventId", eventRecord.getEventId());
             dlqMessage.put("failureReason", eventRecord.getErrorMessage());
             dlqMessage.put("retryCount", eventRecord.getRetryCount());
             dlqMessage.put("maxRetries", eventRecord.getMaxRetries());
+            // Timestamps
+            dlqMessage.put("createdAt", eventRecord.getCreatedAt() != null ? eventRecord.getCreatedAt().toString()
+                    : DateUtils.getAuditLocalDateTime().toString());
             dlqMessage.put("failedAt", eventRecord.getFailedAt() != null ? eventRecord.getFailedAt().toString()
                     : DateUtils.getAuditLocalDateTime().toString());
+            dlqMessage.put("lastRetryAt", eventRecord.getLastRetryAt() != null ? eventRecord.getLastRetryAt().toString() : null);
+            // Additional context
             dlqMessage.put("hookId", eventRecord.getHookId());
             dlqMessage.put("entityName", eventRecord.getEntityName());
             dlqMessage.put("actionName", eventRecord.getActionName());
