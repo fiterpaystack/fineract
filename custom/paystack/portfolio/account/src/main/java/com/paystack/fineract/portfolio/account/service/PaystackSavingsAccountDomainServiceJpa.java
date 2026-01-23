@@ -730,8 +730,8 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         List<SavingsAccountTransaction> allTxns = backdatedTxnsAllowedTill ? account.getSavingsAccountTransactionsWithPivotConfig()
                 : account.getTransactions();
 
-        boolean emtAlreadyApplied = allTxns.stream()
-                .anyMatch(txn -> txn.getTransactionType().isEmtLevy() && refNo != null && refNo.equals(txn.getRefNo()));
+        boolean emtAlreadyApplied = refNo != null
+                && allTxns.stream().anyMatch(txn -> txn.getTransactionType().isEmtLevy() && refNo.equals(txn.getRefNo()));
 
         if (emtAlreadyApplied) {
             return;
@@ -763,7 +763,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             threshold = configurationDomainService.retrieveEmtLevyThreshold();
         }
 
-        if (levyAmount == null || levyAmount.signum() <= 0) {
+        if (levyAmount == null || levyAmount.compareTo(BigDecimal.ZERO) <= 0) {
             return;
         }
 
