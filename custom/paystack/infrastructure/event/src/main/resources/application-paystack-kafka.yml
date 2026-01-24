@@ -79,3 +79,9 @@ paystack:
 
         # Dead Letter Queue topic name for failed events
         dlq-topic: ${PAYSTACK_KAFKA_HOOK_DLQ_TOPIC:fineract-client-account-events-dlq}
+
+        # Timeout in seconds for Kafka publish operations (both initial publish and retries)
+        # This timeout controls how long to wait for Kafka send operations to complete
+        # Adjust based on your Kafka cluster performance and network latency
+        # Default: 5 seconds
+        kafka-publish-timeout-seconds: ${PAYSTACK_KAFKA_HOOK_PUBLISH_TIMEOUT_SECONDS:5}

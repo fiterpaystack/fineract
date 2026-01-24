@@ -85,7 +85,9 @@ public class HookEventRetryService {
             CompletableFuture<SendResult<String, String>> future = paystackExternalEventsKafkaTemplate.send(eventRecord.getTopicName(),
                     eventRecord.getPartitionKey(), eventRecord.getPayload());
 
-            future.get(5, TimeUnit.SECONDS); // Wait for completion, throws exception on failure/timeout
+            // Get configurable timeout from properties
+            long timeoutSeconds = eventProperties.getKafka().getHook().getKafkaPublishTimeoutSeconds();
+            future.get(timeoutSeconds, TimeUnit.SECONDS); // Wait for completion, throws exception on failure/timeout
 
             // Calculate duration
             long durationMs = (System.nanoTime() - startTimeNanos) / 1_000_000;
@@ -211,9 +213,11 @@ public class HookEventRetryService {
             initializeTenantContext(tenant);
             processPendingEventsForTenant(tenant.getTenantIdentifier());
         } catch (DataAccessException e) {
-            handleDataAccessException(tenant, e);
+            log.error("Error processing pending hook events for tenant: {}", tenant.getTenantIdentifier(), e);
+            // Don't re-throw to prevent scheduled task failure - let it continue with other tenants
         } catch (Exception e) {
-            handleGeneralException(tenant, e);
+            log.error("Unexpected error processing pending hook events for tenant: {}", tenant.getTenantIdentifier(), e);
+            // Don't re-throw to prevent scheduled task failure - let it continue with other tenants
         } finally {
             ThreadLocalContextUtil.reset();
         }
@@ -225,53 +229,6 @@ public class HookEventRetryService {
     private void initializeTenantContext(FineractPlatformTenant tenant) {
         ThreadLocalContextUtil.setTenant(tenant);
         ThreadLocalContextUtil.setActionContext(ActionContext.DEFAULT);
-    }
-
-    /**
-     * Handle DataAccessException with specific logic for missing tables.
-     */
-    private void handleDataAccessException(FineractPlatformTenant tenant, DataAccessException e) {
-        if (isTableMissingError(e)) {
-            logTableMissingWarning(tenant);
-            return;
-        }
-        log.error("Error processing pending hook events for tenant: {}", tenant.getTenantIdentifier(), e);
-        throw e;
-    }
-
-    /**
-     * Handle general exceptions with fallback logic.
-     */
-    private void handleGeneralException(FineractPlatformTenant tenant, Exception e) {
-        if (isTableMissingError(e)) {
-            log.debug("Hook event tables not yet created for tenant: {}. Migrations may still be running.", tenant.getTenantIdentifier());
-            return;
-        }
-        log.error("Unexpected error processing pending hook events for tenant: {}", tenant.getTenantIdentifier(), e);
-    }
-
-    /**
-     * Check if the exception indicates missing tables.
-     */
-    private boolean isTableMissingError(Exception e) {
-        String errorMessage = extractErrorMessage(e);
-        if (errorMessage == null) {
-            return false;
-        }
-        return errorMessage.contains("does not exist")
-                || (errorMessage.contains("relation") && errorMessage.contains("ps_hook_event_record"));
-    }
-
-    /**
-     * Log warning when tables are missing for a tenant.
-     */
-    private void logTableMissingWarning(FineractPlatformTenant tenant) {
-        String schemaName = tenant.getConnection() != null ? tenant.getConnection().getSchemaName() : "unknown";
-        log.warn(
-                "Hook event tables not found for tenant: {} (schema: {}). " + "Migrations may not have run for this tenant. "
-                        + "Please verify migrations have executed for tenant '{}' in database '{}'. "
-                        + "See MIGRATION_DIAGNOSTICS.md for troubleshooting steps.",
-                tenant.getTenantIdentifier(), schemaName, tenant.getTenantIdentifier(), schemaName);
     }
 
     /**
@@ -297,18 +254,5 @@ public class HookEventRetryService {
         for (HookEventRecord event : eligibleEvents) {
             retryEvent(event);
         }
-    }
-
-    /**
-     * Extract error message from exception chain.
-     */
-    private String extractErrorMessage(Exception e) {
-        String errorMessage = e.getMessage();
-        Throwable cause = e.getCause();
-        while (cause != null && (errorMessage == null || !errorMessage.contains("does not exist"))) {
-            errorMessage = cause.getMessage();
-            cause = cause.getCause();
-        }
-        return errorMessage;
     }
 }

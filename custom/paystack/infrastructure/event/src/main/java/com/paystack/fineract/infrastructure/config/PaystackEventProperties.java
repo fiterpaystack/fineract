@@ -133,5 +133,10 @@ public class PaystackEventProperties {
          * Dead Letter Queue topic name for failed events.
          */
         private String dlqTopic = "fineract-client-account-events-dlq";
+
+        /**
+         * Timeout in seconds for Kafka publish operations (both initial publish and retries). Default: 5 seconds
+         */
+        private long kafkaPublishTimeoutSeconds = 5L;
     }
 }

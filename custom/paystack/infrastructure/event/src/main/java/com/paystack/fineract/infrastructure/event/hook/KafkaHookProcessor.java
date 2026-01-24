@@ -99,8 +99,9 @@ public class KafkaHookProcessor implements HookProcessor {
             CompletableFuture<SendResult<String, String>> future = paystackExternalEventsKafkaTemplate.send(topicName, partitionKey,
                     enrichedPayload);
 
-            // Wait for result with timeout (5 seconds)
-            SendResult<String, String> result = future.get(5, TimeUnit.SECONDS);
+            // Wait for result with configurable timeout
+            long timeoutSeconds = eventProperties.getKafka().getHook().getKafkaPublishTimeoutSeconds();
+            SendResult<String, String> result = future.get(timeoutSeconds, TimeUnit.SECONDS);
 
             Duration duration = Duration.ofNanos(System.nanoTime() - startTime);
             log.debug(
