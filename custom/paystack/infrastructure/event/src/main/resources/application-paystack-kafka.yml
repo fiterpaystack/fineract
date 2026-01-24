@@ -51,10 +51,14 @@ paystack:
               # Compression
               compression.type: "snappy"         # Compression for better network utilization
 
-              # Idempotence for exactly-once semantics
-              enable.idempotence: true           # Enable idempotence for exactly-once semantics
+              # Idempotence for exactly-once semantics within a producer session
+              enable.idempotence: true           # Enable idempotence to prevent duplicates within a single producer session
               # Note: transactional.id is NOT set because hooks are invoked from event listeners
-              # without transaction context. Idempotence provides exactly-once semantics.
+              # without transaction context. Idempotence provides exactly-once semantics within a producer session.
+              # For exactly-once semantics across producer restarts/failures, the system uses:
+              # - Stable, deterministic eventId generation (same event = same ID across retries)
+              # - Database deduplication (unique constraint on eventId) to prevent duplicate retries
+              # - Retry mechanism that checks for existing records before processing
 
     # Kafka hook configuration
     kafka:
