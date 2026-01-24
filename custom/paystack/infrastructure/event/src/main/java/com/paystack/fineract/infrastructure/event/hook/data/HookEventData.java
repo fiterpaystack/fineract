@@ -45,6 +45,7 @@ public class HookEventData {
     private LocalDateTime sentAt;
     private LocalDateTime failedAt;
     private String tenantIdentifier;
+    private String payload;
 
     public HookEventData() {
         // Default constructor
@@ -67,5 +68,6 @@ public class HookEventData {
         this.sentAt = eventRecord.getSentAt();
         this.failedAt = eventRecord.getFailedAt();
         this.tenantIdentifier = eventRecord.getTenantIdentifier();
+        this.payload = eventRecord.getPayload();
     }
 }

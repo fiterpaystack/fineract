@@ -159,6 +159,30 @@ public class HookEventApiResource {
     }
 
     /**
+     * Get a single hook event by event ID.
+     *
+     * @param eventId
+     *            the event ID
+     * @return HookEventData with full event details including payload
+     */
+    @GET
+    @Path("/{eventId}")
+    @Consumes({ MediaType.APPLICATION_JSON })
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "Get Single Hook Event", description = "Retrieve details of a specific hook event by event ID, including the full payload")
+    @ApiResponses({ @ApiResponse(responseCode = "200", description = "Hook event details"),
+            @ApiResponse(responseCode = "404", description = "Event not found") })
+    public Response getHookEvent(@PathParam("eventId") @Parameter(description = "Event ID") final String eventId) {
+        this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
+
+        // Retrieve event record and convert to DTO (includes payload)
+        var eventRecord = readPlatformService.retrieveOne(eventId);
+        HookEventData eventData = new HookEventData(eventRecord);
+
+        return Response.ok(eventData).build();
+    }
+
+    /**
      * Get retry attempts for a specific event.
      */
     @GET
