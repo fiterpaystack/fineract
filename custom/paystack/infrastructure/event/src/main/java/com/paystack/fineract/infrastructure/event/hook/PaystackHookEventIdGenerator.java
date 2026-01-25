@@ -89,7 +89,8 @@ public class PaystackHookEventIdGenerator {
             String payloadHash = payload != null ? String.valueOf(payload.hashCode()) : "null";
             String input = String.format("%s_%s_%s_%s", entityName, actionName, businessDate, payloadHash);
             int hash = input.hashCode();
-            String hashStr = String.valueOf(Math.abs(hash));
+            // Use toUnsignedLong to safely convert negative hashCode to positive value
+            String hashStr = String.valueOf(Integer.toUnsignedLong(hash));
             return String.format("%s_%s_%s_%s", entityName, actionName, businessDate,
                     hashStr.length() > HASH_LENGTH ? hashStr.substring(0, HASH_LENGTH) : hashStr);
         }
@@ -178,7 +179,8 @@ public class PaystackHookEventIdGenerator {
             // Fallback to simple hash
             String input = String.format("%s_%s_%s_%s", entityName, actionName, aggregateRootId, businessDate);
             int hash = input.hashCode();
-            String hashStr = String.valueOf(Math.abs(hash));
+            // Use toUnsignedLong to safely convert negative hashCode to positive value
+            String hashStr = String.valueOf(Integer.toUnsignedLong(hash));
             return hashStr.length() > HASH_LENGTH ? hashStr.substring(0, HASH_LENGTH) : hashStr;
         }
     }

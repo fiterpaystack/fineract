@@ -31,7 +31,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
 
 /**
@@ -79,8 +78,13 @@ public class HookEventDLQService {
 
             // Send to DLQ topic with configurable timeout
             long timeoutSeconds = eventProperties.getKafka().getHook().getKafkaPublishTimeoutSeconds();
-            SendResult<String, String> result = paystackExternalEventsKafkaTemplate.send(dlqTopic, eventRecord.getEventId(), dlqPayload)
-                    .get(timeoutSeconds, TimeUnit.SECONDS);
+            paystackExternalEventsKafkaTemplate.send(dlqTopic, eventRecord.getEventId(), dlqPayload).get(timeoutSeconds, TimeUnit.SECONDS); // Wait
+                                                                                                                                            // for
+                                                                                                                                            // completion,
+                                                                                                                                            // throws
+                                                                                                                                            // exception
+                                                                                                                                            // on
+                                                                                                                                            // failure/timeout
 
             // Update status and save (only if send succeeds)
             eventRecord.setStatus(HookEventStatus.DLQ);

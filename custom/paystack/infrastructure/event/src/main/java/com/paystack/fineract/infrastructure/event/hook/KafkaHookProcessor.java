@@ -102,7 +102,7 @@ public class KafkaHookProcessor implements HookProcessor {
 
             // Wait for result with configurable timeout
             long timeoutSeconds = eventProperties.getKafka().getHook().getKafkaPublishTimeoutSeconds();
-            SendResult<String, String> result = future.get(timeoutSeconds, TimeUnit.SECONDS);
+            future.get(timeoutSeconds, TimeUnit.SECONDS); // Wait for completion, throws exception on failure/timeout
 
             Duration duration = Duration.ofNanos(System.nanoTime() - startTime);
             log.debug(

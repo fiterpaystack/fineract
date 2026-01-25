@@ -70,7 +70,8 @@ public class PaystackStableExternalEventIdempotencyKeyGenerator implements Exter
             String input = String.format("%s_%s_%s", event.getType(),
                     event.getAggregateRootId() != null ? event.getAggregateRootId() : "null", businessDate);
             int hash = input.hashCode();
-            String hashStr = String.valueOf(Math.abs(hash));
+            // Use toUnsignedLong to safely convert negative hashCode to positive value
+            String hashStr = String.valueOf(Integer.toUnsignedLong(hash));
             return String.format("%s_%s_%s_%s", event.getType(), event.getAggregateRootId() != null ? event.getAggregateRootId() : "null",
                     businessDate, hashStr.length() > HASH_LENGTH ? hashStr.substring(0, HASH_LENGTH) : hashStr);
         }
@@ -93,7 +94,8 @@ public class PaystackStableExternalEventIdempotencyKeyGenerator implements Exter
             String input = String.format("%s_%s_%s", eventType, aggregateRootId != null ? aggregateRootId.toString() : "null",
                     businessDate);
             int hash = input.hashCode();
-            String hashStr = String.valueOf(Math.abs(hash));
+            // Use toUnsignedLong to safely convert negative hashCode to positive value
+            String hashStr = String.valueOf(Integer.toUnsignedLong(hash));
             return hashStr.length() > HASH_LENGTH ? hashStr.substring(0, HASH_LENGTH) : hashStr;
         }
     }
