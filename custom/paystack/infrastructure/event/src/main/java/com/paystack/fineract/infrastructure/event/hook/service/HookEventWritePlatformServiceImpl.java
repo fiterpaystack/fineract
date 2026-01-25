@@ -74,9 +74,22 @@ public class HookEventWritePlatformServiceImpl implements HookEventWritePlatform
         for (HookEventRecord event : failedEvents) {
             try {
                 retryService.retryEvent(event);
-                successCount++;
+
+                // Reload event from repository to get the latest status after retry
+                // retryEvent() never throws exceptions, so we check the status to determine success/failure
+                HookEventRecord updatedEvent = eventRecordRepository.findByEventId(event.getEventId()).orElse(event);
+
+                // Check if retry succeeded by checking if status changed to SENT
+                if (updatedEvent.getStatus() == HookEventStatus.SENT) {
+                    successCount++;
+                } else {
+                    // Retry failed - status is PENDING, FAILED, or DLQ
+                    failureCount++;
+                    log.debug("Retry failed for event: eventId={}, finalStatus={}", event.getEventId(), updatedEvent.getStatus());
+                }
             } catch (Exception e) {
-                log.error("Failed to retry event: eventId={}", event.getEventId(), e);
+                // This catch block handles unexpected exceptions (shouldn't happen since retryEvent catches all)
+                log.error("Unexpected error during retry: eventId={}", event.getEventId(), e);
                 failureCount++;
             }
         }

@@ -26,10 +26,12 @@ import com.paystack.fineract.infrastructure.event.hook.domain.HookEventStatus;
 import com.paystack.fineract.infrastructure.event.hook.metrics.PaystackKafkaEventMetrics;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
 
 /**
@@ -75,8 +77,10 @@ public class HookEventDLQService {
             String dlqTopic = eventProperties.getKafka().getHook().getDlqTopic();
             String dlqPayload = objectMapper.writeValueAsString(dlqMessage);
 
-            // Send to DLQ topic (synchronous send)
-            paystackExternalEventsKafkaTemplate.send(dlqTopic, eventRecord.getEventId(), dlqPayload).get();
+            // Send to DLQ topic with configurable timeout
+            long timeoutSeconds = eventProperties.getKafka().getHook().getKafkaPublishTimeoutSeconds();
+            SendResult<String, String> result = paystackExternalEventsKafkaTemplate.send(dlqTopic, eventRecord.getEventId(), dlqPayload)
+                    .get(timeoutSeconds, TimeUnit.SECONDS);
 
             // Update status and save (only if send succeeds)
             eventRecord.setStatus(HookEventStatus.DLQ);

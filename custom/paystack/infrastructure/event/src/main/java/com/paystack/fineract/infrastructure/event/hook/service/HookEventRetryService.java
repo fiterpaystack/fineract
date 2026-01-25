@@ -38,7 +38,6 @@ import org.apache.fineract.infrastructure.core.domain.FineractPlatformTenant;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
 import org.apache.fineract.infrastructure.core.service.tenant.TenantDetailsService;
-import org.springframework.dao.DataAccessException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -212,11 +211,8 @@ public class HookEventRetryService {
         try {
             initializeTenantContext(tenant);
             processPendingEventsForTenant(tenant.getTenantIdentifier());
-        } catch (DataAccessException e) {
-            log.error("Error processing pending hook events for tenant: {}", tenant.getTenantIdentifier(), e);
-            // Don't re-throw to prevent scheduled task failure - let it continue with other tenants
         } catch (Exception e) {
-            log.error("Unexpected error processing pending hook events for tenant: {}", tenant.getTenantIdentifier(), e);
+            log.error("Error processing pending hook events for tenant: {}", tenant.getTenantIdentifier(), e);
             // Don't re-throw to prevent scheduled task failure - let it continue with other tenants
         } finally {
             ThreadLocalContextUtil.reset();

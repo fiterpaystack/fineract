@@ -42,7 +42,7 @@ import org.springframework.stereotype.Component;
 @Component
 @Primary
 @Slf4j
-@ConditionalOnProperty(value = "paystack.events.kafka.stableIdempotencyEnabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(value = "paystack.events.kafka.stable-idempotency-enabled", havingValue = "true", matchIfMissing = true)
 public class PaystackStableExternalEventIdempotencyKeyGenerator implements ExternalEventIdempotencyKeyGenerator {
 
     private static final int HASH_LENGTH = 8;

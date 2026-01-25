@@ -37,6 +37,7 @@ import com.paystack.fineract.infrastructure.event.hook.domain.HookEventRetryAtte
 import com.paystack.fineract.infrastructure.event.hook.domain.HookEventRetryAttemptRepository;
 import com.paystack.fineract.infrastructure.event.hook.domain.HookEventStatus;
 import com.paystack.fineract.infrastructure.event.hook.metrics.PaystackKafkaEventMetrics;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -211,7 +212,7 @@ class HookEventRetryServiceTest {
         when(tenantDetailsService.findAllTenants()).thenReturn(Arrays.asList(tenant));
         HookEventRecord event2 = createEventRecord(4L, "event-4", HookEventStatus.PENDING, 0);
         List<HookEventRecord> pendingEvents = Arrays.asList(pendingEvent, event2);
-        when(eventRecordRepository.findByStatusAndRetryCountLessThanMax(HookEventStatus.PENDING)).thenReturn(pendingEvents);
+        when(eventRecordRepository.findEligibleForRetry(eq(HookEventStatus.PENDING), any(LocalDateTime.class))).thenReturn(pendingEvents);
         @SuppressWarnings("unchecked")
         CompletableFuture<SendResult<String, String>> future = mock(CompletableFuture.class);
         SendResult<String, String> sendResult = mock(SendResult.class);
@@ -235,7 +236,7 @@ class HookEventRetryServiceTest {
         retryService.retryPendingEvents();
 
         // Then
-        verify(eventRecordRepository).findByStatusAndRetryCountLessThanMax(HookEventStatus.PENDING);
+        verify(eventRecordRepository).findEligibleForRetry(eq(HookEventStatus.PENDING), any(LocalDateTime.class));
         // Should attempt to retry both events
         verify(kafkaTemplate, org.mockito.Mockito.times(2)).send(anyString(), anyString(), anyString());
         verify(retryAttemptRepository, org.mockito.Mockito.times(2)).save(any());
@@ -300,14 +301,15 @@ class HookEventRetryServiceTest {
         // Given
         FineractPlatformTenant tenant = createMockTenant("default");
         when(tenantDetailsService.findAllTenants()).thenReturn(Arrays.asList(tenant));
-        when(eventRecordRepository.findByStatusAndRetryCountLessThanMax(HookEventStatus.PENDING)).thenReturn(Collections.emptyList());
+        when(eventRecordRepository.findEligibleForRetry(eq(HookEventStatus.PENDING), any(LocalDateTime.class)))
+                .thenReturn(Collections.emptyList());
 
         // When
         retryService.retryPendingEvents();
 
         // Then
         verify(tenantDetailsService).findAllTenants();
-        verify(eventRecordRepository).findByStatusAndRetryCountLessThanMax(HookEventStatus.PENDING);
+        verify(eventRecordRepository).findEligibleForRetry(eq(HookEventStatus.PENDING), any(LocalDateTime.class));
         verify(kafkaTemplate, never()).send(anyString(), anyString(), anyString());
         verify(eventRecordRepository, never()).save(any());
     }

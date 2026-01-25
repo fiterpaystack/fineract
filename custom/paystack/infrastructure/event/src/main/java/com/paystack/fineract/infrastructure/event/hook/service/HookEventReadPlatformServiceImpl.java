@@ -64,10 +64,23 @@ public class HookEventReadPlatformServiceImpl implements HookEventReadPlatformSe
         if (statusParam == null || statusParam.isBlank()) {
             return null;
         }
-        try {
-            return HookEventStatus.valueOf(statusParam.toUpperCase());
-        } catch (IllegalArgumentException e) {
+        String upperStatus = statusParam.toUpperCase();
+        // Validate status before parsing to avoid exception
+        if (!isValidStatus(upperStatus)) {
             throw new UnrecognizedQueryParamException("status", statusParam, new Object[] { "PENDING", "SENT", "FAILED", "DLQ" });
+        }
+        return HookEventStatus.valueOf(upperStatus);
+    }
+
+    /**
+     * Check if the status string is a valid HookEventStatus enum value.
+     */
+    private boolean isValidStatus(String status) {
+        try {
+            HookEventStatus.valueOf(status);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
         }
     }
 

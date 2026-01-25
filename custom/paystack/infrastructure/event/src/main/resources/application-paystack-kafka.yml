@@ -24,14 +24,13 @@ paystack:
       producer:
         kafka:
           # Async processing configuration
-          async:
-            # Thread pool configuration for async Kafka notification processing
-            core-pool-size: 5                    # Minimum number of threads in the pool
-            max-pool-size: 20                     # Maximum number of threads in the pool
-            queue-capacity: 100                   # Queue capacity for pending tasks
-            keep-alive-seconds: 60               # Time to keep idle threads alive
-            thread-name-prefix: "paystack-kafka-notification-"  # Thread name prefix for identification
-            max-retries: ${FINERACT_EXTERNAL_EVENTS_KAFKA_MAX_RETRIES:3} # Maximum number of retries for failed notifications
+          # Thread pool configuration for async Kafka notification processing
+          core-pool-size: 5                    # Minimum number of threads in the pool
+          max-pool-size: 20                     # Maximum number of threads in the pool
+          queue-capacity: 100                   # Queue capacity for pending tasks
+          keep-alive-seconds: 60               # Time to keep idle threads alive
+          thread-name-prefix: "paystack-kafka-notification-"  # Thread name prefix for identification
+          max-retries: ${FINERACT_EXTERNAL_EVENTS_KAFKA_MAX_RETRIES:3} # Maximum number of retries for failed notifications
 
           # Enhanced producer configuration for real-time notifications
           producer:

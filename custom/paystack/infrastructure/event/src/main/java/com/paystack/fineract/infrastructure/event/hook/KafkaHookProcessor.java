@@ -68,7 +68,6 @@ public class KafkaHookProcessor implements HookProcessor {
     public void process(final Hook hook, final String payload, final String entityName, final String actionName,
             final FineractContext context) throws Exception {
 
-        long startTime = System.nanoTime();
         String eventId = null;
         String topicName = null;
         String partitionKey = null;
@@ -95,6 +94,8 @@ public class KafkaHookProcessor implements HookProcessor {
             // Enrich payload with metadata
             enrichedPayload = enrichPayloadWithMetadata(payload, eventId, entityName, actionName, context);
 
+            // Measure Kafka send operation duration only (from send to get)
+            long startTime = System.nanoTime();
             // Publish to Kafka (with producer-level retry already configured)
             CompletableFuture<SendResult<String, String>> future = paystackExternalEventsKafkaTemplate.send(topicName, partitionKey,
                     enrichedPayload);
@@ -112,7 +113,9 @@ public class KafkaHookProcessor implements HookProcessor {
             metrics.recordEventProduced(entityName, actionName, true, duration);
 
         } catch (Exception e) {
-            Duration duration = Duration.ofNanos(System.nanoTime() - startTime);
+            // For error case, we can't measure Kafka send duration since it failed before or during send
+            // Use a minimal duration (0 or 1) to indicate failure occurred before/during send
+            Duration duration = Duration.ZERO;
             log.warn("Failed to publish Kafka hook event synchronously: entity={}, action={}, hookId={}, eventId={}", entityName,
                     actionName, hook.getId(), eventId, e);
 

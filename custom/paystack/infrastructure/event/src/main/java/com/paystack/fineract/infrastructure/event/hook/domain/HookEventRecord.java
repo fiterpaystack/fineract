@@ -102,7 +102,7 @@ public class HookEventRecord extends AbstractPersistableCustom<Long> {
 
     @Column(name = "created_at", nullable = false)
     @Setter
-    private LocalDateTime createdAt = DateUtils.getAuditLocalDateTime();
+    private LocalDateTime createdAt;
 
     /**
      * Increment the retry count.
