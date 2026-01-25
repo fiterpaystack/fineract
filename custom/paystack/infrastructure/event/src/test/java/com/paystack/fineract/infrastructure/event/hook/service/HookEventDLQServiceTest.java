@@ -20,6 +20,7 @@ package com.paystack.fineract.infrastructure.event.hook.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -112,7 +113,7 @@ class HookEventDLQServiceTest {
         HookEventStatus originalStatus = failedEvent.getStatus(); // Should be FAILED
         @SuppressWarnings("unchecked")
         CompletableFuture<SendResult<String, String>> future = mock(CompletableFuture.class);
-        when(future.get()).thenThrow(new RuntimeException("DLQ send failed"));
+        when(future.get(anyLong(), any(java.util.concurrent.TimeUnit.class))).thenThrow(new RuntimeException("DLQ send failed"));
         when(kafkaTemplate.send(anyString(), anyString(), anyString())).thenReturn(future);
         when(objectMapper.writeValueAsString(any())).thenReturn("{\"test\":\"dlq\"}");
         when(objectMapper.readValue(anyString(), eq(Map.class))).thenReturn(new HashMap<>());

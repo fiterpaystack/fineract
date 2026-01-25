@@ -130,7 +130,7 @@ class HookEventRetryServiceTest {
         verify(kafkaTemplate).send(eq(pendingEvent.getTopicName()), eq(pendingEvent.getPartitionKey()), eq(pendingEvent.getPayload()));
         verify(eventRecordRepository, org.mockito.Mockito.atLeastOnce()).save(any(HookEventRecord.class));
         verify(retryAttemptRepository).save(any());
-        verify(metrics).recordEventRetry(pendingEvent.getEntityName(), pendingEvent.getActionName(), true, anyLong());
+        verify(metrics).recordEventRetry(eq(pendingEvent.getEntityName()), eq(pendingEvent.getActionName()), eq(true), anyLong());
         verify(dlqService, never()).sendToDLQ(any());
     }
 
@@ -181,7 +181,7 @@ class HookEventRetryServiceTest {
         assertThat(pendingEvent.getRetryCount()).isEqualTo(initialRetryCount + 1);
         verify(eventRecordRepository, org.mockito.Mockito.atLeastOnce()).save(any(HookEventRecord.class));
         verify(retryAttemptRepository).save(any());
-        verify(metrics).recordEventRetry(pendingEvent.getEntityName(), pendingEvent.getActionName(), false, anyLong());
+        verify(metrics).recordEventRetry(eq(pendingEvent.getEntityName()), eq(pendingEvent.getActionName()), eq(false), anyLong());
     }
 
     @Test

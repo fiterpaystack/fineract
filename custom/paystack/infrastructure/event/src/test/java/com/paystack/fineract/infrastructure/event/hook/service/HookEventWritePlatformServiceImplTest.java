@@ -21,8 +21,6 @@ package com.paystack.fineract.infrastructure.event.hook.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -97,8 +95,15 @@ class HookEventWritePlatformServiceImplTest {
     @Test
     void shouldRetryAllFailedEvents() {
         // Given
-        List<HookEventRecord> failedEvents = Arrays.asList(failedEvent, createEventRecord(3L, "event-3", HookEventStatus.FAILED));
+        HookEventRecord event2 = createEventRecord(3L, "event-3", HookEventStatus.FAILED);
+        List<HookEventRecord> failedEvents = Arrays.asList(failedEvent, event2);
         when(eventRecordRepository.findByStatus(HookEventStatus.FAILED)).thenReturn(failedEvents);
+
+        // Mock repository to return SENT status after retry (indicating success)
+        HookEventRecord sentEvent1 = createEventRecord(1L, "event-1", HookEventStatus.SENT);
+        HookEventRecord sentEvent2 = createEventRecord(3L, "event-3", HookEventStatus.SENT);
+        when(eventRecordRepository.findByEventId("event-1")).thenReturn(java.util.Optional.of(sentEvent1));
+        when(eventRecordRepository.findByEventId("event-3")).thenReturn(java.util.Optional.of(sentEvent2));
 
         // When
         HookEventWritePlatformService.RetryResult result = writePlatformService.retryAllFailed();
@@ -132,8 +137,12 @@ class HookEventWritePlatformServiceImplTest {
         HookEventRecord event2 = createEventRecord(2L, "event-2", HookEventStatus.FAILED);
         List<HookEventRecord> failedEvents = Arrays.asList(event1, event2);
         when(eventRecordRepository.findByStatus(HookEventStatus.FAILED)).thenReturn(failedEvents);
-        doNothing().when(retryService).retryEvent(event1);
-        doThrow(new RuntimeException("Retry failed")).when(retryService).retryEvent(event2);
+
+        // Mock repository to return SENT status for event1 (success) and FAILED status for event2 (failure)
+        HookEventRecord sentEvent1 = createEventRecord(1L, "event-1", HookEventStatus.SENT);
+        HookEventRecord failedEvent2 = createEventRecord(2L, "event-2", HookEventStatus.FAILED);
+        when(eventRecordRepository.findByEventId("event-1")).thenReturn(java.util.Optional.of(sentEvent1));
+        when(eventRecordRepository.findByEventId("event-2")).thenReturn(java.util.Optional.of(failedEvent2));
 
         // When
         HookEventWritePlatformService.RetryResult result = writePlatformService.retryAllFailed();
