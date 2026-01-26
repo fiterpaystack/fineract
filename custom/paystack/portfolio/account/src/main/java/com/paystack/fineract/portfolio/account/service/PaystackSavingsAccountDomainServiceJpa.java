@@ -194,8 +194,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         Money baseWithdrawalAmount = Money.of(account.getCurrency(), transactionAmount);
         // For account transfers, check if it's an intra-client transfer to exempt EMT Levy
         Long destinationClientId = transactionBooleanValues.isAccountTransfer() ? getDestinationClientIdForTransfer() : null;
-        payEmtLevyOnTransaction(account, baseWithdrawalAmount, transactionDate, refNo.toString(), backdatedTxnsAllowedTill, true, noteText,
-                destinationClientId);
+
         final MathContext mc = MathContext.DECIMAL64;
 
         final LocalDate today = DateUtils.getBusinessLocalDate();
@@ -217,11 +216,18 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
 
         account.validateAccountBalanceDoesNotBecomeNegative(transactionAmount, transactionBooleanValues.isExceptionForBalanceCheck(),
                 depositAccountOnHoldTransactions, backdatedTxnsAllowedTill);
+        // apply levy after all validations
+        payEmtLevyOnTransaction(account, baseWithdrawalAmount, transactionDate, refNo.toString(), backdatedTxnsAllowedTill, true, noteText,
+                destinationClientId);
 
-        saveTransactionToGenerateTransactionId(withdrawal);
+        log.info("Withdrawal of amount {} from account {} passed all validations", transactionAmount, account.getId());
         if (backdatedTxnsAllowedTill) {
             // Update transactions separately
+            log.info("Updating transactions with pivot config for account {}", account.getId());
             saveUpdatedTransactionsOfSavingsAccount(account.getSavingsAccountTransactionsWithPivotConfig());
+        } else {
+            log.info("Saving withdrawal transaction for account {}", account.getId());
+            saveTransactionToGenerateTransactionId(withdrawal);
         }
         this.savingsAccountRepository.save(account);
 
@@ -295,6 +301,8 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         if (backdatedTxnsAllowedTill) {
             account.addTransactionToExisting(transaction);
         } else {
+            log.info("Adding withdrawal transaction to account {} ref {} amount {}", account.getId(), transaction.getRefNo(),
+                    transaction.getAmount());
             account.addTransaction(transaction);
         }
         if (account.getSubStatus().equals(SavingsAccountSubStatusEnum.INACTIVE.getValue())
@@ -709,33 +717,42 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
     }
 
     private void payEmtLevyOnTransaction(SavingsAccount account, Money amount, LocalDate transactionDate, String refNo,
-            boolean backdatedTxnsAllowedTill, boolean isWithdraw, final String noteText, Long destinationClientId) {
+            boolean backdatedTxnsAllowedTill, boolean isWithdraw, String noteText, Long destinationClientId) {
+
         if (amount == null || !amount.isGreaterThanZero()) {
             return;
         }
-
-        // Exempt EMT Levy for intra-client transfers
+        // Intra-client exemption
         if (destinationClientId != null && account.clientId() != null && account.clientId().equals(destinationClientId)) {
-            log.info(
-                    "Skipping EMT Levy for intra-client transfer. Account clientId: {}, Destination clientId: {}, Amount: {}, TransactionDate: {}",
-                    account.clientId(), destinationClientId, amount.getAmount(), transactionDate);
             return;
         }
 
-        var product = account.savingsProduct();
-        var attr = savingsProductAttributesRepository.findBySavingsProductId(product.getId()).orElse(null);
+        List<SavingsAccountTransaction> allTxns = backdatedTxnsAllowedTill ? account.getSavingsAccountTransactionsWithPivotConfig()
+                : account.getTransactions();
+
+        boolean emtAlreadyApplied = refNo != null
+                && allTxns.stream().anyMatch(txn -> txn.getTransactionType().isEmtLevy() && refNo.equals(txn.getRefNo()));
+
+        if (emtAlreadyApplied) {
+            return;
+        }
+
+        var attr = savingsProductAttributesRepository.findBySavingsProductId(account.savingsProduct().getId()).orElse(null);
         if (attr == null) {
             return;
         }
-        boolean levyApplicableForTxn = (!isWithdraw && Boolean.TRUE.equals(attr.getIsEmtLevyApplicableForDeposit()))
+
+        boolean levyApplicable = (!isWithdraw && Boolean.TRUE.equals(attr.getIsEmtLevyApplicableForDeposit()))
                 || (isWithdraw && Boolean.TRUE.equals(attr.getIsEmtLevyApplicableForWithdraw()));
-        if (!levyApplicableForTxn) {
+
+        if (!levyApplicable) {
             return;
         }
+
         BigDecimal levyAmount;
         BigDecimal threshold;
-        boolean override = Boolean.TRUE.equals(attr.getOverrideGlobalEmtLevy());
-        if (override) {
+
+        if (Boolean.TRUE.equals(attr.getOverrideGlobalEmtLevy())) {
             levyAmount = attr.getEmtLevyAmount();
             threshold = attr.getEmtLevyThreshold();
         } else {
@@ -745,17 +762,23 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             levyAmount = configurationDomainService.retrieveEmtLevyAmount();
             threshold = configurationDomainService.retrieveEmtLevyThreshold();
         }
+
         if (levyAmount == null || levyAmount.compareTo(BigDecimal.ZERO) <= 0) {
             return;
         }
+
         if (threshold == null) {
             threshold = BigDecimal.ZERO;
         }
+
         if (amount.getAmount().compareTo(threshold) < 0) {
+            log.info("EMT Levy not applied as transaction amount {} is below threshold {}", amount.getAmount(), threshold);
             return;
         }
+
         Money levyMoney = Money.of(account.getCurrency(), levyAmount);
         SavingsAccountTransaction levyTxn = SavingsAccountTransaction.emtLevy(account, account.office(), transactionDate, levyMoney, refNo);
+
         if (backdatedTxnsAllowedTill) {
             account.addTransactionToExisting(levyTxn);
             account.getSummary().updateSummaryWithPivotConfig(account.getCurrency(), savingsAccountTransactionSummaryWrapper, levyTxn,
@@ -763,10 +786,11 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
         } else {
             account.addTransaction(levyTxn);
         }
+
         saveTransactionToGenerateTransactionId(levyTxn);
+
         if (StringUtils.isNotBlank(noteText)) {
-            final Note note = Note.savingsTransactionNote(account, levyTxn, noteText);
-            this.noteRepository.save(note);
+            noteRepository.save(Note.savingsTransactionNote(account, levyTxn, noteText));
         }
     }
 
