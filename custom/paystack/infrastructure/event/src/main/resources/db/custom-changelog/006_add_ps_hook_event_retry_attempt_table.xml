@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="paystack" id="006_add_ps_hook_event_retry_attempt_table">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="ps_hook_event_retry_attempt"/>
+            </not>
+        </preConditions>
+        <comment>Create table for tracking individual retry attempts for hook events</comment>
+
+        <createTable tableName="ps_hook_event_retry_attempt">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="event_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="attempt_number" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="attempted_at" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+            <column name="success" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="error_message" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="duration_ms" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="createdby_id" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created_date" type="DATETIME">
+                <constraints nullable="true"/>
+            </column>
+            <column name="lastmodifiedby_id" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="lastmodified_date" type="DATETIME">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint baseTableName="ps_hook_event_retry_attempt"
+                                 baseColumnNames="event_id"
+                                 constraintName="fk_retry_attempt_event"
+                                 referencedTableName="ps_hook_event_record"
+                                 referencedColumnNames="id"
+                                 onDelete="CASCADE"/>
+
+        <createIndex indexName="idx_retry_attempt_event_id" tableName="ps_hook_event_retry_attempt">
+            <column name="event_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_retry_attempt_attempted_at" tableName="ps_hook_event_retry_attempt">
+            <column name="attempted_at"/>
+        </createIndex>
+
+        <createIndex indexName="idx_retry_attempt_success" tableName="ps_hook_event_retry_attempt">
+            <column name="success"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

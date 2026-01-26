@@ -24,14 +24,13 @@ paystack:
       producer:
         kafka:
           # Async processing configuration
-          async:
-            # Thread pool configuration for async Kafka notification processing
-            core-pool-size: 5                    # Minimum number of threads in the pool
-            max-pool-size: 20                     # Maximum number of threads in the pool
-            queue-capacity: 100                   # Queue capacity for pending tasks
-            keep-alive-seconds: 60               # Time to keep idle threads alive
-            thread-name-prefix: "paystack-kafka-notification-"  # Thread name prefix for identification
-            max-retries: ${FINERACT_EXTERNAL_EVENTS_KAFKA_MAX_RETRIES:3} # Maximum number of retries for failed notifications
+          # Thread pool configuration for async Kafka notification processing
+          core-pool-size: 5                    # Minimum number of threads in the pool
+          max-pool-size: 20                     # Maximum number of threads in the pool
+          queue-capacity: 100                   # Queue capacity for pending tasks
+          keep-alive-seconds: 60               # Time to keep idle threads alive
+          thread-name-prefix: "paystack-kafka-notification-"  # Thread name prefix for identification
+          max-retries: ${FINERACT_EXTERNAL_EVENTS_KAFKA_MAX_RETRIES:3} # Maximum number of retries for failed notifications
 
           # Enhanced producer configuration for real-time notifications
           producer:
@@ -51,6 +50,41 @@ paystack:
               # Compression
               compression.type: "snappy"         # Compression for better network utilization
 
-              # Idempotence and transactions
-              enable.idempotence: true           # Enable idempotence for exactly-once semantics
-              transactional.id: "paystack-kafka-producer"  # Transactional ID for reliability
+              # Idempotence for exactly-once semantics within a producer session
+              enable.idempotence: true           # Enable idempotence to prevent duplicates within a single producer session
+              # Note: transactional.id is NOT set because hooks are invoked from event listeners
+              # without transaction context. Idempotence provides exactly-once semantics within a producer session.
+              # For exactly-once semantics across producer restarts/failures, the system uses:
+              # - Stable, deterministic eventId generation (same event = same ID across retries)
+              # - Database deduplication (unique constraint on eventId) to prevent duplicate retries
+              # - Retry mechanism that checks for existing records before processing
+
+    # Kafka hook configuration
+    kafka:
+      # Enable stable idempotency key generation (deterministic keys)
+      # This ensures idempotency keys remain unchanged across retries
+      stable-idempotency-enabled: ${PAYSTACK_STABLE_IDEMPOTENCY_ENABLED:true}
+
+      # Hook-specific configuration
+      hook:
+        # Maximum number of retries for failed hook events
+        max-retries: ${PAYSTACK_KAFKA_HOOK_MAX_RETRIES:3}
+
+        # Retry interval configuration (time-based retries)
+        # Value: numeric value for the interval (e.g., 5 for "5 minutes")
+        retry-interval-value: ${PAYSTACK_KAFKA_HOOK_RETRY_INTERVAL_VALUE:5}
+        # Unit: SECONDS, MINUTES, HOURS, or DAYS
+        retry-interval-unit: ${PAYSTACK_KAFKA_HOOK_RETRY_INTERVAL_UNIT:MINUTE}
+
+        # Interval in milliseconds for scheduled retry job (how often the job runs to check for eligible events)
+        # Default: 60000 (1 minute) - job checks every minute for events ready to retry
+        retry-check-interval-ms: ${PAYSTACK_KAFKA_HOOK_RETRY_CHECK_INTERVAL_MS:60000}
+
+        # Dead Letter Queue topic name for failed events
+        dlq-topic: ${PAYSTACK_KAFKA_HOOK_DLQ_TOPIC:fineract-client-account-events-dlq}
+
+        # Timeout in seconds for Kafka publish operations (both initial publish and retries)
+        # This timeout controls how long to wait for Kafka send operations to complete
+        # Adjust based on your Kafka cluster performance and network latency
+        # Default: 5 seconds
+        kafka-publish-timeout-seconds: ${PAYSTACK_KAFKA_HOOK_PUBLISH_TIMEOUT_SECONDS:5}

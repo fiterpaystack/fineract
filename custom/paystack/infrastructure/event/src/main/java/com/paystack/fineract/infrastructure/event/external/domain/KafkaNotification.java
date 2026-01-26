@@ -31,6 +31,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
 
 /**
@@ -81,7 +82,7 @@ public class KafkaNotification extends AbstractPersistableCustom<Long> {
         this.account = account;
         this.pndReason = pndReason;
         this.transactionDetails = transactionDetails;
-        this.createdDate = LocalDateTime.now();
+        this.createdDate = DateUtils.getAuditLocalDateTime();
         this.status = KafkaNotificationStatus.PENDING;
         this.numberOfRetries = 0;
     }

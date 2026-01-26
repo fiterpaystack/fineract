@@ -42,13 +42,13 @@ import com.paystack.fineract.infrastructure.event.external.exception.KafkaNotifi
 import com.paystack.fineract.infrastructure.event.external.exception.KafkaNotificationNotFoundException;
 import com.paystack.fineract.infrastructure.event.external.producer.PaystackExternalEventProducer;
 import java.lang.reflect.Field;
-import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -96,18 +96,18 @@ class KafkaNotificationWritePlatformServiceImplTest {
         failedNotification = new KafkaNotification("DEPOSIT", savingsAccount, "Test reason", "Test details");
         failedNotification.setId(1L);
         failedNotification.setStatus(KafkaNotificationStatus.FAILED);
-        failedNotification.setCreatedDate(LocalDateTime.now().minusHours(1));
+        failedNotification.setCreatedDate(DateUtils.getAuditLocalDateTime().minusHours(1));
         failedNotification.setErrorMessage("Previous error");
 
         sentNotification = new KafkaNotification("WITHDRAWAL", savingsAccount, "Test reason 2", "Test details 2");
         sentNotification.setId(2L);
         sentNotification.setStatus(KafkaNotificationStatus.SENT);
-        sentNotification.setCreatedDate(LocalDateTime.now().minusMinutes(30));
+        sentNotification.setCreatedDate(DateUtils.getAuditLocalDateTime().minusMinutes(30));
 
         pendingNotification = new KafkaNotification("TRANSFER", savingsAccount, "Test reason 3", "Test details 3");
         pendingNotification.setId(3L);
         pendingNotification.setStatus(KafkaNotificationStatus.PENDING);
-        pendingNotification.setCreatedDate(LocalDateTime.now().minusMinutes(15));
+        pendingNotification.setCreatedDate(DateUtils.getAuditLocalDateTime().minusMinutes(15));
 
         // Create mock JsonCommand
         jsonCommand = mock(JsonCommand.class);
@@ -225,7 +225,7 @@ class KafkaNotificationWritePlatformServiceImplTest {
         KafkaNotification anotherFailedNotification = new KafkaNotification("TRANSFER", savingsAccount, "Test reason", "Test details");
         anotherFailedNotification.setId(4L);
         anotherFailedNotification.setStatus(KafkaNotificationStatus.FAILED);
-        anotherFailedNotification.setCreatedDate(LocalDateTime.now().minusMinutes(10));
+        anotherFailedNotification.setCreatedDate(DateUtils.getAuditLocalDateTime().minusMinutes(10));
 
         List<KafkaNotification> failedNotifications = Arrays.asList(failedNotification, anotherFailedNotification);
         when(kafkaNotificationRepository.findAll(any(Specification.class))).thenReturn(failedNotifications);

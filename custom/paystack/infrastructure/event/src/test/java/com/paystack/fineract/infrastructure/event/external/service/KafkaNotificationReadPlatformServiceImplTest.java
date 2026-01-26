@@ -32,11 +32,11 @@ import com.paystack.fineract.infrastructure.event.external.domain.KafkaNotificat
 import com.paystack.fineract.infrastructure.event.external.domain.KafkaNotificationDTO;
 import com.paystack.fineract.infrastructure.event.external.domain.KafkaNotificationRepository;
 import com.paystack.fineract.infrastructure.event.external.domain.KafkaNotificationStatus;
-import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.Page;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
@@ -92,12 +92,12 @@ class KafkaNotificationReadPlatformServiceImplTest {
         notification1 = new KafkaNotification("DEPOSIT", savingsAccount, "Test reason", "Test details");
         notification1.setId(1L);
         notification1.setStatus(KafkaNotificationStatus.SENT);
-        notification1.setCreatedDate(LocalDateTime.now().minusHours(1));
+        notification1.setCreatedDate(DateUtils.getAuditLocalDateTime().minusHours(1));
 
         notification2 = new KafkaNotification("WITHDRAWAL", savingsAccount, "Test reason 2", "Test details 2");
         notification2.setId(2L);
         notification2.setStatus(KafkaNotificationStatus.FAILED);
-        notification2.setCreatedDate(LocalDateTime.now().minusMinutes(30));
+        notification2.setCreatedDate(DateUtils.getAuditLocalDateTime().minusMinutes(30));
     }
 
     @Test
@@ -185,8 +185,8 @@ class KafkaNotificationReadPlatformServiceImplTest {
         // Given
         List<KafkaNotification> notifications = Arrays.asList(notification1);
         PageImpl<KafkaNotification> page = new PageImpl<>(notifications);
-        LocalDateTime fromDate = LocalDateTime.now().minusHours(2);
-        LocalDateTime toDate = LocalDateTime.now();
+        java.time.LocalDateTime fromDate = DateUtils.getAuditLocalDateTime().minusHours(2);
+        java.time.LocalDateTime toDate = DateUtils.getAuditLocalDateTime();
 
         when(kafkaNotificationRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
 
