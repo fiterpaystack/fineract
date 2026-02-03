@@ -44,8 +44,9 @@ public class PostgreSQLQueryService implements DatabaseQueryService {
     @Override
     public boolean isTablePresent(DataSource dataSource, String tableName) {
         JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+        // Use current_schema for consistency with getTableColumns/getTableIndexes (tenant/schema-aware).
         Integer result = jdbcTemplate.queryForObject(
-                "SELECT COUNT(table_name) FROM information_schema.tables " + "WHERE table_schema = 'public' AND table_name = ?",
+                "SELECT COUNT(table_name) FROM information_schema.tables WHERE table_schema = current_schema AND table_name = ?",
                 Integer.class, tableName);
         return Objects.equals(result, 1);
     }
@@ -67,7 +68,9 @@ public class PostgreSQLQueryService implements DatabaseQueryService {
     @Override
     public List<IndexDetail> getTableIndexes(DataSource dataSource, String tableName) {
         JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-        String sql = "SELECT indexname FROM pg_indexes WHERE schemaname = 'public' AND tablename = ?";
+        // Use current_schema so tenant/schema-specific tables (e.g. datatables) are found;
+        // hardcoding 'public' breaks GET /datatables and datatable operations in multi-tenant setups.
+        String sql = "SELECT indexname FROM pg_indexes WHERE schemaname = current_schema AND tablename = ?";
         final SqlRowSet indexDefinitions = jdbcTemplate.queryForRowSet(sql, tableName); // NOSONAR
         if (indexDefinitions.next()) {
             return DatabaseIndexMapper.getIndexDetails(indexDefinitions);
