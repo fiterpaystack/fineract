@@ -29,8 +29,6 @@ import org.apache.fineract.portfolio.common.service.DropdownReadPlatformService;
 import org.apache.fineract.portfolio.paymenttype.data.PaymentTypeData;
 import org.apache.fineract.portfolio.tax.data.TaxGroupData;
 import org.apache.fineract.portfolio.tax.service.TaxReadPlatformService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -247,8 +245,6 @@ public class PaystackChargeReadPlatformServiceImpl extends ChargeReadPlatformSer
     private static final class PaystackChargeMapper
             extends org.apache.fineract.portfolio.charge.service.ChargeReadPlatformServiceImpl.ChargeMapper {
 
-        private static final Logger log = LoggerFactory.getLogger(PaystackChargeMapper.class);
-
         @Override
         public String chargeSchema() {
             // Include the enable_fee_split field in our custom schema
@@ -319,12 +315,14 @@ public class PaystackChargeReadPlatformServiceImpl extends ChargeReadPlatformSer
                     int safeDay = feeOnDay;
                     int maxDayForMonth = Month.of(feeOnMonth).maxLength();
                     if (safeDay > maxDayForMonth) {
-                        log.warn("Clamping fee day {} to {} for month {} on charge id={}", safeDay, maxDayForMonth, feeOnMonth, id);
+                        PaystackChargeReadPlatformServiceImpl.log.warn("Clamping fee day {} to {} for month {} on charge id={}", safeDay,
+                                maxDayForMonth, feeOnMonth, id);
                         safeDay = maxDayForMonth;
                     }
                     feeOnMonthDay = MonthDay.of(feeOnMonth, safeDay);
                 } catch (DateTimeException e) {
-                    log.error("Invalid fee date for charge: id={}, name={}, feeOnDay={}, feeOnMonth={}", id, name, feeOnDay, feeOnMonth, e);
+                    PaystackChargeReadPlatformServiceImpl.log.error(
+                            "Invalid fee date for charge: id={}, name={}, feeOnDay={}, feeOnMonth={}", id, name, feeOnDay, feeOnMonth, e);
                     throw e;
                 }
             }
