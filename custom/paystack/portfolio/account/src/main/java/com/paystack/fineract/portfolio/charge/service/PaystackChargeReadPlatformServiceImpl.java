@@ -5,6 +5,8 @@ import com.paystack.fineract.portfolio.discount.service.DiscountRuleService;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.DateTimeException;
+import java.time.Month;
 import java.time.MonthDay;
 import java.util.HashMap;
 import java.util.List;
@@ -14,7 +16,6 @@ import org.apache.fineract.accounting.common.AccountingDropdownReadPlatformServi
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainServiceJpa;
 import org.apache.fineract.infrastructure.core.data.EnumOptionData;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
-import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.entityaccess.service.FineractEntityAccessUtil;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.organisation.monetary.service.CurrencyReadPlatformService;
@@ -28,6 +29,8 @@ import org.apache.fineract.portfolio.common.service.DropdownReadPlatformService;
 import org.apache.fineract.portfolio.paymenttype.data.PaymentTypeData;
 import org.apache.fineract.portfolio.tax.data.TaxGroupData;
 import org.apache.fineract.portfolio.tax.service.TaxReadPlatformService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -244,6 +247,8 @@ public class PaystackChargeReadPlatformServiceImpl extends ChargeReadPlatformSer
     private static final class PaystackChargeMapper
             extends org.apache.fineract.portfolio.charge.service.ChargeReadPlatformServiceImpl.ChargeMapper {
 
+        private static final Logger log = LoggerFactory.getLogger(PaystackChargeMapper.class);
+
         @Override
         public String chargeSchema() {
             // Include the enable_fee_split field in our custom schema
@@ -310,7 +315,18 @@ public class PaystackChargeReadPlatformServiceImpl extends ChargeReadPlatformSer
             final Integer feeOnMonth = JdbcSupport.getInteger(rs, "feeOnMonth");
             final Integer feeOnDay = JdbcSupport.getInteger(rs, "feeOnDay");
             if (feeOnDay != null && feeOnMonth != null) {
-                feeOnMonthDay = MonthDay.now(DateUtils.getDateTimeZoneOfTenant()).withDayOfMonth(feeOnDay).withMonth(feeOnMonth);
+                try {
+                    int safeDay = feeOnDay;
+                    int maxDayForMonth = Month.of(feeOnMonth).maxLength();
+                    if (safeDay > maxDayForMonth) {
+                        log.warn("Clamping fee day {} to {} for month {} on charge id={}", safeDay, maxDayForMonth, feeOnMonth, id);
+                        safeDay = maxDayForMonth;
+                    }
+                    feeOnMonthDay = MonthDay.of(feeOnMonth, safeDay);
+                } catch (DateTimeException e) {
+                    log.error("Invalid fee date for charge: id={}, name={}, feeOnDay={}, feeOnMonth={}", id, name, feeOnDay, feeOnMonth, e);
+                    throw e;
+                }
             }
             final BigDecimal minCap = rs.getBigDecimal("minCap");
             final BigDecimal maxCap = rs.getBigDecimal("maxCap");
