@@ -250,13 +250,14 @@ public class FineractProperties {
             if (StringUtils.isNotEmpty(getExtraProperties()) && validateSeparators()) {
                 String[] lines = StringUtils.split(getExtraProperties(), extraPropertiesSeparator);
                 Arrays.stream(lines).forEach(line -> {
-                    String[] keyAndValue = StringUtils.split(line, extraPropertiesKeyValueSeparator);
-                    if (keyAndValue.length == 2) {
-                        map.put(keyAndValue[0], keyAndValue[1]);
+                    int index = line.indexOf(extraPropertiesKeyValueSeparator);
+                    if (index > 0 && index < line.length() - 1) {
+                        String key = line.substring(0, index);
+                        String value = line.substring(index + 1);
+                        map.put(key, value);
                     } else {
                         log.warn("Invalid property: {}", line);
                     }
-
                 });
             }
             return map;
