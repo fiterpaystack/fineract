@@ -33,12 +33,20 @@ class FineractPropertiesTest {
         testKafkaPropertiesParse("|", "=", "key1=value1", Map.of("key1", "value1"));
         testKafkaPropertiesParse("|", "=", "key1=value1|key2=value2", Map.of("key1", "value1", "key2", "value2"));
         testKafkaPropertiesParse(";", ":", "key1:value1;key2:value2", Map.of("key1", "value1", "key2", "value2"));
+        // value containing additional '=' characters (e.g. sasl.jaas.config)
+        testKafkaPropertiesParse("|", "=",
+                "sasl.jaas.config=org.apache.kafka.common.security.scram.ScramLoginModule required username=\"user\" password=\"pass\";",
+                Map.of("sasl.jaas.config",
+                        "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"user\" password=\"pass\";"));
 
         // invalid configs
         testKafkaPropertiesParse("||", "=", "key1=value1", Map.of());
         testKafkaPropertiesParse("|", "", "key1=value1", Map.of());
         testKafkaPropertiesParse("", "", "key1=value1", Map.of());
-        testKafkaPropertiesParse("|", "=", "key1=value1=value2", Map.of());
+        // still treat entries without a key or value as invalid
+        testKafkaPropertiesParse("|", "=", "invalid", Map.of());
+        // multi '=' is now valid: everything after the first '=' is the value
+        testKafkaPropertiesParse("|", "=", "key1=value1=value2", Map.of("key1", "value1=value2"));
     }
 
     private void testKafkaPropertiesParse(String lineSep, String keyValueSep, String property, Map<String, String> expected) {
