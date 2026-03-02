@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Custom changeSet to extend Trial Balance Table with FS captions.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="paystack" id="21-update-trial-balance-table-fs-caption">
+        <update tableName="stretchy_report">
+            <column name="report_sql" value="WITH gl_fs_map AS (
+    WITH RECURSIVE gl_tree AS (
+        SELECT
+            a.id,
+            a.gl_code,
+            a.name,
+            a.parent_id,
+            a.id AS fs_caption_id
+        FROM acc_gl_account a
+        WHERE a.gl_code LIKE 'FSCA%'
+        UNION ALL
+        SELECT
+            c.id,
+            c.gl_code,
+            c.name,
+            c.parent_id,
+            p.fs_caption_id
+        FROM acc_gl_account c
+        JOIN gl_tree p ON c.parent_id = p.id
+    )
+    SELECT
+        t.id AS gl_account_id,
+        t.gl_code,
+        t.name,
+        f.gl_code AS fs_caption_code,
+        f.name AS fs_caption_name
+    FROM gl_tree t
+    JOIN acc_gl_account f ON f.id = t.fs_caption_id
+    WHERE t.gl_code NOT LIKE 'FSCA%'
+)
+SELECT
+    fullouterjoinresult.glcode,
+    fullouterjoinresult.name,
+    fullouterjoinresult.description,
+    m.fs_caption_code AS fs_caption_code,
+    m.fs_caption_name AS fs_caption_name,
+    fullouterjoinresult.debit,
+    fullouterjoinresult.credit
+FROM (
+    select debits.glcode as &quot;glcode&quot;, debits.name as &quot;name&quot;, debits.description,
+    debits.type,
+    (case when debits.type = 1 or debits.type = 5 then coalesce(debits.debitamount, 0) - coalesce(credits.creditamount, 0) else null end) as &quot;debit&quot;,
+    (case when debits.type = 4 or debits.type = 3 or debits.type = 2 then coalesce(credits.creditamount, 0) - coalesce(debits.debitamount, 0) else null end) as &quot;credit&quot;
+    from (
+        select acc_gl_account.gl_code as &quot;glcode&quot;, name, acc_gl_account.description, sum(amount) as &quot;debitamount&quot;, acc_gl_account.classification_enum as &quot;type&quot;
+        from acc_gl_journal_entry, acc_gl_account
+        where acc_gl_account.id = acc_gl_journal_entry.account_id
+        and acc_gl_journal_entry.type_enum = 2
+        and acc_gl_journal_entry.entry_date between '${startDate}' and '${endDate}'
+        and (acc_gl_journal_entry.office_id = ${officeId} or ${officeId} = 1)
+        group by glcode, acc_gl_account.name, acc_gl_account.classification_enum, acc_gl_account.description
+        order by glcode
+    ) debits
+    left outer join (
+        select acc_gl_account.gl_code as &quot;glcode&quot;, name as &quot;name&quot;, acc_gl_account.description, sum(amount) as &quot;creditamount&quot;, acc_gl_account.classification_enum as &quot;type&quot;
+        from acc_gl_journal_entry, acc_gl_account
+        where acc_gl_account.id = acc_gl_journal_entry.account_id
+        and acc_gl_journal_entry.type_enum = 1
+        and acc_gl_journal_entry.entry_date between '${startDate}' and '${endDate}'
+        and (acc_gl_journal_entry.office_id = ${officeId} or ${officeId} = 1)
+        group by glcode, acc_gl_account.classification_enum, acc_gl_account.name, acc_gl_account.description
+        order by glcode
+    ) credits on debits.glcode = credits.glcode
+    union
+    select credits.glcode as &quot;glcode&quot;, credits.name as &quot;name&quot;, credits.description,
+    credits.type,
+    (case when credits.type = 1 or credits.type = 5 then coalesce(debits.debitamount, 0) - coalesce(credits.creditamount, 0) else null end) as &quot;debit&quot;,
+    (case when credits.type = 4 or credits.type = 3 or credits.type = 2 then coalesce(credits.creditamount, 0) - coalesce(debits.debitamount, 0) else null end) as &quot;credit&quot;
+    from (
+        select acc_gl_account.gl_code as &quot;glcode&quot;, name, acc_gl_account.description, sum(amount) as &quot;debitamount&quot;, acc_gl_account.classification_enum as &quot;type&quot;
+        from acc_gl_journal_entry, acc_gl_account
+        where acc_gl_account.id = acc_gl_journal_entry.account_id
+        and acc_gl_journal_entry.type_enum = 2
+        and acc_gl_journal_entry.entry_date between '${startDate}' and '${endDate}'
+        and (acc_gl_journal_entry.office_id = '${officeId}' or '${officeId}' = 1)
+        group by glcode, acc_gl_account.name, acc_gl_account.classification_enum, acc_gl_account.description
+        order by glcode
+    ) debits
+    right outer join (
+        select acc_gl_account.gl_code as &quot;glcode&quot;, name as &quot;name&quot;, acc_gl_account.description, sum(amount) as &quot;creditamount&quot;, acc_gl_account.classification_enum as &quot;type&quot;
+        from acc_gl_journal_entry, acc_gl_account
+        where acc_gl_account.id = acc_gl_journal_entry.account_id
+        and acc_gl_journal_entry.type_enum = 1
+        and acc_gl_journal_entry.entry_date between '${startDate}' and '${endDate}'
+        and (acc_gl_journal_entry.office_id = ${officeId} or ${officeId} = 1)
+        group by glcode, acc_gl_account.name, acc_gl_account.classification_enum, acc_gl_account.description
+        order by glcode
+    ) credits on debits.glcode = credits.glcode
+) as fullouterjoinresult
+left join gl_fs_map m on m.gl_code = fullouterjoinresult.glcode
+order by glcode"/>
+            <where>report_name = 'Trial Balance Table'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>
+
