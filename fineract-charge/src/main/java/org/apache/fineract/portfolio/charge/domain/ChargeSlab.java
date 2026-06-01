@@ -76,7 +76,7 @@ public class ChargeSlab extends AbstractPersistableCustom<Long> {
             final BigDecimal fromAmount = obj.get("fromAmount").getAsBigDecimal();
             BigDecimal toAmount = null;
 
-            if (obj.has("toAmount")) {
+            if (obj.has("toAmount") && !obj.get("toAmount").isJsonNull()) {
                 toAmount = obj.get("toAmount").getAsBigDecimal();
             }
 

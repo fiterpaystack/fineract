@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
@@ -107,8 +106,10 @@ public class PaystackChargeDefinitionCommandFromApiJsonDeserializer extends Char
         final String currencyCode = this.fromApiJsonHelper.extractStringNamed(CURRENCY_CODE, element);
         baseDataValidator.reset().parameter(CURRENCY_CODE).value(currencyCode).notBlank();
 
-        final BigDecimal amount = this.fromApiJsonHelper.extractBigDecimalNamed(AMOUNT, element, Locale.getDefault());
-        baseDataValidator.reset().parameter(AMOUNT).value(amount).notNull().positiveAmount();
+        if (!this.fromApiJsonHelper.parameterExists(CHART, element)) {
+            final BigDecimal amount = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(AMOUNT, element.getAsJsonObject());
+            baseDataValidator.reset().parameter(AMOUNT).value(amount).notNull().positiveAmount();
+        }
 
         final Boolean penalty = this.fromApiJsonHelper.extractBooleanNamed(PENALTY, element);
         baseDataValidator.reset().parameter(PENALTY).value(penalty).notNull();
@@ -149,7 +150,7 @@ public class PaystackChargeDefinitionCommandFromApiJsonDeserializer extends Char
         }
 
         if (this.fromApiJsonHelper.parameterExists(AMOUNT, element)) {
-            final BigDecimal amount = this.fromApiJsonHelper.extractBigDecimalNamed(AMOUNT, element, Locale.getDefault());
+            final BigDecimal amount = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(AMOUNT, element.getAsJsonObject());
             baseDataValidator.reset().parameter(AMOUNT).value(amount).notNull().positiveAmount();
         }
 
