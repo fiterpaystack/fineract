@@ -784,7 +784,15 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             account.getSummary().updateSummaryWithPivotConfig(account.getCurrency(), savingsAccountTransactionSummaryWrapper, levyTxn,
                     account.getSavingsAccountTransactionsWithPivotConfig());
         } else {
+            // Calculate and set running balance for non-backdated transactions
+            // EMT Levy is a debit transaction, so we subtract from current balance
+            Money currentBalance = Money.of(account.getCurrency(), account.getAccountBalance());
+            Money newRunningBalance = currentBalance.minus(levyMoney);
+            levyTxn.setRunningBalance(newRunningBalance);
             account.addTransaction(levyTxn);
+            // Update account summary to reflect the EMT levy deduction
+            account.getSummary().updateSummaryWithPivotConfig(account.getCurrency(), savingsAccountTransactionSummaryWrapper, levyTxn,
+                    account.getTransactions());
         }
 
         saveTransactionToGenerateTransactionId(levyTxn);
