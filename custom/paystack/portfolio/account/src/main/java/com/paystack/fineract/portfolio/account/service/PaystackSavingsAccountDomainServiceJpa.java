@@ -791,8 +791,7 @@ public class PaystackSavingsAccountDomainServiceJpa extends SavingsAccountDomain
             levyTxn.setRunningBalance(newRunningBalance);
             account.addTransaction(levyTxn);
             // Update account summary to reflect the EMT levy deduction
-            account.getSummary().updateSummaryWithPivotConfig(account.getCurrency(), savingsAccountTransactionSummaryWrapper, levyTxn,
-                    account.getTransactions());
+            account.getSummary().updateSummary(account.getCurrency(), savingsAccountTransactionSummaryWrapper, account.getTransactions());
         }
 
         saveTransactionToGenerateTransactionId(levyTxn);
