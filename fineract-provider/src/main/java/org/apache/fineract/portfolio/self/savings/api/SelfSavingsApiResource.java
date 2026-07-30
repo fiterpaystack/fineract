@@ -96,7 +96,7 @@ public class SelfSavingsApiResource {
 
         final boolean staffInSelectedOfficeOnly = false;
         SavingsAccountData result = this.savingsAccountsApiResource.retrieveOne(accountId, staffInSelectedOfficeOnly, chargeStatus,
-                associations, uriInfo);
+                associations, null, null, uriInfo);
         final ApiRequestJsonSerializationSettings settings = apiRequestParameterHelper.process(uriInfo.getQueryParameters());
         return toApiJsonSerializer.serialize(settings, result, SavingsApiSetConstants.SAVINGS_ACCOUNT_RESPONSE_DATA_PARAMETERS);
     }

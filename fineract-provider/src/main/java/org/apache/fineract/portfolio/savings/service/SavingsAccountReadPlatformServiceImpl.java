@@ -1025,6 +1025,28 @@ public class SavingsAccountReadPlatformServiceImpl implements SavingsAccountRead
     }
 
     @Override
+    public Page<SavingsAccountTransactionData> retrieveAllTransactions(final Long savingsId, final DepositAccountType depositAccountType,
+            final SearchParameters searchParameters) {
+        final StringBuilder sqlBuilder = new StringBuilder();
+        sqlBuilder.append("select ").append(sqlGenerator.calcFoundRows()).append(' ').append(this.transactionsMapper.schema());
+        sqlBuilder.append(" where sa.id = ? and sa.deposit_type_enum = ?");
+        sqlBuilder.append(" order by tr.transaction_date DESC, tr.").append(CREATED_DATE_DB_FIELD)
+                .append(" DESC, tr.created_date DESC, tr.id DESC");
+
+        if (searchParameters.hasLimit()) {
+            sqlBuilder.append(' ');
+            if (searchParameters.hasOffset()) {
+                sqlBuilder.append(sqlGenerator.limit(searchParameters.getLimit(), searchParameters.getOffset()));
+            } else {
+                sqlBuilder.append(sqlGenerator.limit(searchParameters.getLimit()));
+            }
+        }
+
+        final Object[] params = new Object[] { savingsId, depositAccountType.getValue() };
+        return this.paginationHelper.fetchPage(this.jdbcTemplate, sqlBuilder.toString(), params, this.transactionsMapper); // NOSONAR
+    }
+
+    @Override
     public SavingsAccountTransactionData retrieveSavingsTransaction(final Long savingsId, final Long transactionId,
             DepositAccountType depositAccountType) {
 

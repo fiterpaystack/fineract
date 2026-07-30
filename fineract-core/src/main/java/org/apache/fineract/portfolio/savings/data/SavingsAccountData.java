@@ -104,6 +104,8 @@ public final class SavingsAccountData implements Serializable {
     private final SavingsAccountSummaryData summary;
     @SuppressWarnings("unused")
     private final Collection<SavingsAccountTransactionData> transactions;
+    @Setter
+    private Integer totalTransactionsCount;
 
     private final Collection<SavingsAccountChargeData> charges;
 

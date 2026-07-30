@@ -65,6 +65,8 @@ public class GetSavingsAccountByIdCommandStrategy implements CommandStrategy {
         String staffInSelectedOfficeOnly = null;
         String chargeStatus = null;
         String associations = null;
+        Integer transactionOffset = null;
+        Integer transactionLimit = null;
         if (!queryParameters.isEmpty()) {
             if (queryParameters.containsKey("staffInSelectedOfficeOnly")) {
                 staffInSelectedOfficeOnly = queryParameters.get("staffInSelectedOfficeOnly");
@@ -75,10 +77,16 @@ public class GetSavingsAccountByIdCommandStrategy implements CommandStrategy {
             if (queryParameters.containsKey("associations")) {
                 associations = queryParameters.get("associations");
             }
+            if (queryParameters.containsKey("transactionOffset")) {
+                transactionOffset = Integer.valueOf(queryParameters.get("transactionOffset"));
+            }
+            if (queryParameters.containsKey("transactionLimit")) {
+                transactionLimit = Integer.valueOf(queryParameters.get("transactionLimit"));
+            }
         }
 
         SavingsAccountData savingsAccountData = savingsAccountsApiResource.retrieveOne(savingsAccountId,
-                Boolean.parseBoolean(staffInSelectedOfficeOnly), chargeStatus, associations, uriInfo);
+                Boolean.parseBoolean(staffInSelectedOfficeOnly), chargeStatus, associations, transactionOffset, transactionLimit, uriInfo);
 
         final ApiRequestJsonSerializationSettings settings = apiRequestParameterHelper.process(uriInfo.getQueryParameters());
         final String responseBody = toApiJsonSerializer.serialize(settings, savingsAccountData,
