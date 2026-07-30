@@ -189,9 +189,13 @@ public class SavingsAccountsApiResource {
     public SavingsAccountData retrieveOne(@PathParam("accountId") final Long accountId,
             @DefaultValue("false") @QueryParam("staffInSelectedOfficeOnly") final boolean staffInSelectedOfficeOnly,
             @DefaultValue("all") @QueryParam("chargeStatus") final String chargeStatus,
-            @QueryParam("associations") final String associations, @Context final UriInfo uriInfo) {
+            @QueryParam("associations") final String associations,
+            @QueryParam("transactionOffset") @Parameter(description = "transactionOffset") final Integer transactionOffset,
+            @QueryParam("transactionLimit") @Parameter(description = "transactionLimit") final Integer transactionLimit,
+            @Context final UriInfo uriInfo) {
 
-        return retrieveSavingAccount(accountId, null, staffInSelectedOfficeOnly, chargeStatus, uriInfo);
+        return retrieveSavingAccount(accountId, null, staffInSelectedOfficeOnly, chargeStatus, transactionOffset, transactionLimit,
+                uriInfo);
     }
 
     @GET
@@ -201,9 +205,13 @@ public class SavingsAccountsApiResource {
     public SavingsAccountData retrieveOne(@PathParam("externalId") final String externalId,
             @DefaultValue("false") @QueryParam("staffInSelectedOfficeOnly") final boolean staffInSelectedOfficeOnly,
             @DefaultValue("all") @QueryParam("chargeStatus") final String chargeStatus,
-            @QueryParam("associations") final String associations, @Context final UriInfo uriInfo) {
+            @QueryParam("associations") final String associations,
+            @QueryParam("transactionOffset") @Parameter(description = "transactionOffset") final Integer transactionOffset,
+            @QueryParam("transactionLimit") @Parameter(description = "transactionLimit") final Integer transactionLimit,
+            @Context final UriInfo uriInfo) {
 
-        return retrieveSavingAccount(null, externalId, staffInSelectedOfficeOnly, chargeStatus, uriInfo);
+        return retrieveSavingAccount(null, externalId, staffInSelectedOfficeOnly, chargeStatus, transactionOffset, transactionLimit,
+                uriInfo);
     }
 
     @PUT
@@ -475,7 +483,7 @@ public class SavingsAccountsApiResource {
     }
 
     private SavingsAccountData retrieveSavingAccount(Long accountId, String externalId, boolean staffInSelectedOfficeOnly,
-            String chargeStatus, UriInfo uriInfo) {
+            String chargeStatus, Integer transactionOffset, Integer transactionLimit, UriInfo uriInfo) {
         context.authenticatedUser().validateHasReadPermission(SavingsApiConstants.SAVINGS_ACCOUNT_RESOURCE_NAME);
 
         if (!(is(chargeStatus, "all") || is(chargeStatus, "active") || is(chargeStatus, "inactive"))) {
@@ -486,7 +494,8 @@ public class SavingsAccountsApiResource {
         accountId = getResolvedAccountId(accountId, accountExternalId);
         final SavingsAccountData savingsAccount = savingsAccountReadPlatformService.retrieveOne(accountId);
 
-        return populateTemplateAndAssociations(accountId, savingsAccount, staffInSelectedOfficeOnly, chargeStatus, uriInfo);
+        return populateTemplateAndAssociations(accountId, savingsAccount, staffInSelectedOfficeOnly, chargeStatus, transactionOffset,
+                transactionLimit, uriInfo);
     }
 
     private String updateSavingAccount(Long accountId, String externalId, String apiRequestBodyAsJson, String commandParam) {
@@ -612,10 +621,12 @@ public class SavingsAccountsApiResource {
     }
 
     private SavingsAccountData populateTemplateAndAssociations(final Long accountId, final SavingsAccountData savingsAccount,
-            final boolean staffInSelectedOfficeOnly, final String chargeStatus, final UriInfo uriInfo) {
+            final boolean staffInSelectedOfficeOnly, final String chargeStatus, final Integer transactionOffset,
+            final Integer transactionLimit, final UriInfo uriInfo) {
 
         Collection<SavingsAccountTransactionData> transactions = null;
         Collection<SavingsAccountChargeData> charges = null;
+        Integer totalTransactionsCount = null;
 
         final Set<String> associationParameters = ApiParameterHelper.extractAssociationsForResponseIfProvided(uriInfo.getQueryParameters());
         if (!associationParameters.isEmpty()) {
@@ -625,10 +636,22 @@ public class SavingsAccountsApiResource {
             }
 
             if (associationParameters.contains(SavingsApiConstants.transactions)) {
-                final Collection<SavingsAccountTransactionData> currentTransactions = savingsAccountReadPlatformService
-                        .retrieveAllTransactions(accountId, DepositAccountType.SAVINGS_DEPOSIT);
-                if (!CollectionUtils.isEmpty(currentTransactions)) {
-                    transactions = currentTransactions;
+                if (transactionLimit != null) {
+                    final SearchParameters transactionSearchParameters = SearchParameters.builder()
+                            .offset(transactionOffset != null ? transactionOffset : 0).limit(transactionLimit).build();
+                    final Page<SavingsAccountTransactionData> transactionsPage = savingsAccountReadPlatformService
+                            .retrieveAllTransactions(accountId, DepositAccountType.SAVINGS_DEPOSIT, transactionSearchParameters);
+                    if (!CollectionUtils.isEmpty(transactionsPage.getPageItems())) {
+                        transactions = transactionsPage.getPageItems();
+                    }
+                    totalTransactionsCount = transactionsPage.getTotalFilteredRecords();
+                } else {
+                    final Collection<SavingsAccountTransactionData> currentTransactions = savingsAccountReadPlatformService
+                            .retrieveAllTransactions(accountId, DepositAccountType.SAVINGS_DEPOSIT);
+                    if (!CollectionUtils.isEmpty(currentTransactions)) {
+                        transactions = currentTransactions;
+                        totalTransactionsCount = currentTransactions.size();
+                    }
                 }
             }
 
@@ -648,6 +671,10 @@ public class SavingsAccountsApiResource {
                     savingsAccount.getGroupId(), savingsAccount.getSavingsProductId(), staffInSelectedOfficeOnly);
         }
 
-        return SavingsAccountData.withTemplateOptions(savingsAccount, templateData, transactions, charges);
+        final SavingsAccountData result = SavingsAccountData.withTemplateOptions(savingsAccount, templateData, transactions, charges);
+        if (totalTransactionsCount != null) {
+            result.setTotalTransactionsCount(totalTransactionsCount);
+        }
+        return result;
     }
 }
