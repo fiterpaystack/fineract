@@ -133,21 +133,6 @@ public class ReadReportingServiceImpl implements ReadReportingService {
         }
     }
 
-    private void generateCsvFileBuffer(final GenericResultsetData result, OutputStream out) throws IOException {
-        try (CSVPrinter printer = new CSVPrinter(new OutputStreamWriter(out, StandardCharsets.UTF_8), CSVFormat.EXCEL)) {
-            final List<ResultsetColumnHeaderData> columnHeaders = result.getColumnHeaders();
-            final List<ResultsetRowData> data = result.getData();
-            final List<String> header = new ArrayList<>();
-            for (final ResultsetColumnHeaderData columnHeader : columnHeaders) {
-                header.add(columnHeader.getColumnName());
-            }
-            printer.printRecord(header);
-            for (final ResultsetRowData row : data) {
-                printer.printRecord(row.getRow());
-            }
-        }
-    }
-
     @Override
     public GenericResultsetData retrieveGenericResultset(final String name, final String type, final Map<String, String> queryParams,
             final boolean isSelfServiceUserReport) {
