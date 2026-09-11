@@ -110,7 +110,7 @@ public class ReadReportingServiceImpl implements ReadReportingService {
                 }
             });
         } catch (UncheckedIOException e) {
-            throw e.getCause();
+            throw new IOException(e);
         }
     }
 

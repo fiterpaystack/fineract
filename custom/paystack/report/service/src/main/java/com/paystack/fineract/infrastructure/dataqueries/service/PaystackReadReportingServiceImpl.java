@@ -139,7 +139,7 @@ public class PaystackReadReportingServiceImpl extends ReadReportingServiceImpl i
                 }
             });
         } catch (UncheckedIOException e) {
-            throw e.getCause();
+            throw new IOException(e);
         }
     }
 
