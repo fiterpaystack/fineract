@@ -3,9 +3,18 @@ package com.paystack.fineract.infrastructure.dataqueries.service;
 import jakarta.ws.rs.core.StreamingOutput;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
+import java.math.BigDecimal;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.HashSet;
@@ -16,9 +25,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.config.FineractProperties;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
 import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
-import org.apache.fineract.infrastructure.dataqueries.data.GenericResultsetData;
-import org.apache.fineract.infrastructure.dataqueries.data.ResultsetColumnHeaderData;
-import org.apache.fineract.infrastructure.dataqueries.data.ResultsetRowData;
 import org.apache.fineract.infrastructure.dataqueries.service.GenericDataService;
 import org.apache.fineract.infrastructure.dataqueries.service.ReadReportingServiceImpl;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
@@ -29,8 +35,7 @@ import org.apache.poi.ss.usermodel.DataFormat;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.dao.DataAccessException;
@@ -41,6 +46,10 @@ import org.springframework.stereotype.Service;
 @Service
 @Slf4j
 public class PaystackReadReportingServiceImpl extends ReadReportingServiceImpl implements PaystackReadReportingService {
+
+    private static final int REPORT_EXCEL_FETCH_SIZE = 1000;
+    private static final int SXSSF_ROW_WINDOW_SIZE = 100;
+    private static final int MAX_EXCEL_COLUMN_WIDTH = 80 * 256;
 
     /**
      * Columns that should always be treated as strings even if they contain numeric values. These values are fetched
@@ -107,16 +116,38 @@ public class PaystackReadReportingServiceImpl extends ReadReportingServiceImpl i
     public StreamingOutput retrieveReportExcel(String name, String type, Map<String, String> extractedQueryParams) {
         return out -> {
             try {
-                final GenericResultsetData result = retrieveGenericResultset(name, type, extractedQueryParams, false);
-                generateExcelFileBuffer(result, out);
+                final String sql = getSQLtoRun(name, type, extractedQueryParams, false);
+                streamExcelResultset(sql, out);
             } catch (final Exception e) {
                 throw ErrorHandler.getMappable(e);
             }
         };
     }
 
-    private void generateExcelFileBuffer(final GenericResultsetData result, OutputStream out) throws IOException {
-        try (Workbook workbook = new XSSFWorkbook()) {
+    private void streamExcelResultset(final String sql, final OutputStream out) throws IOException {
+        try {
+            this.jdbcTemplate.query(connection -> {
+                final PreparedStatement statement = connection.prepareStatement(sql);
+                statement.setFetchSize(REPORT_EXCEL_FETCH_SIZE);
+                return statement;
+            }, resultSet -> {
+                try {
+                    generateExcelFileBuffer(resultSet, out);
+                    return null;
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            });
+        } catch (UncheckedIOException e) {
+            throw e.getCause();
+        }
+    }
+
+    private void generateExcelFileBuffer(final ResultSet resultSet, OutputStream out) throws SQLException, IOException {
+        this.loadStringColumns();
+
+        try (SXSSFWorkbook workbook = new SXSSFWorkbook(SXSSF_ROW_WINDOW_SIZE)) {
+            workbook.setCompressTempFiles(true);
             Sheet sheet = workbook.createSheet("Data");
 
             // Create cell style for headers (bold)
@@ -140,100 +171,89 @@ public class PaystackReadReportingServiceImpl extends ReadReportingServiceImpl i
 
             // Create headers
             Row headerRow = sheet.createRow(0);
-            List<ResultsetColumnHeaderData> columnHeaders = result.getColumnHeaders();
-            for (int i = 0; i < columnHeaders.size(); i++) {
+            final ResultSetMetaData metadata = resultSet.getMetaData();
+            final int columnCount = metadata.getColumnCount();
+            final String[] columnNames = new String[columnCount];
+            for (int i = 0; i < columnCount; i++) {
+                columnNames[i] = metadata.getColumnLabel(i + 1);
                 Cell cell = headerRow.createCell(i);
-                cell.setCellValue(columnHeaders.get(i).getColumnName());
+                cell.setCellValue(columnNames[i]);
                 cell.setCellStyle(headerStyle);
+                sheet.setColumnWidth(i, Math.min(MAX_EXCEL_COLUMN_WIDTH, Math.max(12, columnNames[i].length() + 2) * 256));
             }
 
             // Create data rows
-            List<ResultsetRowData> data = result.getData();
-            this.loadStringColumns(); // Load columns
-            for (int i = 0; i < data.size(); i++) {
-                Row row = sheet.createRow(i + 1);
-                List<Object> rowData = data.get(i).getRow();
-
-                for (int j = 0; j < rowData.size(); j++) {
+            int rowIndex = 1;
+            while (resultSet.next()) {
+                Row row = sheet.createRow(rowIndex++);
+                for (int j = 0; j < columnCount; j++) {
                     Cell cell = row.createCell(j);
-                    String cellValue = rowData.get(j) != null ? rowData.get(j).toString() : null;
-
-                    if (cellValue != null) {
-                        // Get the column name for this cell
-                        String columnName = columnHeaders.get(j).getColumnName();
-
-                        // Check if this column should always be treated as a string
-                        if (this.stringColumns.contains(columnName)) {
-                            // Force as string for specified columns
-                            cell.setCellValue(cellValue);
-                        } else if (columnName.contains("Date")) {
-                            // Format as date for columns with "Date" in the name
-                            try {
-                                // Try to parse the date - attempt different formats
-                                Date dateValue = null;
-                                boolean parsedSuccessfully = false;
-                                boolean hasTimeComponent = false;
-
-                                // Try SQL datetime format first (yyyy-MM-dd HH:mm:ss)
-                                try {
-                                    SimpleDateFormat sqlDateTimeFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                                    dateValue = sqlDateTimeFormat.parse(cellValue);
-                                    parsedSuccessfully = true;
-
-                                    // Check if time component is 00:00:00
-                                    SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
-                                    String timeComponent = timeFormat.format(dateValue);
-                                    hasTimeComponent = !timeComponent.equals("00:00:00");
-                                } catch (ParseException e1) {
-                                    // Try standard SQL date format (yyyy-MM-dd)
-                                    try {
-                                        SimpleDateFormat sqlDateFormat = new SimpleDateFormat("yyyy-MM-dd");
-                                        dateValue = sqlDateFormat.parse(cellValue);
-                                        parsedSuccessfully = true;
-                                        hasTimeComponent = false;
-                                    } catch (ParseException e2) {
-                                        // Both parsing attempts failed
-                                        parsedSuccessfully = false;
-                                    }
-                                }
-
-                                if (parsedSuccessfully) {
-                                    // Set as date with the appropriate style based on whether it has a time component
-                                    cell.setCellValue(dateValue);
-                                    if (hasTimeComponent) {
-                                        cell.setCellStyle(dateTimeStyle);
-                                    } else {
-                                        cell.setCellStyle(dateStyle);
-                                    }
-                                } else {
-                                    // If parsing failed, just display as string
-                                    cell.setCellValue(cellValue);
-                                }
-                            } catch (Exception e) {
-                                // If any other error occurs, just display as string
-                                cell.setCellValue(cellValue);
-                            }
-                        } else {
-                            // Try to parse as number for proper formatting
-                            try {
-                                double numValue = Double.parseDouble(cellValue);
-                                cell.setCellValue(numValue);
-                                cell.setCellStyle(numberStyle);
-                            } catch (NumberFormatException e) {
-                                // Not a number, set as string
-                                cell.setCellValue(cellValue);
-                            }
-                        }
-                    }
+                    writeCellValue(cell, resultSet.getObject(j + 1), columnNames[j], numberStyle, dateStyle, dateTimeStyle);
                 }
             }
 
-            // Auto-size columns
-            for (int i = 0; i < columnHeaders.size(); i++) {
-                sheet.autoSizeColumn(i);
-            }
-
             workbook.write(out);
+        }
+    }
+
+    private void writeCellValue(final Cell cell, final Object value, final String columnName, final CellStyle numberStyle,
+            final CellStyle dateStyle, final CellStyle dateTimeStyle) {
+        if (value == null) {
+            return;
+        }
+
+        if (this.stringColumns.contains(columnName)) {
+            cell.setCellValue(value.toString());
+        } else if (value instanceof java.sql.Date dateValue) {
+            cell.setCellValue(dateValue);
+            cell.setCellStyle(dateStyle);
+        } else if (value instanceof Timestamp timestampValue) {
+            cell.setCellValue(timestampValue);
+            cell.setCellStyle(dateTimeStyle);
+        } else if (value instanceof LocalDate localDateValue) {
+            cell.setCellValue(localDateValue);
+            cell.setCellStyle(dateStyle);
+        } else if (value instanceof LocalDateTime localDateTimeValue) {
+            cell.setCellValue(localDateTimeValue);
+            cell.setCellStyle(dateTimeStyle);
+        } else if (value instanceof Number numberValue) {
+            cell.setCellValue(numberValue instanceof BigDecimal ? ((BigDecimal) numberValue).doubleValue() : numberValue.doubleValue());
+            cell.setCellStyle(numberStyle);
+        } else {
+            writeStringCellValue(cell, value.toString(), columnName, dateStyle, dateTimeStyle, numberStyle);
+        }
+    }
+
+    private void writeStringCellValue(final Cell cell, final String cellValue, final String columnName, final CellStyle dateStyle,
+            final CellStyle dateTimeStyle, final CellStyle numberStyle) {
+        if (columnName.contains("Date")) {
+            writeDateStringCellValue(cell, cellValue, dateStyle, dateTimeStyle);
+            return;
+        }
+
+        try {
+            cell.setCellValue(Double.parseDouble(cellValue));
+            cell.setCellStyle(numberStyle);
+        } catch (NumberFormatException e) {
+            cell.setCellValue(cellValue);
+        }
+    }
+
+    private void writeDateStringCellValue(final Cell cell, final String cellValue, final CellStyle dateStyle,
+            final CellStyle dateTimeStyle) {
+        try {
+            final SimpleDateFormat sqlDateTimeFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            final Date dateValue = sqlDateTimeFormat.parse(cellValue);
+            cell.setCellValue(dateValue);
+            cell.setCellStyle("00:00:00".equals(new SimpleDateFormat("HH:mm:ss").format(dateValue)) ? dateStyle : dateTimeStyle);
+        } catch (ParseException e1) {
+            try {
+                final SimpleDateFormat sqlDateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                cell.setCellValue(sqlDateFormat.parse(cellValue));
+                cell.setCellStyle(dateStyle);
+            } catch (ParseException e2) {
+                cell.setCellValue(cellValue);
+            }
         }
     }
 
