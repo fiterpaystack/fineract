@@ -24,7 +24,7 @@ import static org.apache.fineract.infrastructure.core.domain.FineractPlatformTen
 
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
-import java.io.ByteArrayOutputStream;
+import jakarta.ws.rs.core.StreamingOutput;
 import java.io.File;
 import java.sql.Date;
 import java.sql.Driver;
@@ -76,6 +76,7 @@ import org.springframework.stereotype.Service;
 public class PentahoReportingProcessServiceImpl implements ReportingProcessService {
 
     private static final Logger logger = LoggerFactory.getLogger(PentahoReportingProcessServiceImpl.class);
+    private static final int REPORT_JDBC_FETCH_SIZE = 1000;
     private final String mifosBaseDir = System.getProperty("user.home") + File.separator + ".mifosx";
     private final DatabasePasswordEncryptor databasePasswordEncryptor;
 
@@ -151,30 +152,24 @@ public class PentahoReportingProcessServiceImpl implements ReportingProcessServi
 
             addParametersToReport(masterReport, reportParams);
 
-            final var baos = new ByteArrayOutputStream();
-
             if ("PDF".equalsIgnoreCase(outputType)) {
-                PdfReportUtil.createPDF(masterReport, baos);
-                return Response.ok().entity(baos.toByteArray()).type("application/pdf").build();
+                return Response.ok().entity(createStreamingOutput(masterReport, outputType)).type("application/pdf").build();
 
             } else if ("XLS".equalsIgnoreCase(outputType)) {
-                ExcelReportUtil.createXLS(masterReport, baos);
-                return Response.ok().entity(baos.toByteArray()).type("application/vnd.ms-excel")
+                return Response.ok().entity(createStreamingOutput(masterReport, outputType)).type("application/vnd.ms-excel")
                         .header("Content-Disposition", "attachment;filename=" + reportName.replaceAll(" ", "") + ".xls").build();
 
             } else if ("XLSX".equalsIgnoreCase(outputType)) {
-                ExcelReportUtil.createXLSX(masterReport, baos);
-                return Response.ok().entity(baos.toByteArray()).type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                return Response.ok().entity(createStreamingOutput(masterReport, outputType))
+                        .type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                         .header("Content-Disposition", "attachment;filename=" + reportName.replaceAll(" ", "") + ".xlsx").build();
 
             } else if ("CSV".equalsIgnoreCase(outputType)) {
-                CSVReportUtil.createCSV(masterReport, baos, "UTF-8");
-                return Response.ok().entity(baos.toByteArray()).type("text/csv")
+                return Response.ok().entity(createStreamingOutput(masterReport, outputType)).type("text/csv")
                         .header("Content-Disposition", "attachment;filename=" + reportName.replaceAll(" ", "") + ".csv").build();
 
             } else if ("HTML".equalsIgnoreCase(outputType)) {
-                HtmlReportUtil.createStreamHTML(masterReport, baos);
-                return Response.ok().entity(baos.toByteArray()).type("text/html").build();
+                return Response.ok().entity(createStreamingOutput(masterReport, outputType)).type("text/html").build();
 
             } else {
                 throw new PlatformDataIntegrityException("error.msg.invalid.outputType", "No matching Output Type: " + outputType);
@@ -183,6 +178,34 @@ public class PentahoReportingProcessServiceImpl implements ReportingProcessServi
         } catch (Throwable t) {
             throw new PlatformDataIntegrityException("error.msg.reporting.error", "Pentaho failed: " + t.getMessage(), t);
         }
+    }
+
+    private StreamingOutput createStreamingOutput(final MasterReport masterReport, final String outputType) {
+        return outputStream -> {
+            try {
+                if ("PDF".equalsIgnoreCase(outputType)) {
+                    PdfReportUtil.createPDF(masterReport, outputStream);
+
+                } else if ("XLS".equalsIgnoreCase(outputType)) {
+                    ExcelReportUtil.createXLS(masterReport, outputStream);
+
+                } else if ("XLSX".equalsIgnoreCase(outputType)) {
+                    ExcelReportUtil.createXLSX(masterReport, outputStream);
+
+                } else if ("CSV".equalsIgnoreCase(outputType)) {
+                    CSVReportUtil.createCSV(masterReport, outputStream, "UTF-8");
+
+                } else if ("HTML".equalsIgnoreCase(outputType)) {
+                    HtmlReportUtil.createStreamHTML(masterReport, outputStream);
+
+                } else {
+                    throw new PlatformDataIntegrityException("error.msg.invalid.outputType", "No matching Output Type: " + outputType);
+
+                }
+            } catch (Throwable t) {
+                throw new PlatformDataIntegrityException("error.msg.reporting.error", "Pentaho failed: " + t.getMessage(), t);
+            }
+        };
     }
 
     private String getReportPath() {
@@ -204,11 +227,39 @@ public class PentahoReportingProcessServiceImpl implements ReportingProcessServi
             // Printing the driver
             logger.info("Driver: {} ", e.getClass().getName());
             connectionProvider.setDriver(e.getClass().getName());
-            connectionProvider.setUrl(getTenantUrl());
+            connectionProvider.setUrl(getTenantUrlWithReportFetchProperties(e.getClass().getName()));
             connectionProvider.setProperty("user", tenantConnection.getSchemaUsername());
             logger.info("Schema Username: {}", tenantConnection.getSchemaUsername());
             connectionProvider.setProperty("password", databasePasswordEncryptor.decrypt(tenantConnection.getSchemaPassword()).trim());
+            setReportFetchProperties(connectionProvider, e.getClass().getName());
             sqlReportDataFactory.setConnectionProvider(connectionProvider);
+        }
+    }
+
+    private String getTenantUrlWithReportFetchProperties(final String driverClassName) {
+        final String tenantUrl = getTenantUrl();
+        if (driverClassName.contains("mysql") || driverClassName.contains("mariadb")) {
+            return appendJdbcUrlParameter(appendJdbcUrlParameter(tenantUrl, "useCursorFetch", "true"), "defaultFetchSize",
+                    Integer.toString(REPORT_JDBC_FETCH_SIZE));
+        } else if (driverClassName.contains("postgresql")) {
+            return appendJdbcUrlParameter(tenantUrl, "defaultRowFetchSize", Integer.toString(REPORT_JDBC_FETCH_SIZE));
+        }
+        return tenantUrl;
+    }
+
+    private String appendJdbcUrlParameter(final String jdbcUrl, final String name, final String value) {
+        if (StringUtils.containsIgnoreCase(jdbcUrl, name + "=")) {
+            return jdbcUrl;
+        }
+        return jdbcUrl + (jdbcUrl.contains("?") ? "&" : "?") + name + "=" + value;
+    }
+
+    private void setReportFetchProperties(final DriverConnectionProvider connectionProvider, final String driverClassName) {
+        if (driverClassName.contains("mysql") || driverClassName.contains("mariadb")) {
+            connectionProvider.setProperty("useCursorFetch", "true");
+            connectionProvider.setProperty("defaultFetchSize", Integer.toString(REPORT_JDBC_FETCH_SIZE));
+        } else if (driverClassName.contains("postgresql")) {
+            connectionProvider.setProperty("defaultRowFetchSize", Integer.toString(REPORT_JDBC_FETCH_SIZE));
         }
     }
 

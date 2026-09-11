@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+    <changeSet author="fineract" id="1-postgresql" runInTransaction="false" context="postgresql">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM pg_indexes WHERE tablename='acc_gl_journal_entry' and indexname='idx_acc_gl_journal_entry_account_date_office_txn';
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            CREATE INDEX CONCURRENTLY idx_acc_gl_journal_entry_account_date_office_txn ON acc_gl_journal_entry(account_id, entry_date, office_id, transaction_id);
+        </sql>
+    </changeSet>
+
+    <changeSet author="fineract" id="2-postgresql" runInTransaction="false" context="postgresql">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM pg_indexes WHERE tablename='acc_gl_journal_entry' and indexname='idx_acc_gl_journal_entry_txn_account';
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            CREATE INDEX CONCURRENTLY idx_acc_gl_journal_entry_txn_account ON acc_gl_journal_entry(transaction_id, account_id);
+        </sql>
+    </changeSet>
+
+    <changeSet author="fineract" id="3-mysql" runInTransaction="false" context="mysql">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM information_schema.statistics
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'acc_gl_journal_entry'
+                  AND index_name = 'idx_acc_gl_journal_entry_account_date_office_txn';
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            CREATE INDEX idx_acc_gl_journal_entry_account_date_office_txn ON acc_gl_journal_entry(account_id, entry_date, office_id, transaction_id);
+        </sql>
+    </changeSet>
+
+    <changeSet author="fineract" id="4-mysql" runInTransaction="false" context="mysql">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM information_schema.statistics
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'acc_gl_journal_entry'
+                  AND index_name = 'idx_acc_gl_journal_entry_txn_account';
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            CREATE INDEX idx_acc_gl_journal_entry_txn_account ON acc_gl_journal_entry(transaction_id, account_id);
+        </sql>
+    </changeSet>
+
+    <changeSet author="fineract" id="5-mysql" context="mysql">
+        <update tableName="stretchy_report">
+            <column name="report_sql" value="select details.edate entry_date, details.account_name account_name, sum(details.debit_amount) debit_amount, sum(details.credit_amount) credit_amount, details.description, ifnull(opb.openingbalance, 0) openingbalance, if(details.manual_entry = 1, details.id, '0system') transtype, if(details.actype in (1, 5), (sum(details.debit_amount) - sum(details.credit_amount)), (sum(details.credit_amount) - sum(details.debit_amount))) cumulative_sum from ( select selected.account_id acid1, concat(gl.gl_code, '-', gl.name) report_header, gl.classification_enum actype, gl.gl_code reportid, counterpart.entry_date edate, concat(gl1.gl_code, '-', gl1.name) account_name, if(counterpart.type_enum = 1, counterpart.amount, 0) debit_amount, if(counterpart.type_enum = 2, counterpart.amount, 0) credit_amount, counterpart.id, counterpart.office_id, counterpart.transaction_id, counterpart.type_enum, counterpart.office_running_balance aftertxn, counterpart.description description, counterpart.transaction_id transactionid, selected.manual_entry from ( select distinct je.transaction_id, je.account_id, je.manual_entry from m_office o join m_office ounder on ounder.hierarchy like concat(o.hierarchy, '%') join acc_gl_journal_entry je on je.office_id = ounder.id and je.account_id = ${GLAccountNO} and je.reversed = 0 and je.entry_date between date('${startDate}') and date('${endDate}') where o.id = ${officeId} ) selected join acc_gl_journal_entry counterpart on counterpart.transaction_id = selected.transaction_id and counterpart.account_id &lt;&gt; ${GLAccountNO} and counterpart.reversed = 0 left join acc_gl_account gl on gl.id = selected.account_id left join acc_gl_account gl1 on gl1.id = counterpart.account_id ) details left join ( select je.account_id acid2, if(aga1.classification_enum in (1, 5), (sum(if(je.type_enum = 2, ifnull(je.amount, 0), 0)) - sum(if(je.type_enum = 1, ifnull(je.amount, 0), 0))), (sum(if(je.type_enum = 1, ifnull(je.amount, 0), 0)) - sum(if(je.type_enum = 2, ifnull(je.amount, 0), 0)))) openingbalance from m_office o join m_office ounder on ounder.hierarchy like concat(o.hierarchy, '%') join acc_gl_journal_entry je on je.office_id = ounder.id and je.account_id = ${GLAccountNO} and je.reversed = 0 and je.entry_date &lt; date('${startDate}') and je.office_running_balance is not null left join acc_gl_account aga1 on aga1.id = je.account_id where o.id = ${officeId} group by je.account_id, aga1.classification_enum ) opb on opb.acid2 = details.acid1 left join ( select name branchname from m_office mo where mo.id = 1 ) branch on details.office_id = ${officeId} group by details.edate, details.acid1, details.report_header, details.reportid, details.account_name, branch.branchname, transtype, details.description, openingbalance, details.actype order by details.edate, transtype"/>
+            <where>report_name='GeneralLedgerReport Table'</where>
+        </update>
+    </changeSet>
+
+    <changeSet author="fineract" id="6-postgresql" context="postgresql">
+        <update tableName="stretchy_report">
+            <column name="report_sql" value="select details.edate entry_date, details.account_name account_name, sum(details.debit_amount) debit_amount, sum(details.credit_amount) credit_amount, details.description, coalesce(opb.openingbalance, 0) openingbalance, case when details.manual_entry then cast(details.id as text) else cast('system' as text) end transtype, case when details.actype in (1, 5) then (sum(details.debit_amount) - sum(details.credit_amount)) else (sum(details.credit_amount) - sum(details.debit_amount)) end cumulative_sum from ( select selected.account_id acid1, concat(gl.gl_code, '-', gl.name) report_header, gl.classification_enum actype, gl.gl_code reportid, counterpart.entry_date edate, concat(gl1.gl_code, '-', gl1.name) account_name, case when counterpart.type_enum = 1 then counterpart.amount else 0 end debit_amount, case when counterpart.type_enum = 2 then counterpart.amount else 0 end credit_amount, counterpart.id, counterpart.office_id, counterpart.transaction_id, counterpart.type_enum, counterpart.office_running_balance aftertxn, counterpart.description description, counterpart.transaction_id transactionid, selected.manual_entry from ( select distinct je.transaction_id, je.account_id, je.manual_entry from m_office o join m_office ounder on ounder.hierarchy like concat(o.hierarchy, '%') join acc_gl_journal_entry je on je.office_id = ounder.id and je.account_id = cast('${GLAccountNO}' as BIGINT) and je.reversed = false and je.entry_date between '${startDate}' and '${endDate}' where o.id = '${officeId}' ) selected join acc_gl_journal_entry counterpart on counterpart.transaction_id = selected.transaction_id and counterpart.account_id &lt;&gt; cast('${GLAccountNO}' as BIGINT) and counterpart.reversed = false left join acc_gl_account gl on gl.id = selected.account_id left join acc_gl_account gl1 on gl1.id = counterpart.account_id ) details left join ( select je.account_id acid2, case when aga1.classification_enum in (1, 5) then (sum(case when je.type_enum = 2 then coalesce(je.amount, 0) else 0 end) - sum(case when je.type_enum = 1 then coalesce(je.amount, 0) else 0 end)) else (sum(case when je.type_enum = 1 then coalesce(je.amount, 0) else 0 end) - sum(case when je.type_enum = 2 then coalesce(je.amount, 0) else 0 end)) end openingbalance from m_office o join m_office ounder on ounder.hierarchy like concat(o.hierarchy, '%') join acc_gl_journal_entry je on je.office_id = ounder.id and je.account_id = cast('${GLAccountNO}' as BIGINT) and je.reversed = false and je.entry_date &lt; date('${startDate}') and je.office_running_balance is not null left join acc_gl_account aga1 on aga1.id = je.account_id where o.id = '${officeId}' group by je.account_id, aga1.classification_enum ) opb on opb.acid2 = details.acid1 left join ( select name branchname from m_office mo where mo.id = 1 ) branch on details.office_id = '${officeId}' group by details.edate, details.acid1, details.report_header, details.reportid, details.account_name, branch.branchname, transtype, details.description, openingbalance, details.actype order by details.edate, transtype"/>
+            <where>report_name='GeneralLedgerReport Table'</where>
+        </update>
+    </changeSet>
+</databaseChangeLog>

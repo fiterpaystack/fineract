@@ -23,7 +23,7 @@ public class ExcelDatatableReportExportServiceImpl implements DatatableReportExp
             boolean isSelfServiceUserReport, String parameterTypeValue) {
         final StreamingOutput result = this.readExtraDataAndReportingService.retrieveReportExcel(reportName, parameterTypeValue,
                 reportParams);
-        return new ResponseHolder(Response.Status.OK).contentType("application/vnd.ms-excel")
+        return new ResponseHolder(Response.Status.OK).contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                 .addHeader("Content-Disposition",
                         "attachment;filename=" + DatatableExportUtil.generatePlainExportFileName(255, "xlsx", reportName, reportParams))
                 .entity(result);

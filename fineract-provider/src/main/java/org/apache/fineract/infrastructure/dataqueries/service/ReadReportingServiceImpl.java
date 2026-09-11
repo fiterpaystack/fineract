@@ -29,8 +29,11 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -70,6 +73,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class ReadReportingServiceImpl implements ReadReportingService {
 
+    private static final int REPORT_CSV_FETCH_SIZE = 1000;
+
     protected final JdbcTemplate jdbcTemplate;
     private final PlatformSecurityContext context;
     private final GenericDataService genericDataService;
@@ -82,25 +87,48 @@ public class ReadReportingServiceImpl implements ReadReportingService {
             final boolean isSelfServiceUserReport) {
         return out -> {
             try {
-                final GenericResultsetData result = retrieveGenericResultset(name, type, queryParams, isSelfServiceUserReport);
-                generateCsvFileBuffer(result, out);
+                final String sql = getSQLtoRun(name, type, queryParams, isSelfServiceUserReport);
+                streamCsvResultset(sql, out);
             } catch (final Exception e) {
                 throw ErrorHandler.getMappable(e);
             }
         };
     }
 
-    private void generateCsvFileBuffer(final GenericResultsetData result, OutputStream out) throws IOException {
+    private void streamCsvResultset(final String sql, final OutputStream out) throws IOException {
+        try {
+            this.jdbcTemplate.query(connection -> {
+                final PreparedStatement statement = connection.prepareStatement(sql);
+                statement.setFetchSize(REPORT_CSV_FETCH_SIZE);
+                return statement;
+            }, resultSet -> {
+                try {
+                    generateCsvFileBuffer(resultSet, out);
+                    return null;
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            });
+        } catch (UncheckedIOException e) {
+            throw new IOException(e);
+        }
+    }
+
+    private void generateCsvFileBuffer(final ResultSet resultSet, final OutputStream out) throws SQLException, IOException {
         try (CSVPrinter printer = new CSVPrinter(new OutputStreamWriter(out, StandardCharsets.UTF_8), CSVFormat.EXCEL)) {
-            final List<ResultsetColumnHeaderData> columnHeaders = result.getColumnHeaders();
-            final List<ResultsetRowData> data = result.getData();
+            final ResultSetMetaData metadata = resultSet.getMetaData();
+            final int columnCount = metadata.getColumnCount();
             final List<String> header = new ArrayList<>();
-            for (final ResultsetColumnHeaderData columnHeader : columnHeaders) {
-                header.add(columnHeader.getColumnName());
+            for (int i = 1; i <= columnCount; i++) {
+                header.add(metadata.getColumnLabel(i));
             }
             printer.printRecord(header);
-            for (final ResultsetRowData row : data) {
-                printer.printRecord(row.getRow());
+            while (resultSet.next()) {
+                final List<Object> row = new ArrayList<>();
+                for (int i = 1; i <= columnCount; i++) {
+                    row.add(resultSet.getObject(i));
+                }
+                printer.printRecord(row);
             }
         }
     }
@@ -127,7 +155,7 @@ public class ReadReportingServiceImpl implements ReadReportingService {
         return result;
     }
 
-    private String getSQLtoRun(final String name, final String type, final Map<String, String> queryParams,
+    protected String getSQLtoRun(final String name, final String type, final Map<String, String> queryParams,
             final boolean isSelfServiceUserReport) {
 
         String sql = getSql(name, type);
